@@ -1,5 +1,28 @@
 # Deployment
 
+## Live environment
+
+| Service | URL |
+|---|---|
+| Frontend (Vercel) | https://ai-study-companion-ruby.vercel.app |
+| API (Railway) | https://ai-study-companion-production-a07f.up.railway.app |
+| Worker (Railway) | service `hospitable-light` — no public domain, by design |
+| Database (Supabase) | project `maeifbzqpehidwuprypv`, region `ap-south-1` |
+
+Two gotchas cost real time on the first deploy, both worth knowing:
+
+- **`VITE_API_BASE_URL` must include `https://`.** A bare hostname is treated by
+  `fetch()` as a relative path, so every call resolves against the frontend
+  origin, matches the SPA rewrite and returns `index.html` with HTTP 200 — a
+  silent failure with no network error (D-021).
+- **`CORS_ORIGINS` must be set to the Vercel URL** *after* the frontend exists.
+  Until then the API answers preflights with 204 but sends no
+  `access-control-allow-origin`, and the browser blocks every call.
+
+Vite bakes `VITE_*` variables in at **build** time, so changing one in Vercel
+requires a redeploy, not just a save.
+
+
 Three services, two platforms, one database.
 
 ```
