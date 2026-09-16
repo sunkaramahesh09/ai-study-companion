@@ -4,29 +4,30 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-16 22:05 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-16 22:35 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
 
 ---
 
 ## Current state
 
-**Tasks 1-4 complete.** Scaffold, schema, data isolation, and auth end-to-end.
+**Tasks 1-5 complete** (task 5 = config + local verification; the hosting
+accounts still need the user — see B-4). All of Wednesday night's plan is done.
 
 Supabase `maeifbzqpehidwuprypv` (`ap-south-1`, PG17, pgvector 0.8.2).
-19 tables, 35 RLS policies, 6 migrations.
+19 tables, 35 RLS policies, 6 migrations. **Tests: 29 passing.**
 
-**Tests: 29 passing** (env unit, 12 isolation integration, 9 auth integration).
-Verified over real HTTP against a live server, not just `app.inject`:
-health 200 unauthenticated, /api/me 401 without a token, CORS preflight 204,
-/api/me 200 with a real JWT, /api/admin/ping 403 for a non-admin.
+Both AI providers are smoke-tested live and working. Two findings changed the
+design before a line of provider code was written: gpt-oss models spend
+reasoning tokens against the 8000 TPM budget (D-016), and Gemini's 768-dim
+vectors come back unnormalized at L2 norm 0.58 (D-017).
 
-Auth is one DB round trip (D-015). The service role key is not used in request
-handling at all — only the worker and explicit platform-level reads.
+Deploy config is written and **verified locally**: Docker image builds (364MB),
+API boots in production mode against the real DB, worker starts and pg-boss
+created its schema in Postgres, SIGTERM drains with exit 0, container runs
+non-root. See `docs/DEPLOYMENT.md`.
 
-`.env` complete except `GROQ_API_KEY` / `GEMINI_API_KEY` (B-3).
-
-**Next action:** task 5 — deploy the skeleton. Vercel (web) + Railway (api +
-worker). Deliberately early to de-risk the single-submission deadline.
+**Next action:** task 6 (Spaces + Projects CRUD) — or task 7 (provider layer) if
+you would rather get AI plumbing in first. Task 7 is now fully unblocked.
 
 ---
 
@@ -37,7 +38,8 @@ worker). Deliberately early to de-risk the single-submission deadline.
 | ~~B-1~~ | ~~git Xcode license~~ | — | **RESOLVED** 2026-09-16, git 2.54.0 working |
 | ~~B-2~~ | ~~No Supabase project~~ | — | **RESOLVED** 2026-09-16, ref `maeifbzqpehidwuprypv` |
 | ~~B-2b~~ | ~~service role key + DATABASE_URL~~ | — | **RESOLVED** 2026-09-16, DB connection verified |
-| B-3 | No `GROQ_API_KEY` / `GEMINI_API_KEY` in `.env` yet. | **User** | Tasks 7, 10, 13, 15, 16 |
+| ~~B-3~~ | ~~AI provider keys~~ | — | **RESOLVED** 2026-09-16, both smoke-tested live |
+| B-4 | Vercel + Railway accounts not created/linked. Needs interactive browser login. All config is committed and locally verified; follow `docs/DEPLOYMENT.md`. | **User** | Public URL (PRD deliverable 1) |
 
 ---
 
@@ -50,7 +52,7 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 - [x] **2. Supabase project + full schema migration** — *Done:* project `maeifbzqpehidwuprypv`, 5 migrations applied, 19 tables, pgvector 0.8.2 + HNSW cosine index on `material_chunks.embedding`.
 - [x] **3. RLS policies + isolation test** — every table keyed to `auth.uid()`; API uses caller's JWT so Postgres enforces isolation; worker uses service role with explicit `project_id`/`user_id` filters from the job payload. *Done:* 35 policies in `0006_rls_policies.sql`; 12 integration cases green against the live DB.
 - [x] **4. Auth end-to-end** — Supabase Auth, Fastify JWT middleware, React auth context + gated routes, `profiles.role` for admin. *Done:* 9 auth integration tests + live HTTP smoke; single-round-trip auth (D-015).
-- [ ] **5. Deploy the skeleton (empty)** — Vercel + Railway (api + worker), pg-boss booted. *Done when:* public URL serves a logged-in empty dashboard. Deliberately early: de-risks the single-submission constraint.
+- [x] **5. Deploy config + local verification** — Dockerfile, `.dockerignore`, `vercel.json`, `docs/DEPLOYMENT.md`. *Done:* image builds, both entrypoints boot against the real DB, pg-boss schema created, graceful SIGTERM, non-root. **Remaining: user links Vercel + Railway (B-4).**
 
 ### Thu — material pipeline, RAG, Tutor
 - [ ] **6. Spaces + Projects CRUD** — incl. goal field, project dashboard shell.

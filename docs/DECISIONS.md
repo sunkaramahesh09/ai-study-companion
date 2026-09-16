@@ -364,3 +364,110 @@ valid JWT. There is a test that demotes an admin mid-session and asserts the
 next call returns 403.
 
 ---
+
+## D-016 — gpt-oss models are reasoning models; reasoning tokens spend the TPM budget
+**Date:** 2026-09-16 · **Area:** AI / Cost
+
+**Found by:** the first live Groq smoke call, which returned an **empty string**.
+
+**What is happening:** `openai/gpt-oss-120b` and `-20b` emit internal reasoning
+tokens before producing content, and those tokens are billed as completion
+tokens. Measured on the prompt "Reply with the single word: ready":
+
+| Setting | completion | of which reasoning | content |
+|---|---|---|---|
+| `max_tokens: 10` | 10 | 8 | `""` — truncated before any content |
+| default effort, `max_tokens: 200` | 37 | 27 (73%) | `"ready"` |
+| `reasoning_effort: 'low'` | 18 | 8 (44%) | `"ready"` |
+
+**Two consequences:**
+
+1. **This is a silent-failure mode, not just a cost issue.** Too low a
+   `max_tokens` returns `""` with `finish_reason` set and no error. Downstream,
+   `JSON.parse("")` throws somewhere unrelated to the real cause. The provider
+   wrapper must set a floor on `max_tokens` that leaves room for reasoning, and
+   must treat empty content as an explicit `invalid_output` failure rather than
+   letting it propagate.
+
+2. **The 8000 TPM ceiling is tighter than it looks.** Budget accounting has to
+   include reasoning tokens, because the API bills them. A naive estimate based
+   on prompt size plus expected answer length will under-count by roughly 2-3x.
+
+**Decision:** `reasoning_effort` becomes an explicit part of the routing policy,
+alongside model choice:
+- Tutor grounded answers → default effort (reasoning earns its cost there)
+- single-answer grading, single-question generation → `'low'`
+- `ai_requests.completion_tokens` records the total including reasoning, so the
+  admin cost view reflects what is actually spent.
+
+**Confirmed from response headers:** `x-ratelimit-limit-tokens: 8000`,
+`x-ratelimit-limit-requests: 1000` — matching the documented limits. These
+headers are per-response and will be used to drive the limiter rather than
+relying on a hardcoded guess.
+
+---
+
+## D-017 — Gemini's 768-dim vectors are NOT normalized; we normalize before storing
+**Date:** 2026-09-16 · **Area:** Retrieval
+
+**Found by:** live embedding smoke call.
+
+**Measured:** a `gemini-embedding-001` embedding requested at
+`outputDimensionality: 768` comes back with an **L2 norm of 0.581**, not 1.0.
+Only the native 3072-dim output is normalized; MRL truncation drops magnitude
+and Google does not re-normalize for you.
+
+**Why it matters:** `material_chunks.embedding` is indexed with
+`vector_cosine_ops`. Cosine distance divides by vector magnitudes, so
+unnormalized vectors of varying length still *rank* roughly correctly, but the
+distance values themselves become incomparable between chunks. The evidence
+sufficiency gate for unsupported-question handling (task 11) thresholds on an
+absolute distance — with unnormalized vectors that threshold means something
+different for every chunk, which would quietly break the PRD's core
+"don't fabricate" requirement.
+
+**Decision:** normalize every embedding to unit length at write time *and* at
+query time, in the embedding provider itself so no caller can forget. D-004
+flagged this as a risk; this confirms it is real and measured, not theoretical.
+
+**Test to write with task 7:** assert that every vector returned by the
+embedding provider has an L2 norm of 1.0 within floating-point tolerance.
+
+---
+
+## D-018 — Never `npx` a build tool in CI; assert the build produced output
+**Date:** 2026-09-16 · **Area:** Deployment
+
+**Found by:** building the Docker image locally before creating any hosting
+account — which is the entire reason task 5 was scheduled on night one.
+
+**Two independent bugs, both silent, both would have shipped:**
+
+1. **`npx tsc` downloaded the wrong package.** With TypeScript not resolvable at
+   that moment, `npx` helpfully fetched an unrelated registry package literally
+   named `tsc` (v2.0.4, deprecated since 2017), printed a banner, **exited 0**,
+   and compiled nothing. Fixed by using `npm run build --workspace=...`, which
+   resolves from `node_modules/.bin` and fails loudly.
+
+2. **`.dockerignore` had `*.tsbuildinfo`, which only matches the root level.**
+   Nested `packages/*/tsconfig.tsbuildinfo` were copied into the image from the
+   host. TypeScript read that stale incremental state, concluded every project
+   was up to date, and skipped emitting — while `dist` was (correctly) excluded
+   by the same file. Fixed with `**/*.tsbuildinfo`.
+
+**The shared failure mode:** both produced an image that built successfully and
+contained no application code. Neither surfaced until runtime, as a crash loop
+on a platform, which is a miserable thing to debug on a deadline.
+
+**Decision:** the Dockerfile asserts its own output before the runtime stage —
+every `dist/` directory must exist, and `server.js` and `worker.js` must be
+present, or the build fails. A build step that can succeed while producing
+nothing needs a guard, not trust.
+
+**Verified locally before any account existed:** image builds (364MB), API boots
+in production mode against the real database and serves `/health`, `/api/me`
+still returns 401 without a token, the container runs as the unprivileged `node`
+user, the worker entrypoint starts and pg-boss creates its schema in Postgres,
+and SIGTERM drains cleanly with exit code 0.
+
+---

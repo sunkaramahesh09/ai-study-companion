@@ -1,0 +1,20 @@
+node_modules
+**/node_modules
+dist
+**/dist
+.git
+.github
+.env
+.env.*
+!.env.example
+coverage
+# Must be **/ — a bare *.tsbuildinfo matches only the root level, so nested
+# build-info files would be copied in. TypeScript then reads the HOST's stale
+# incremental state, concludes everything is up to date and emits nothing,
+# while dist is (correctly) excluded. The image builds clean and ships empty.
+**/*.tsbuildinfo
+docs
+supabase
+apps/web/dist
+.vercel
+.DS_Store
