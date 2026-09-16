@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 00:25 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-17 00:45 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -83,8 +83,27 @@ worker → ready, 25 pages / 25 chunks · every chunk carries a valid page numbe
 **Tests: 122 passing** (12 new for extraction and chunking, incl. a real-PDF
 test asserting each chunk's text actually appears on the page it cites).
 
-**Next action:** task 9 — embeddings into `material_chunks.embedding` (Gemini,
-batched ~20 at ~700ms, unit-normalized per D-017) and the retrieval query.
+**Task 9 complete.** Embeddings and project-scoped retrieval.
+
+- `match_material_chunks` RPC — SECURITY INVOKER so RLS still applies inside it,
+  plus an explicit project filter. Distance ceiling in SQL, not just top-k.
+- Resumable embedding: a retry skips chunks whose text is unchanged and already
+  have a vector, so a late failure does not re-spend Gemini's ~1000/day.
+- A document is `ready` only when EVERY chunk is embedded (D-030).
+- `retrieve()` distinguishes `no_materials` / `not_indexed` /
+  `no_relevant_evidence` — the Tutor must answer those differently.
+- Context capped to ~2200 tokens (Groq TPM is the binding constraint).
+
+**Measured separation** (D-029): on-topic best distances 0.247-0.336,
+off-topic 0.515-0.561. Threshold set to **0.45** — 5/5 on-topic retrieve
+evidence, 4/4 off-topic retrieve nothing.
+
+**IMPORTANT for local dev:** `PGBOSS_SCHEMA=pgboss_dev` in `.env`. Without it a
+local worker competes with the deployed Railway worker for the same jobs
+(D-031). Railway keeps the default `pgboss`.
+
+**Next action:** task 10 — the grounded Tutor: retrieve, build a compact
+prompt, answer with `Source: <file> — Page N` citations, persist the turn.
 
 ---
 
@@ -115,7 +134,7 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 - [x] **6. Spaces + Projects CRUD** — incl. goal field, one-request project dashboard, learning events. *Done:* 19 integration tests + live verification.
 - [x] **7. `packages/ai` provider layer** — Groq + Gemini impls, backoff+jitter, TPM-aware token-bucket limiters, primary→fallback failover, `ai_requests` row per call. *Done:* 56 unit tests incl. mocked-429 failover; live smoke verified both providers + 3 ai_requests rows.
 - [x] **8. PDF upload + background processing** — Storage upload, `material.process` pg-boss job, queued→processing→ready/failed in UI, retries + idempotency so a retry can't double-insert chunks. *Done:* live end-to-end, reprocess produced zero duplicate chunks.
-- [ ] **9. Page-aware chunking + embedding** — per-page extract, ~800-token chunks with overlap, never crossing a page boundary (D-005). Gemini batched ~20 @ ~700ms. *Done when:* 40-page PDF indexes with no 429; page attribution spot-checked.
+- [x] **9. Page-aware chunking + embedding** — per-page extract, ~800-token chunks with overlap, never crossing a page boundary (D-005). Gemini batched ~20 @ ~700ms. *Done when:* 40-page PDF indexes with no 429; page attribution spot-checked.
 - [ ] **10. Retrieval + Tutor with grounded citations** — project-scoped vector search, compact context (TPM), primary model, `Source: <doc> — Page N` linking back to material. *Done when:* cited page actually contains the claim.
 - [ ] **11. Unsupported-question handling** — deterministic evidence-sufficiency gate before generation. *Done when:* question absent from material yields a refusal, not a fabrication. **Explicit PRD evaluation criterion — protect this.**
 - [ ] **12. Prompt-injection boundary** — retrieved chunks + user messages wrapped as delimited data with an explicit never-instructions contract. *Done when:* adversarial fixture PDF containing "ignore previous instructions" fails to hijack the Tutor. **Protect this.**

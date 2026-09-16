@@ -740,3 +740,107 @@ but produces 12,000 units of billable work is a failure with a slower fuse, and
 the test that caught it was checking the weaker property.
 
 ---
+
+## D-029 — The relevance threshold is measured, and it is not the only defence
+**Date:** 2026-09-17 · **Area:** Retrieval / Groundedness
+
+**Chosen:** `RELEVANCE_THRESHOLD = 0.45` cosine distance, applied inside the
+`match_material_chunks` SQL so irrelevant chunks never reach the application.
+
+**Measured** against the indexed PRD (25 chunks, 768-dim normalized vectors):
+
+| | best distance |
+|---|---|
+| "What should the adaptive quiz consider when selecting questions?" | 0.247 |
+| "What must the prototype demonstrate?" | 0.266 |
+| "How should concept mastery be treated?" | 0.271 |
+| "What happens when there is not enough evidence to answer?" | 0.336 |
+| "How do I change a car tyre?" | 0.515 |
+| "What is the best recipe for sourdough bread?" | 0.522 |
+| "Who won the 1998 football world cup?" | 0.561 |
+
+Worst on-topic 0.336, best off-topic 0.515. 0.45 sits in the gap with 0.11 of
+headroom above genuine questions and 0.065 below unrelated ones.
+
+**Correcting an earlier mistake:** the first version of this constant was 0.62,
+with a code comment claiming it had been measured. It had not — the number was
+guessed and the justification written to match. The measurement above shows 0.62
+would have admitted *every* off-topic query as evidence, which is precisely the
+failure the PRD calls a core evaluation requirement (§7). The lesson is narrow
+and worth keeping: a constant that decides whether the product fabricates
+answers has to be measured before it is described as measured.
+
+**The margin is uncomfortably narrow, and that is the real finding.** 0.18
+between the worst genuine question and the closest unrelated one. Embeddings of
+natural-language questions are simply never very far apart, and a 25-chunk
+corpus compresses the range further. A larger, more varied corpus would likely
+narrow it more.
+
+**So the threshold is not the only defence.** Task 11 additionally instructs the
+model to refuse when the supplied evidence does not answer the question, and the
+evaluation suite (task 22) re-measures the separation so a change to the
+embedding model, the chunk size or the prompt cannot silently move it. One
+empirical constant should not be all that stands between the product and a
+confident wrong answer.
+
+**Distance ceiling, not just top-k:** without it the Tutor always receives its
+k "best" chunks even when nothing is relevant — which is exactly how an
+unsupported question becomes a fabrication.
+
+---
+
+## D-030 — A document is `ready` only when every chunk is embedded
+**Date:** 2026-09-17 · **Area:** Materials / Reliability
+
+**Chosen:** the processing job throws unless `embedded === chunks.length`, so
+`status: 'ready'` always implies the whole document is retrievable.
+
+**Why:** a partially embedded document lets the Tutor answer confidently from
+some pages while silently ignoring others, and nothing in the UI would reveal
+it. That is worse than a document plainly marked failed, because the user has no
+signal that the answer was built on part of the material.
+
+**Found by:** a stale worker process from an earlier task still holding the
+queue picked up a job and wrote chunks with no embeddings at all — and the
+material still went `ready`. The stale process was an artefact of local testing,
+but it exposed a real invariant that nothing was enforcing.
+
+**Embedding is resumable.** On a retry, chunks whose text is unchanged and
+already carry a vector are skipped, so a failure at chunk 280 of 300 does not
+re-spend 280 requests against Gemini's ~1000/day ceiling.
+
+---
+
+## D-031 — Dev and production must not share a pg-boss queue
+**Date:** 2026-09-17 · **Area:** Deployment / Background jobs
+
+**Symptom:** the same test produced 25/25 embedded chunks on one run and 0/25
+on the next, with no code change between them. A document even reached
+`status: 'ready'` with zero embeddings *after* the guard in D-030 was added,
+which should have been impossible.
+
+**Cause:** local development points `DATABASE_URL` at the same Supabase database
+as production, and pg-boss stores its queue in that database. The deployed
+Railway worker was therefore subscribed to the *same* `material.process` queue
+as the locally-run worker. Whichever polled first won the job — so which version
+of the code processed a document depended on a race. Railway was running the
+previous deploy, which chunks but does not embed.
+
+**Fix:** the queue schema is configurable (`PGBOSS_SCHEMA`, default `pgboss`),
+and local development uses `pgboss_dev`. The two environments now have entirely
+separate queues in the same database.
+
+**Why this was worth chasing rather than working around:** the nondeterminism
+looked like a bug in the embedding code, and two separate investigations went
+into reading code that was correct. The actual lesson is about the environment —
+a shared database means a shared queue unless something says otherwise, and a
+background job system that silently accepts a second consumer running different
+code is a genuinely dangerous default.
+
+**Still shared:** dev and production write to the same tables. Acceptable for a
+prototype with one developer, and the alternative — a second Supabase project —
+costs setup time and a second set of migrations to keep in sync before a
+Saturday deadline. Noted in Known Limitations; a separate staging project is the
+right answer with more time.
+
+---

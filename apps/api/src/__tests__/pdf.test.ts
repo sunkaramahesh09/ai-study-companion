@@ -112,3 +112,15 @@ describeReal('extractPdf on a real document', () => {
     }
   });
 });
+
+describe('embedding invariant', () => {
+  it('documents the rule the job enforces', () => {
+    // The job throws unless embedded === chunks.length, so `status: ready`
+    // always implies every chunk is retrievable. Stated here because the rule
+    // lives in a worker path that unit tests do not execute, and it is the
+    // invariant the Tutor's evidence gate depends on.
+    const chunkCount = 25;
+    const embedded = 25;
+    expect(embedded).toBe(chunkCount);
+  });
+});

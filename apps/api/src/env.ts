@@ -17,6 +17,15 @@ const envSchema = z.object({
   // Server/worker only. Bypasses RLS — must never reach the browser bundle.
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   DATABASE_URL: z.string().min(1),
+  /**
+   * Postgres schema holding the pg-boss queue.
+   *
+   * Local development points at the SAME Supabase database as production, so
+   * without separate schemas a locally-run worker and the deployed worker
+   * compete for the same jobs — and whichever wins decides which version of the
+   * code processes a document. See D-031.
+   */
+  PGBOSS_SCHEMA: z.string().min(1).default('pgboss'),
 
   // Empty is tolerated outside production so the server can boot for work that
   // does not touch a provider (auth, CRUD, tests). Required in production by

@@ -23,7 +23,7 @@ export async function buildWorker(): Promise<PgBoss> {
   const boss = new PgBoss({
     connectionString: env.DATABASE_URL,
     // Keep pg-boss's bookkeeping out of the application schema.
-    schema: 'pgboss',
+    schema: env.PGBOSS_SCHEMA,
     // Supabase's pooler is the shared bottleneck; the worker should not be the
     // reason the API can't get a connection.
     max: 4,

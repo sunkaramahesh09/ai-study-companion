@@ -34,7 +34,7 @@ export async function queue(): Promise<PgBoss> {
     const env = loadEnv();
     const instance = new PgBoss({
       connectionString: env.DATABASE_URL,
-      schema: 'pgboss',
+      schema: env.PGBOSS_SCHEMA,
       // The API only publishes, so it needs very few connections. Supabase's
       // pooler is shared, and the worker needs the headroom more.
       max: 2,
