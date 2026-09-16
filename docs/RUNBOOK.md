@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 00:45 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-17 00:50 (end of Wed night session) · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -83,27 +83,51 @@ worker → ready, 25 pages / 25 chunks · every chunk carries a valid page numbe
 **Tests: 122 passing** (12 new for extraction and chunking, incl. a real-PDF
 test asserting each chunk's text actually appears on the page it cites).
 
-**Task 9 complete.** Embeddings and project-scoped retrieval.
+## >>> RESUME HERE <<<
 
-- `match_material_chunks` RPC — SECURITY INVOKER so RLS still applies inside it,
-  plus an explicit project filter. Distance ceiling in SQL, not just top-k.
-- Resumable embedding: a retry skips chunks whose text is unchanged and already
-  have a vector, so a late failure does not re-spend Gemini's ~1000/day.
-- A document is `ready` only when EVERY chunk is embedded (D-030).
-- `retrieve()` distinguishes `no_materials` / `not_indexed` /
-  `no_relevant_evidence` — the Tutor must answer those differently.
-- Context capped to ~2200 tokens (Groq TPM is the binding constraint).
+**Session ended 2026-09-17 ~00:50.** Tasks 1-9 are complete, pushed, and live.
 
-**Measured separation** (D-029): on-topic best distances 0.247-0.336,
-off-topic 0.515-0.561. Threshold set to **0.45** — 5/5 on-topic retrieve
-evidence, 4/4 off-topic retrieve nothing.
+**NEXT ACTION: task 10 — the grounded Tutor.**
 
-**IMPORTANT for local dev:** `PGBOSS_SCHEMA=pgboss_dev` in `.env`. Without it a
-local worker competes with the deployed Railway worker for the same jobs
-(D-031). Railway keeps the default `pgboss`.
+> The user's sign-off said "continue from task 19". That is almost certainly a
+> typo for 10: tasks 10-18 are not built, and task 19 (recommendations) depends
+> on task 14 (deterministic core) and task 17 (quiz workflow). **Confirm with
+> the user in one line before starting**, then proceed from whichever they say.
 
-**Next action:** task 10 — the grounded Tutor: retrieve, build a compact
-prompt, answer with `Source: <file> — Page N` citations, persist the turn.
+### What task 10 needs (everything is in place for it)
+- `retrieve(db, projectId, query)` in `apps/api/src/lib/retrieval.ts` returns
+  ranked chunks with `filename` + `pageNumber` already attached for citations.
+- `generationProvider()` in `apps/api/src/lib/ai.ts` — use the **primary** tier
+  for Tutor answers, default reasoning effort.
+- Tables ready: `conversations`, `messages` (with `citations` jsonb and a
+  `grounded` boolean that records a refusal as a first-class outcome).
+- Keep the prompt inside ~2200 tokens of context; `retrieve()` already caps it.
+- **Never cache a Tutor answer** (CLAUDE.md) — it is a correctness bug.
+
+### Then, in order
+- **Task 11** — unsupported-question handling. The retrieval gate exists
+  (`reason: no_relevant_evidence`); task 11 adds the second, independent defence
+  at the prompt level. See D-029 for why one is not enough.
+- **Task 12** — prompt-injection boundary. Build the adversarial fixture PDF.
+- Tasks 13-19 (Friday), 20-25 (Saturday).
+
+---
+
+## Schedule reality check — read this before planning the day
+
+It is now **Thursday ~00:50**. The real deadline is **Saturday night**.
+Tasks 1-9 done; **16 tasks remain** (10-25) plus Sunday's documentation.
+
+Thursday must land 10, 11, 12 and ideally 13. If Thursday ends without the
+Tutor answering with citations and refusing unsupported questions, the plan
+needs re-cutting, not more hours. The cut list below is the first thing to
+revisit, not the last.
+
+**Protect at any cost:** 11 (unsupported-question), 12 (injection boundary),
+14 (deterministic core), 22 (evaluation). That is where the PRD's stated
+criteria concentrate.
+
+---
 
 ---
 
@@ -237,3 +261,103 @@ python3 -c "import pymupdf; d=pymupdf.open('/Users/mahesh/Project_Requirements.p
 Run the security advisor after every DDL change:
 `mcp__claude_ai_Supabase__get_advisors(project_id, type='security')`.
 It caught D-011 within a minute of the schema landing.
+
+
+---
+
+## State as of 2026-09-17 00:50 — full snapshot
+
+### Built and verified (tasks 1-9)
+
+| # | Task | Evidence it actually works |
+|---|---|---|
+| 1 | Monorepo scaffold | typecheck clean, 4 workspaces |
+| 2 | Schema, 19 tables, pgvector | 8 migrations applied |
+| 3 | RLS, 35 policies | 12 isolation tests vs the real DB |
+| 4 | Auth end-to-end | 9 tests + live HTTP; role read from DB not token |
+| 5 | Deployment | all 3 services live, full auth chain passes in prod |
+| 6 | Spaces + Projects CRUD | 19 tests incl. cross-user + mass-assignment |
+| 7 | AI provider layer | 56 tests; live: generate, JSON-validated, embeddings |
+| 8 | PDF upload + background job | live: 25 pages, 25 chunks, idempotent reprocess |
+| 9 | Embeddings + retrieval | live: 25/25 embedded, 5/5 on-topic, 4/4 off-topic |
+
+**123 tests passing.** `npx vitest run` from the repo root.
+
+### Production (all verified live, not localhost)
+- Frontend https://ai-study-companion-ruby.vercel.app
+- API https://ai-study-companion-production-a07f.up.railway.app
+- Worker: Railway service `hospitable-light` (no domain, by design)
+- Railway project `determined-empathy` / `production`
+- Supabase `maeifbzqpehidwuprypv` · `ap-south-1` · PG17 · pgvector 0.8.2
+
+### Repo
+`sunkaramahesh09/ai-study-companion`, branch `main`, 15 commits, all pushed.
+Working tree clean except `.env` and `.env.railway` (both gitignored).
+
+---
+
+## Landmines — things that already cost time tonight
+
+1. **`PGBOSS_SCHEMA=pgboss_dev` must be in `.env`** (D-031). Dev shares
+   `DATABASE_URL` with production, so without it a local worker competes with
+   the deployed Railway worker for the same jobs, and whichever wins decides
+   which *version of the code* processes a document. This produced results that
+   alternated between 25/25 and 0/25 embedded with no code change. Railway keeps
+   the default `pgboss`.
+
+2. **Kill stale local workers before testing:**
+   `pkill -9 -f "worker.ts"; pkill -9 -f "server.ts"` then `sleep 2`.
+   A leftover worker from an earlier task will silently process jobs with old
+   code.
+
+3. **Start the worker BEFORE the API** when testing the pipeline, and give it
+   ~3s to register its handler.
+
+4. **Never claim a constant is "measured" without measuring it.** The relevance
+   threshold was set to 0.62 with a comment saying it had been measured; it had
+   not. The real numbers put every off-topic query inside that gate. See D-029.
+
+5. **Vite bakes `VITE_*` at build time** — changing one in Vercel needs a
+   redeploy, not just a save.
+
+6. The clipboard-image paste path did not work in this session; ask the user to
+   save screenshots to a file if an image is needed.
+
+---
+
+## Local dev commands
+
+```bash
+# always clear stale processes first
+pkill -9 -f "worker.ts"; pkill -9 -f "server.ts"; sleep 2
+
+cd apps/api && node --env-file=../../.env src/worker.ts &   # start worker first
+sleep 3
+cd apps/api && node --env-file=../../.env src/server.ts &   # then the API
+npm run dev:web                                             # :5173
+
+npx vitest run                    # 123 tests
+npx tsc -b packages/shared packages/ai apps/api apps/web
+npm run build --workspace=@asc/web
+```
+
+Test accounts: create via the service role
+(`admin.auth.admin.createUser({email, password, email_confirm: true})`),
+then sign in with the anon key to get a real JWT. Always delete the user at the
+end — `auth.users` cascades to everything.
+
+---
+
+## Deliverables status (PRD §20)
+
+| # | Deliverable | Status |
+|---|---|---|
+| 1 | Working deployed application | **LIVE**, core loop still incomplete (Tutor onwards) |
+| 2 | Demo video | not started (Sunday) |
+| 3 | Public repo + README | repo live; README still to write |
+| 4 | Architecture doc + diagram | `DECISIONS.md` at D-031; diagram not drawn |
+| 5 | AI usage doc | not started |
+| 6 | Development prompts | **user is tracking this, not Claude** |
+| 7 | Evaluation approach | task 22 |
+| 8 | Known limitations | accumulating: D-022, D-027, D-028, D-029, D-031 |
+| 9 | Future improvements | accumulating in the same entries |
