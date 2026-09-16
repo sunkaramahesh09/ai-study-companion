@@ -504,3 +504,33 @@ through redeploys — each remote round trip costs minutes, each local one costs
 seconds.
 
 ---
+
+## D-020 — Every workspace declares its own build tools
+**Date:** 2026-09-16 · **Area:** Deployment
+
+**Chosen:** `typescript` is a devDependency of `apps/web`, `apps/api`,
+`packages/shared` and `packages/ai` individually, not only of the workspace
+root. `vite` likewise stays declared in `apps/web`.
+
+**Why:** the fix in D-019 (`npm ci --include=dev`) only helps when the install
+runs at the workspace root. Vercel's "Root Directory" setting changes the
+working directory for both install and build, and when it points at `apps/web`
+the root `vercel.json` is not read at all — so the install command, the build
+command and the output directory all silently revert to Vercel's own defaults.
+A package that cannot build from its own directory is a package that depends on
+a setting living in someone's dashboard.
+
+**Verified both ways before pushing**, on a clean copy of the tree:
+- install + build from the repo root → 220 packages, build succeeds
+- install + build from inside `apps/web` → 89 packages, `tsc` still resolves,
+  build succeeds
+
+**Correct Vercel configuration** is still Root Directory = repository root, so
+`vercel.json` governs. This change means the build no longer *depends* on that
+being right.
+
+**Cost:** the same version string is repeated in five manifests and they must be
+bumped together. Pinned exactly (`5.9.3`, per D-003) so a drift between
+workspaces is a visible diff rather than a silent resolution difference.
+
+---
