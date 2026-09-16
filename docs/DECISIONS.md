@@ -237,3 +237,75 @@ about the caller only. `anon` was revoked.
 public endpoint.
 
 ---
+
+## D-012 — Isolation enforced in Postgres, verified against the real database
+**Date:** 2026-09-16 · **Area:** Security
+
+**Chosen:** RLS policies in Postgres are the isolation boundary, not API-layer
+checks. The API calls Supabase with the *caller's* JWT, so every query is
+filtered by the database. The worker uses the service role (which bypasses RLS)
+and therefore carries `user_id` + `project_id` in each job payload and filters
+explicitly.
+
+**Why in the database:** an API-layer `where user_id = ...` is one forgotten
+clause away from a leak, and the PRD calls isolation a core requirement. In
+Postgres the check cannot be forgotten by a route that queries the table.
+
+**Why the tests hit the real database:** RLS lives in Postgres, so a mocked test
+proves nothing about it. `isolation.test.ts` creates two real users, signs both
+in with real JWTs, and has user B attempt every read and write path against user
+A's rows. It also asserts that A *can* read A's data — without that, a total
+outage would make every isolation assertion pass for the wrong reason.
+
+**Covered:** cross-user select (list and by-id), writing into another user's
+space, forging a row under another user's id, update, delete, privilege
+escalation, non-admin access to platform eval data, and direct writes to
+backend-only tables. 12 cases, all green.
+
+**Two findings this surfaced while writing it:**
+
+1. *A policy on `user_id` alone is not enough for child inserts.* User B could
+   satisfy `user_id = auth.uid()` while pointing `space_id` at user A's space.
+   Child inserts now also assert `owns_space()` / `owns_project()`.
+
+2. *RLS governs rows, not columns.* `id = auth.uid()` on `profiles` would let
+   any user set their own `role` to `'admin'`. Postgres ignores a column-level
+   REVOKE while table-level UPDATE is held, so the table grant is dropped and
+   replaced with an explicit allowlist: `GRANT UPDATE (full_name)`. There is a
+   test for the escalation attempt and one confirming the allowed column still
+   works.
+
+**Simplified:** No per-Space sharing or collaboration. Every row has exactly one
+owner, which makes every policy a single equality check. Multi-user Projects
+would need a membership table and a different policy shape throughout.
+
+---
+
+## D-013 — Accepted: ownership helpers are callable by signed-in users
+**Date:** 2026-09-16 · **Area:** Security
+
+**Finding:** The Supabase advisor (lint 0029) reports that `is_admin()`,
+`owns_space(uuid)` and `owns_project(uuid)` are `SECURITY DEFINER` functions
+executable by `authenticated` via `/rest/v1/rpc/<name>`.
+
+**Accepted, deliberately.** RLS policy expressions are evaluated as the querying
+role, so the policies in 0006 require `authenticated` to hold EXECUTE. `anon`
+and `PUBLIC` were revoked from all three.
+
+**Why it is not a leak:** each returns a boolean about *the caller only*.
+`owns_project(id)` answers "do you own this?" and returns `false` identically
+for "that project belongs to someone else" and "no such project exists" — so it
+cannot be used as an existence oracle to enumerate ids. `is_admin()` answers
+"are you an admin?" about yourself.
+
+**Considered and rejected:** switching them to `SECURITY INVOKER`. It would
+clear the warning, and would probably work, since the `spaces` and `projects`
+SELECT policies would scope the lookup correctly. But it makes the isolation
+layer depend on RLS evaluated inside RLS, which is subtler to reason about, in
+exchange for silencing a warning with no exploit path. Not a trade worth making
+three days from a single-shot deadline with the isolation suite already green.
+
+**With more time:** revisit under test — flip to INVOKER and confirm all 12
+isolation cases still pass.
+
+---

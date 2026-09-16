@@ -4,28 +4,30 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-16 21:00 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-16 21:50 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
 
 ---
 
 ## Current state
 
-**Tasks 1 and 2 complete.** Scaffold built and pushed; Supabase project live
-with the full schema applied.
+**Tasks 1, 2 and 3 complete.** Scaffold, schema, and Project-level data
+isolation are all in and verified.
 
-Supabase project ref: `maeifbzqpehidwuprypv` (org `victory-bazars-db`,
-region `ap-south-1`, Postgres 17, pgvector 0.8.2).
-19 tables, RLS enabled on all 19, zero policies yet (deny-all — intentional,
-see D-010). Security advisor clean except the expected INFO notices and one
-accepted WARN (D-011).
+Supabase project `maeifbzqpehidwuprypv` (org `victory-bazars-db`, `ap-south-1`,
+Postgres 17, pgvector 0.8.2). 19 tables, 35 RLS policies, 6 migrations.
+Security advisor: all 19 `rls_enabled_no_policy` notices cleared; 3 WARNs remain
+and are accepted with reasoning in D-013.
 
-`.env` exists locally (gitignored) with SUPABASE_URL + anon key filled in.
-Still empty: `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `GROQ_API_KEY`,
-`GEMINI_API_KEY`.
+**Tests: 18 passing** (6 env unit + 12 isolation integration against the real
+database). Isolation tests create two real users and verify B cannot read or
+write A's data by any path.
 
-**Next action:** task 3 — RLS policies (migration `0006_rls_policies`) plus the
-isolation test proving user B cannot read user A's project. Needs
-`SUPABASE_SERVICE_ROLE_KEY` to create test users (B-2b).
+`.env` has SUPABASE_URL, anon key, service role key and DATABASE_URL — DB
+connection verified. Still empty: `GROQ_API_KEY`, `GEMINI_API_KEY` (B-3).
+
+**Next action:** task 4 — auth end-to-end. Fastify JWT verification middleware,
+a per-request Supabase client built from the caller's token (so RLS applies),
+React auth context + protected routes, admin role gate.
 
 ---
 
@@ -35,7 +37,7 @@ isolation test proving user B cannot read user A's project. Needs
 |---|---------|-------|----------|
 | ~~B-1~~ | ~~git Xcode license~~ | — | **RESOLVED** 2026-09-16, git 2.54.0 working |
 | ~~B-2~~ | ~~No Supabase project~~ | — | **RESOLVED** 2026-09-16, ref `maeifbzqpehidwuprypv` |
-| B-2b | `SUPABASE_SERVICE_ROLE_KEY` and `DATABASE_URL` not in `.env`. Both are dashboard-only (MCP cannot read the service key or the DB password). Settings > API for the service key; Settings > Database for the connection string. | **User** | Task 3 isolation test, task 4, pg-boss (task 8) |
+| ~~B-2b~~ | ~~service role key + DATABASE_URL~~ | — | **RESOLVED** 2026-09-16, DB connection verified |
 | B-3 | No `GROQ_API_KEY` / `GEMINI_API_KEY` in `.env` yet. | **User** | Tasks 7, 10, 13, 15, 16 |
 
 ---
@@ -47,7 +49,7 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 ### Wed night — foundation
 - [x] **1. Monorepo scaffold** — npm workspaces: `apps/web`, `apps/api`, `packages/shared`, `packages/ai`. *Done:* typecheck clean, 6 tests green, web build OK, API `/health` 200.
 - [x] **2. Supabase project + full schema migration** — *Done:* project `maeifbzqpehidwuprypv`, 5 migrations applied, 19 tables, pgvector 0.8.2 + HNSW cosine index on `material_chunks.embedding`.
-- [ ] **3. RLS policies + isolation test** — every table keyed to `auth.uid()`; API uses caller's JWT so Postgres enforces isolation; worker uses service role with explicit `project_id`/`user_id` filters from the job payload. *Done when:* integration test proves user B gets 0 rows / 404 on user A's project.
+- [x] **3. RLS policies + isolation test** — every table keyed to `auth.uid()`; API uses caller's JWT so Postgres enforces isolation; worker uses service role with explicit `project_id`/`user_id` filters from the job payload. *Done:* 35 policies in `0006_rls_policies.sql`; 12 integration cases green against the live DB.
 - [ ] **4. Auth end-to-end** — Supabase Auth, Fastify JWT middleware, React auth context + protected routes, `profiles.role` for admin. *Done when:* sign up → sign in → authed endpoint works; 401 without token.
 - [ ] **5. Deploy the skeleton (empty)** — Vercel + Railway (api + worker), pg-boss booted. *Done when:* public URL serves a logged-in empty dashboard. Deliberately early: de-risks the single-submission constraint.
 
