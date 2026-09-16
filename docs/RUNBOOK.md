@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 00:10 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-17 00:20 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -48,8 +48,22 @@ every task. Keep it terse and factual — status, not narrative.
 **Tests: 91 passing** (56 in `packages/ai`). Failover and the empty-content
 guard are unit-tested against a stubbed SDK rather than by burning real quota.
 
-**Next action:** task 6 (Spaces + Projects CRUD) — the last Thursday prerequisite
-before task 8 (PDF upload + background processing).
+**Task 6 complete.** Spaces + Projects CRUD, end to end.
+
+- Shared zod schemas in `@asc/shared` — one definition for the form and the
+  route, so a constraint cannot drift between them.
+- Full CRUD for both, `GET /api/projects/:id` returning the whole dashboard in
+  one request (project, materials, mastery, recommendations, activity), shaped
+  now so the frontend needs no rework when later tasks fill it.
+- `learning_events` emission with idempotency keys — the activity spine.
+- Frontend: router, Spaces list, Space detail, Project dashboard, shared UI
+  primitives, empty states that carry the next action.
+
+**Tests: 110 passing.** 19 CRUD tests incl. cross-user access through the HTTP
+routes, and a mass-assignment test posting another user's `user_id`.
+
+**Next action:** task 8 — PDF upload + background processing (Storage, the
+`material.process` pg-boss job, status lifecycle, retry + idempotency).
 
 ---
 
@@ -77,7 +91,7 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 - [x] **5. Deploy config + local verification** — Dockerfile, `.dockerignore`, `vercel.json`, `docs/DEPLOYMENT.md`. *Done:* image builds, both entrypoints boot against the real DB, pg-boss schema created, graceful SIGTERM, non-root. **Live and verified in production.**
 
 ### Thu — material pipeline, RAG, Tutor
-- [ ] **6. Spaces + Projects CRUD** — incl. goal field, project dashboard shell.
+- [x] **6. Spaces + Projects CRUD** — incl. goal field, one-request project dashboard, learning events. *Done:* 19 integration tests + live verification.
 - [x] **7. `packages/ai` provider layer** — Groq + Gemini impls, backoff+jitter, TPM-aware token-bucket limiters, primary→fallback failover, `ai_requests` row per call. *Done:* 56 unit tests incl. mocked-429 failover; live smoke verified both providers + 3 ai_requests rows.
 - [ ] **8. PDF upload + background processing** — Storage upload, `material.process` pg-boss job, queued→processing→ready/failed in UI, retries + idempotency so a retry can't double-insert chunks. *Done when:* kill worker mid-job, confirm clean resume.
 - [ ] **9. Page-aware chunking + embedding** — per-page extract, ~800-token chunks with overlap, never crossing a page boundary (D-005). Gemini batched ~20 @ ~700ms. *Done when:* 40-page PDF indexes with no 429; page attribution spot-checked.

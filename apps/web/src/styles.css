@@ -118,3 +118,103 @@ button.link {
   color: var(--accent);
   border: 1px solid rgba(109, 140, 255, 0.35);
 }
+
+/* --- layout ------------------------------------------------------------- */
+.page { max-width: 1040px; }
+main { display: flex; flex-direction: column; gap: 20px; }
+
+.brand { color: var(--text); text-decoration: none; font-weight: 600; }
+.back { color: var(--muted); text-decoration: none; font-size: 13px; }
+.back:hover { color: var(--text); }
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin: 8px 0 4px;
+}
+.section-head p { margin: 4px 0 0; font-size: 13px; }
+
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.small { font-size: 12px; }
+
+textarea {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+
+/* --- cards and grids ---------------------------------------------------- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+.tile:hover { border-color: var(--accent); transform: translateY(-1px); }
+.tile p { margin: 0; font-size: 13px; }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 720px) { .two-col { grid-template-columns: 1fr; } }
+
+.card.accent { border-color: rgba(109, 140, 255, 0.4); background: rgba(109, 140, 255, 0.07); }
+.card h3 { margin: 0 0 12px; font-size: 15px; }
+
+/* Long user-supplied names must not blow out the layout. */
+.clamp { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+.empty { padding: 20px 0; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.empty p { margin: 0; font-size: 13px; }
+
+/* --- stats and lists ---------------------------------------------------- */
+.stats { display: flex; gap: 12px; }
+.stat {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stat-n { font-size: 22px; font-weight: 600; }
+
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 14px; }
+.row-end { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.mastery-row { display: grid; grid-template-columns: 1fr 90px 40px; align-items: center; gap: 10px; }
+
+/* --- mastery bar -------------------------------------------------------- */
+.bar { height: 6px; background: var(--border); border-radius: 999px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 999px; }
+.bar-ok { background: var(--ok); }
+.bar-warn { background: #fbbf24; }
+.bar-low { background: var(--error); }
+
+/* --- status pills ------------------------------------------------------- */
+.pill {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  text-transform: capitalize;
+}
+.pill-ready { color: var(--ok); border-color: rgba(74, 222, 128, 0.4); background: rgba(74, 222, 128, 0.1); }
+.pill-failed { color: var(--error); border-color: rgba(248, 113, 113, 0.4); background: rgba(248, 113, 113, 0.1); }
+.pill-processing, .pill-queued { color: var(--accent); border-color: rgba(109, 140, 255, 0.4); background: rgba(109, 140, 255, 0.1); }

@@ -628,3 +628,44 @@ assertion (D-018): where a component can fail while appearing to succeed, add
 the check at the boundary rather than trusting the happy path.
 
 ---
+
+## D-024 — RLS-filtered reads return 404, not 403
+**Date:** 2026-09-17 · **Area:** Security / API
+
+**Chosen:** when a caller requests a resource they do not own, the API returns
+`404 not_found`. `403` is reserved for a caller who is authenticated and whose
+role is insufficient — the admin routes.
+
+**Why:** answering `403` confirms that the id exists. An attacker enumerating
+UUIDs could separate "no such project" from "someone else's project", which is a
+disclosure even though no content leaks. From the database's point of view the
+row genuinely does not exist for this caller, because RLS filtered it out, so
+`404` is also the honest answer rather than a deliberate lie.
+
+**Implementation detail:** PostgREST reports an RLS-filtered single-row read as
+`PGRST116` ("no rows"), which maps cleanly to 404. Deletes are trickier — a
+filtered delete affects zero rows and reports success, so every delete selects
+the affected ids back and returns 404 when none came through. Otherwise the API
+would tell Bob it had deleted Alice's project.
+
+---
+
+## D-025 — Ownership comes from the token; body fields are ignored
+**Date:** 2026-09-17 · **Area:** Security / API
+
+**Chosen:** `user_id` on every insert is taken from `req.user.id`, established
+by the auth plugin from the verified JWT. Request bodies are parsed with zod
+schemas that do not include `user_id`, so a client-supplied value is dropped
+before it reaches the database.
+
+**Why:** mass-assignment is the classic version of this bug — trusting a body
+field that happens to share a name with a column. There is a test that posts
+`user_id: <another user's id>` and asserts the created row belongs to the
+caller instead.
+
+**Defence in depth:** even if a handler did pass it through, the RLS
+`WITH CHECK` on every insert requires `user_id = auth.uid()`, so the database
+would reject it. Two independent layers, because isolation is a core PRD
+requirement (§15).
+
+---

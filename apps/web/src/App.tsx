@@ -1,6 +1,10 @@
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth/AuthProvider.tsx';
-import { Dashboard } from './routes/Dashboard.tsx';
 import { Login } from './routes/Login.tsx';
+import { Spaces } from './routes/Spaces.tsx';
+import { SpaceDetail } from './routes/SpaceDetail.tsx';
+import { ProjectDashboard } from './routes/ProjectDashboard.tsx';
+import { Shell } from './components/Shell.tsx';
 import './styles.css';
 
 function Gate() {
@@ -16,13 +20,26 @@ function Gate() {
     );
   }
 
-  return session ? <Dashboard /> : <Login />;
+  if (!session) return <Login />;
+
+  return (
+    <Shell>
+      <Routes>
+        <Route path="/" element={<Spaces />} />
+        <Route path="/spaces/:spaceId" element={<SpaceDetail />} />
+        <Route path="/projects/:projectId" element={<ProjectDashboard />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Shell>
+  );
 }
 
 export function App() {
   return (
-    <AuthProvider>
-      <Gate />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <Gate />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }

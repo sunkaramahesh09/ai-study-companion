@@ -9,4 +9,6 @@
  * tested without mocking a provider. See CLAUDE.md "Engineering principles".
  */
 
+export * from './schemas.ts';
+
 export const PACKAGE_NAME = '@asc/shared' as const;
