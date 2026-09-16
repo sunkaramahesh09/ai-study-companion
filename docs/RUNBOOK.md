@@ -4,30 +4,29 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-16 21:50 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-16 22:05 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
 
 ---
 
 ## Current state
 
-**Tasks 1, 2 and 3 complete.** Scaffold, schema, and Project-level data
-isolation are all in and verified.
+**Tasks 1-4 complete.** Scaffold, schema, data isolation, and auth end-to-end.
 
-Supabase project `maeifbzqpehidwuprypv` (org `victory-bazars-db`, `ap-south-1`,
-Postgres 17, pgvector 0.8.2). 19 tables, 35 RLS policies, 6 migrations.
-Security advisor: all 19 `rls_enabled_no_policy` notices cleared; 3 WARNs remain
-and are accepted with reasoning in D-013.
+Supabase `maeifbzqpehidwuprypv` (`ap-south-1`, PG17, pgvector 0.8.2).
+19 tables, 35 RLS policies, 6 migrations.
 
-**Tests: 18 passing** (6 env unit + 12 isolation integration against the real
-database). Isolation tests create two real users and verify B cannot read or
-write A's data by any path.
+**Tests: 29 passing** (env unit, 12 isolation integration, 9 auth integration).
+Verified over real HTTP against a live server, not just `app.inject`:
+health 200 unauthenticated, /api/me 401 without a token, CORS preflight 204,
+/api/me 200 with a real JWT, /api/admin/ping 403 for a non-admin.
 
-`.env` has SUPABASE_URL, anon key, service role key and DATABASE_URL — DB
-connection verified. Still empty: `GROQ_API_KEY`, `GEMINI_API_KEY` (B-3).
+Auth is one DB round trip (D-015). The service role key is not used in request
+handling at all — only the worker and explicit platform-level reads.
 
-**Next action:** task 4 — auth end-to-end. Fastify JWT verification middleware,
-a per-request Supabase client built from the caller's token (so RLS applies),
-React auth context + protected routes, admin role gate.
+`.env` complete except `GROQ_API_KEY` / `GEMINI_API_KEY` (B-3).
+
+**Next action:** task 5 — deploy the skeleton. Vercel (web) + Railway (api +
+worker). Deliberately early to de-risk the single-submission deadline.
 
 ---
 
@@ -50,7 +49,7 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 - [x] **1. Monorepo scaffold** — npm workspaces: `apps/web`, `apps/api`, `packages/shared`, `packages/ai`. *Done:* typecheck clean, 6 tests green, web build OK, API `/health` 200.
 - [x] **2. Supabase project + full schema migration** — *Done:* project `maeifbzqpehidwuprypv`, 5 migrations applied, 19 tables, pgvector 0.8.2 + HNSW cosine index on `material_chunks.embedding`.
 - [x] **3. RLS policies + isolation test** — every table keyed to `auth.uid()`; API uses caller's JWT so Postgres enforces isolation; worker uses service role with explicit `project_id`/`user_id` filters from the job payload. *Done:* 35 policies in `0006_rls_policies.sql`; 12 integration cases green against the live DB.
-- [ ] **4. Auth end-to-end** — Supabase Auth, Fastify JWT middleware, React auth context + protected routes, `profiles.role` for admin. *Done when:* sign up → sign in → authed endpoint works; 401 without token.
+- [x] **4. Auth end-to-end** — Supabase Auth, Fastify JWT middleware, React auth context + gated routes, `profiles.role` for admin. *Done:* 9 auth integration tests + live HTTP smoke; single-round-trip auth (D-015).
 - [ ] **5. Deploy the skeleton (empty)** — Vercel + Railway (api + worker), pg-boss booted. *Done when:* public URL serves a logged-in empty dashboard. Deliberately early: de-risks the single-submission constraint.
 
 ### Thu — material pipeline, RAG, Tutor

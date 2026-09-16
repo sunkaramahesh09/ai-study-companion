@@ -9,7 +9,7 @@ import { z } from 'zod';
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(8080),
-  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
 
   SUPABASE_URL: z.string().url(),
@@ -18,7 +18,10 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   DATABASE_URL: z.string().min(1),
 
-  GROQ_API_KEY: z.string().min(1),
+  // Empty is tolerated outside production so the server can boot for work that
+  // does not touch a provider (auth, CRUD, tests). Required in production by
+  // the superRefine below — see D-014.
+  GROQ_API_KEY: z.string().default(''),
   GROQ_BASE_URL: z.string().url().default('https://api.groq.com/openai/v1'),
   GROQ_PRIMARY_MODEL: z.string().default('openai/gpt-oss-120b'),
   GROQ_FALLBACK_MODEL: z.string().default('openai/gpt-oss-20b'),
@@ -27,7 +30,7 @@ const envSchema = z.object({
   GROQ_TPM: z.coerce.number().int().positive().default(8000),
   GROQ_TPD: z.coerce.number().int().positive().default(200_000),
 
-  GEMINI_API_KEY: z.string().min(1),
+  GEMINI_API_KEY: z.string().default(''),
   GEMINI_EMBEDDING_MODEL: z.string().default('gemini-embedding-001'),
   GEMINI_RPM: z.coerce.number().int().positive().default(100),
   GEMINI_RPD: z.coerce.number().int().positive().default(1000),
@@ -35,6 +38,19 @@ const envSchema = z.object({
   EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(768),
   EMBEDDING_BATCH_SIZE: z.coerce.number().int().positive().default(20),
   EMBEDDING_BATCH_DELAY_MS: z.coerce.number().int().nonnegative().default(700),
+}).superRefine((env, ctx) => {
+  // Production must be completely configured: a deployed instance that boots
+  // without an AI key would look healthy and fail on first real use.
+  if (env.NODE_ENV !== 'production') return;
+  for (const key of ['GROQ_API_KEY', 'GEMINI_API_KEY'] as const) {
+    if (!env[key]) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [key],
+        message: 'Required in production.',
+      });
+    }
+  }
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -36,8 +36,22 @@ describe('env validation', () => {
   });
 
   it('refuses to boot when a required secret is missing', () => {
-    const { GROQ_API_KEY: _omitted, ...incomplete } = valid;
-    expect(() => parseEnv(incomplete)).toThrow(/GROQ_API_KEY/);
+    const { SUPABASE_URL: _omitted, ...incomplete } = valid;
+    expect(() => parseEnv(incomplete)).toThrow(/SUPABASE_URL/);
+  });
+
+  it('tolerates missing AI keys outside production', () => {
+    // Auth and CRUD work without a provider key, so development and the test
+    // suite should not need one. See D-014.
+    const { GROQ_API_KEY: _g, GEMINI_API_KEY: _m, ...noAiKeys } = valid;
+    expect(() => parseEnv({ ...noAiKeys, NODE_ENV: 'development' })).not.toThrow();
+  });
+
+  it('requires AI keys in production', () => {
+    // A deployed instance missing a key would pass its healthcheck and fail on
+    // the first real Tutor request. Fail at boot instead.
+    const { GROQ_API_KEY: _g, GEMINI_API_KEY: _m, ...noAiKeys } = valid;
+    expect(() => parseEnv({ ...noAiKeys, NODE_ENV: 'production' })).toThrow(/GROQ_API_KEY/);
   });
 
   it('refuses a malformed Supabase URL rather than failing later at call time', () => {

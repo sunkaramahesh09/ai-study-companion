@@ -5,3 +5,7 @@ import { existsSync } from 'node:fs';
 if (existsSync('.env')) {
   process.loadEnvFile('.env');
 }
+
+// Fastify's request logging drowns the test reporter. Errors still surface
+// through assertions and unhandled rejections.
+process.env.LOG_LEVEL = 'silent';

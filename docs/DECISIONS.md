@@ -309,3 +309,58 @@ three days from a single-shot deadline with the isolation suite already green.
 isolation cases still pass.
 
 ---
+
+## D-014 — AI provider keys required in production, optional elsewhere
+**Date:** 2026-09-16 · **Area:** Configuration
+
+**Chosen:** `GROQ_API_KEY` and `GEMINI_API_KEY` may be empty when
+`NODE_ENV !== 'production'`. In production a `superRefine` rejects the boot.
+Code paths that genuinely need a key call `requireProviderKey()`, which throws a
+message naming the variable and `.env.example`.
+
+**Why:** the original schema required both at boot, which meant the auth test
+suite could not start the server — authentication has nothing to do with Groq.
+Coupling every feature's startup to every provider's configuration makes local
+development and CI unnecessarily brittle.
+
+**Why production still fails fast:** a deployed instance missing a key would
+pass its healthcheck and only fail on a user's first Tutor request. That is
+strictly worse than refusing to start.
+
+**Found by:** the auth tests, which could not boot the server on a machine with
+no provider keys yet.
+
+---
+
+## D-015 — Authentication in one database round trip
+**Date:** 2026-09-16 · **Area:** Performance / Security
+
+**Chosen:** `requireAuth` decodes the JWT's `sub` claim locally *without*
+verifying it, then reads that profile row through the caller's own RLS-scoped
+client. Postgres validates the signature, expiry and issuer before returning
+anything.
+
+- forged or expired token → no row → 401
+- a row coming back is itself proof the token is genuine
+- `role` arrives from the database in the same trip
+
+**Replaced:** `auth.getUser(token)` followed by a service-role profile read.
+Two sequential network calls on *every* request (~300ms measured), and the
+service role key — which bypasses RLS — sitting in the hot path of ordinary
+request handling.
+
+**Why the unverified decode is safe:** nothing trusts it on its own. It only
+selects *which row to ask for*; the database does the verifying. The helper is
+named `unsafeDecodeSubject` and documents that it must never back an
+authorization decision without the accompanying round trip.
+
+**Security gain, not just latency:** the service role key is now absent from
+request handling entirely. It is used only by the worker and by explicitly
+platform-level reads.
+
+**Role is never read from a token claim.** `profiles.role` is authoritative, so
+demoting a user takes effect on their next request even though they still hold a
+valid JWT. There is a test that demotes an admin mid-session and asserts the
+next call returns 403.
+
+---

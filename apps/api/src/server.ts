@@ -1,6 +1,8 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { corsOrigins, loadEnv } from './env.ts';
+import authPlugin from './plugins/auth.ts';
+import { meRoutes } from './routes/me.ts';
 
 /**
  * API entrypoint. The pg-boss worker is a sibling entrypoint (worker.ts) in
@@ -17,6 +19,8 @@ export async function buildServer() {
   });
 
   await app.register(cors, { origin: corsOrigins(env), credentials: true });
+  await app.register(authPlugin);
+  await app.register(meRoutes);
 
   // Railway healthcheck. Deliberately does not touch the database: this answers
   // "is the process up", which is what a platform restart decision needs.
