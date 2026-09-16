@@ -154,3 +154,86 @@ Keeping the pure parser and the cached accessor as separate functions is what
 makes the boot-time config testable at all.
 
 ---
+
+## D-008 — `text` + `CHECK` instead of Postgres enum types
+**Date:** 2026-09-16 · **Area:** Database
+
+**Chosen:** Every closed value set (`materials.status`, `quiz_questions.question_type`,
+`learning_events.event_type`, …) is `text` with a `CHECK (col in (...))`
+constraint rather than a `CREATE TYPE ... AS ENUM`.
+
+**Why:** Enums are marginally tidier but painful to evolve — removing or
+reordering a value needs a type rewrite, and `ALTER TYPE ... ADD VALUE` cannot
+run inside a transaction with other DDL, which breaks single-migration atomicity.
+Over a three-day build the event-type list in particular will grow several times.
+A `CHECK` gives identical write-time safety and is a one-line migration to
+change.
+
+**Trade-off:** No generated TS union type from the database. Handled by defining
+the unions once in `@asc/shared` and having zod schemas validate at the boundary,
+which we need anyway for AI output.
+
+---
+
+## D-009 — `user_id` denormalized onto every descendant table
+**Date:** 2026-09-16 · **Area:** Security / Performance
+
+**Chosen:** `material_chunks`, `messages`, `quiz_questions` and every other
+descendant carry `user_id` directly, even though it is derivable by walking up
+to `projects`.
+
+**Why:** This is primarily a *security* decision, not a performance one. Every
+RLS policy becomes `user_id = (select auth.uid())` — one line, no joins, and an
+auditor can verify isolation on a table by reading a single predicate. The
+alternative is a policy containing a subquery to `projects`, which is both
+slower on every row and much easier to get subtly wrong. Isolation is a core PRD
+requirement (§15), so the policies should be boring.
+
+**Trade-off:** The redundant column can drift if a writer sets it wrong. Mitigated
+by the fact that all writes go through a small number of service functions, and
+by the isolation tests in task 3.
+
+---
+
+## D-010 — RLS enabled in the schema migration, policies in a later one
+**Date:** 2026-09-16 · **Area:** Security
+
+**Chosen:** Each `CREATE TABLE` migration ends with `ENABLE ROW LEVEL SECURITY`,
+while the policies themselves land in a separate migration.
+
+**Why:** RLS on with zero policies denies everything. Doing it in this order
+means there is never a moment — not even between two migrations — where a table
+exists and is readable through the auto-generated PostgREST API. The reverse
+order leaves exactly that window open.
+
+**Cost:** The Supabase advisor reports 19 `rls_enabled_no_policy` INFO notices
+until task 3 lands. That is the expected state, not a finding.
+
+---
+
+## D-011 — Revoked EXECUTE on SECURITY DEFINER trigger functions
+**Date:** 2026-09-16 · **Area:** Security
+
+**Found by:** Supabase security advisor (lints 0028 / 0029), run immediately
+after the schema migrations.
+
+**Problem:** Postgres grants `EXECUTE` on new functions to `PUBLIC` by default,
+and PostgREST exposes the whole `public` schema. That silently published
+`handle_new_user()`, `touch_updated_at()` and `is_admin()` as live RPC endpoints
+at `/rest/v1/rpc/<name>`, callable by anyone holding the anon key.
+`handle_new_user()` is `SECURITY DEFINER` and writes to `public.profiles`.
+
+**Fix:** `REVOKE EXECUTE ... FROM public, anon, authenticated` on both trigger
+functions. Triggers are unaffected — a trigger function runs as part of the
+triggering statement and needs no grant on the invoking role.
+
+**Accepted remaining finding:** `is_admin()` stays executable by `authenticated`.
+RLS policy expressions are evaluated as the querying role, so the policies in
+task 3 require that grant. It discloses nothing: it answers "am I an admin?"
+about the caller only. `anon` was revoked.
+
+**Lesson worth keeping:** the default grant is the dangerous part. Any future
+`public`-schema function needs an explicit revoke unless it is deliberately a
+public endpoint.
+
+---

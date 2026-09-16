@@ -4,21 +4,28 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-16 20:35 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-16 21:00 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
 
 ---
 
 ## Current state
 
-**Task 1 complete.** Monorepo scaffolded and verified: 4 workspaces, 219 deps
-installed (0 vulnerabilities), full typecheck clean, `vitest` green (6/6), web
-production build succeeds, API boots and serves `/health`.
+**Tasks 1 and 2 complete.** Scaffold built and pushed; Supabase project live
+with the full schema applied.
 
-Nothing is committed yet — git is still license-blocked (B-1).
-No Supabase project yet (B-2). No provider API keys yet (B-3).
+Supabase project ref: `maeifbzqpehidwuprypv` (org `victory-bazars-db`,
+region `ap-south-1`, Postgres 17, pgvector 0.8.2).
+19 tables, RLS enabled on all 19, zero policies yet (deny-all — intentional,
+see D-010). Security advisor clean except the expected INFO notices and one
+accepted WARN (D-011).
 
-**Next action:** task 2 — create the Supabase project and apply the full schema
-migration in one pass (all tables + pgvector). Blocked on B-2.
+`.env` exists locally (gitignored) with SUPABASE_URL + anon key filled in.
+Still empty: `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `GROQ_API_KEY`,
+`GEMINI_API_KEY`.
+
+**Next action:** task 3 — RLS policies (migration `0006_rls_policies`) plus the
+isolation test proving user B cannot read user A's project. Needs
+`SUPABASE_SERVICE_ROLE_KEY` to create test users (B-2b).
 
 ---
 
@@ -26,8 +33,9 @@ migration in one pass (all tables + pgvector). Blocked on B-2.
 
 | # | Blocker | Owner | Unblocks |
 |---|---------|-------|----------|
-| B-1 | `git` is Apple's Xcode stub, license not accepted. All git + brew commands fail. Fix: user runs `sudo xcodebuild -license accept` (needs their password; cannot be done non-interactively). | **User** | Task 1 commit, task 5 deploy, everything downstream |
-| B-2 | No Supabase project created yet. Needs project + `DATABASE_URL` + keys in `.env`. | User or Claude via Supabase MCP | Tasks 2, 3, 4 |
+| ~~B-1~~ | ~~git Xcode license~~ | — | **RESOLVED** 2026-09-16, git 2.54.0 working |
+| ~~B-2~~ | ~~No Supabase project~~ | — | **RESOLVED** 2026-09-16, ref `maeifbzqpehidwuprypv` |
+| B-2b | `SUPABASE_SERVICE_ROLE_KEY` and `DATABASE_URL` not in `.env`. Both are dashboard-only (MCP cannot read the service key or the DB password). Settings > API for the service key; Settings > Database for the connection string. | **User** | Task 3 isolation test, task 4, pg-boss (task 8) |
 | B-3 | No `GROQ_API_KEY` / `GEMINI_API_KEY` in `.env` yet. | **User** | Tasks 7, 10, 13, 15, 16 |
 
 ---
@@ -38,7 +46,7 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 
 ### Wed night — foundation
 - [x] **1. Monorepo scaffold** — npm workspaces: `apps/web`, `apps/api`, `packages/shared`, `packages/ai`. *Done:* typecheck clean, 6 tests green, web build OK, API `/health` 200.
-- [ ] **2. Supabase project + full schema migration** — all tables in one pass, pgvector enabled. *Done when:* migration applies, table list matches.
+- [x] **2. Supabase project + full schema migration** — *Done:* project `maeifbzqpehidwuprypv`, 5 migrations applied, 19 tables, pgvector 0.8.2 + HNSW cosine index on `material_chunks.embedding`.
 - [ ] **3. RLS policies + isolation test** — every table keyed to `auth.uid()`; API uses caller's JWT so Postgres enforces isolation; worker uses service role with explicit `project_id`/`user_id` filters from the job payload. *Done when:* integration test proves user B gets 0 rows / 404 on user A's project.
 - [ ] **4. Auth end-to-end** — Supabase Auth, Fastify JWT middleware, React auth context + protected routes, `profiles.role` for admin. *Done when:* sign up → sign in → authed endpoint works; 401 without token.
 - [ ] **5. Deploy the skeleton (empty)** — Vercel + Railway (api + worker), pg-boss booted. *Done when:* public URL serves a logged-in empty dashboard. Deliberately early: de-risks the single-submission constraint.
@@ -129,3 +137,24 @@ python3 -c "import pymupdf; d=pymupdf.open('/Users/mahesh/Project_Requirements.p
 - Code comments cite decisions by id: `// see D-005`.
 - Every AI provider call writes an `ai_requests` row — no exceptions, that's the
   observability story (PRD §14).
+
+---
+
+## Supabase project facts
+
+- **Project ref:** `maeifbzqpehidwuprypv` · org `victory-bazars-db` (`bnxfczoovrtprjofiqlt`)
+- **Region:** `ap-south-1` · **Postgres:** 17 · **pgvector:** 0.8.2
+- **URL:** `https://maeifbzqpehidwuprypv.supabase.co`
+- **Publishable key:** `sb_publishable_33ygh1ibF_tRfswPbH4y9A_D_y8-CC_` (safe in the browser; RLS is the protection)
+- **Migrations:** `supabase/migrations/000{1..5}_*.sql`, kept in the repo and applied via the Supabase MCP tools.
+
+### Tables (19)
+`profiles` `spaces` `projects` · `materials` `material_chunks` `concepts`
+`concept_mastery` `mastery_history` · `conversations` `messages`
+`quiz_attempts` `quiz_questions` `question_bank` · `learner_facts`
+`recommendations` `learning_events` `ai_requests` `eval_runs` `eval_results`
+
+### Standing rule
+Run the security advisor after every DDL change:
+`mcp__claude_ai_Supabase__get_advisors(project_id, type='security')`.
+It caught D-011 within a minute of the schema landing.
