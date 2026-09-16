@@ -1,3 +1,8 @@
+// Declared here rather than as a Railway variable so the quota split (D-022)
+// cannot be silently lost by a misconfigured service. Must be set before any
+// module reads it.
+process.env.ASC_ROLE = 'worker';
+
 import { PgBoss } from 'pg-boss';
 import { loadEnv } from './env.ts';
 

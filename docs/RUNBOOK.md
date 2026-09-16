@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 00:00 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-17 00:10 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -32,7 +32,24 @@ every task. Keep it terse and factual — status, not narrative.
 
 **Tests: 35 passing.** Both AI providers smoke-tested live (D-016, D-017).
 
-**Next action:** task 7 — the `packages/ai` provider layer. Fully unblocked.
+**Task 7 complete.** `packages/ai` provider layer built and verified live.
+
+- `GroqProvider` — two tiers with separate quota pools, TPM-aware limiter,
+  backoff + full jitter, automatic primary→fallback on an uncleared 429,
+  `max_completion_tokens` floored at 256, empty content rejected as
+  `invalid_output` (D-023).
+- `GeminiEmbeddingProvider` — batching, pacing, dimension + count checks,
+  unit-normalization enforced in the provider so no caller can forget (D-017).
+- `generateJson()` — JSON mode + schema in prompt + **zod validation before the
+  value is returned**, one repair attempt, then hard failure. This is the PRD §8
+  enforcement point.
+- Every call writes an `ai_requests` row. Verified: 3 rows in the live database.
+
+**Tests: 91 passing** (56 in `packages/ai`). Failover and the empty-content
+guard are unit-tested against a stubbed SDK rather than by burning real quota.
+
+**Next action:** task 6 (Spaces + Projects CRUD) — the last Thursday prerequisite
+before task 8 (PDF upload + background processing).
 
 ---
 
@@ -61,7 +78,7 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 
 ### Thu — material pipeline, RAG, Tutor
 - [ ] **6. Spaces + Projects CRUD** — incl. goal field, project dashboard shell.
-- [ ] **7. `packages/ai` provider layer** — Groq + Gemini impls, backoff+jitter, TPM-aware token-bucket limiters, primary→fallback failover, `ai_requests` row per call. *Done when:* mocked-429 unit tests prove backoff then failover; one live smoke call each.
+- [x] **7. `packages/ai` provider layer** — Groq + Gemini impls, backoff+jitter, TPM-aware token-bucket limiters, primary→fallback failover, `ai_requests` row per call. *Done:* 56 unit tests incl. mocked-429 failover; live smoke verified both providers + 3 ai_requests rows.
 - [ ] **8. PDF upload + background processing** — Storage upload, `material.process` pg-boss job, queued→processing→ready/failed in UI, retries + idempotency so a retry can't double-insert chunks. *Done when:* kill worker mid-job, confirm clean resume.
 - [ ] **9. Page-aware chunking + embedding** — per-page extract, ~800-token chunks with overlap, never crossing a page boundary (D-005). Gemini batched ~20 @ ~700ms. *Done when:* 40-page PDF indexes with no 429; page attribution spot-checked.
 - [ ] **10. Retrieval + Tutor with grounded citations** — project-scoped vector search, compact context (TPM), primary model, `Source: <doc> — Page N` linking back to material. *Done when:* cited page actually contains the claim.

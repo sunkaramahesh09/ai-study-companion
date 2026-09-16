@@ -566,3 +566,65 @@ code change exists so this class of mistake announces itself instead of
 producing a green deploy and a confusing runtime error.
 
 ---
+
+## D-022 — Rate limits are enforced per process, with the quota split between services
+**Date:** 2026-09-17 · **Area:** AI / Reliability
+
+**Problem:** the limiter lives in memory, but the API and the worker are two
+separate Railway services. Neither can see the other's usage, so if both are
+configured with the full 8000 TPM they will collectively spend up to 16000 and
+collect 429s from a provider that is, from each process's point of view, well
+within budget.
+
+**Chosen:** each process takes a `quotaShare` of the documented limits, and the
+shares sum to 1:
+
+| | Groq | Gemini |
+|---|---|---|
+| worker | 0.60 | 0.90 |
+| api | 0.40 | 0.10 |
+
+The worker does the bulk work — document indexing, quiz completion workflows —
+so it takes most of the embedding budget and the larger share of generation. The
+API serves interactive Tutor traffic, which is latency-sensitive but low volume.
+
+**Rejected: a Postgres-backed shared limiter.** It would be exact, and we
+already have the database. But every provider call would then need a transaction
+and an advisory lock before it could start, adding a round trip to the critical
+path of every Tutor answer, plus a new failure mode when that lock is contended.
+For a prototype with one user demoing it, a static split is the better trade.
+
+**Known limitation (goes in the deliverable):** the split is static, so if the
+worker is idle the API cannot borrow its headroom. Under real multi-user load
+this should become a shared limiter — Postgres-backed, or Redis if the stack
+allowed it. The failover to the fallback model (a separate quota pool) softens
+the impact in the meantime.
+
+**Second limitation:** the window is in memory, so a deploy or restart forgets
+recent usage and the process may briefly exceed its share. Retry with backoff
+plus failover covers this; a durable counter would not be worth the complexity
+here.
+
+---
+
+## D-023 — Empty model output is a failure, not an empty answer
+**Date:** 2026-09-17 · **Area:** AI / Reliability
+
+**Chosen:** `GroqProvider` treats a blank `content` as `InvalidOutputError`,
+records the attempt as `invalid_output` in `ai_requests`, and includes the
+reasoning-token count in the message. `max_completion_tokens` is also floored at
+256.
+
+**Why:** gpt-oss spends completion tokens on reasoning *before* emitting
+content, so a low token ceiling truncates the response to `""` — with HTTP 200,
+a `finish_reason`, and no error anywhere (D-016; measured at `max_tokens: 10`).
+Passed along, that empty string reaches `JSON.parse("")` and throws somewhere
+with no connection to the real cause. Failing at the provider boundary, with a
+message that names both the cause and the fix, turns a baffling downstream
+crash into a one-line diagnosis.
+
+**Same reasoning as D-021** (non-JSON 2xx responses) and the Dockerfile output
+assertion (D-018): where a component can fail while appearing to succeed, add
+the check at the boundary rather than trusting the happy path.
+
+---

@@ -1,0 +1,95 @@
+import { GeminiEmbeddingProvider, GroqProvider, type AiRequestRecord } from '@asc/ai';
+import { loadEnv } from '../env.ts';
+import { serviceClient } from './supabase.ts';
+
+/**
+ * Wires @asc/ai to this application: real config, and a usage recorder backed
+ * by the `ai_requests` table.
+ *
+ * The recorder uses the service role deliberately. ai_requests has a SELECT
+ * policy for owners and admins and no INSERT policy for `authenticated`, so
+ * clients can read their own AI usage but cannot forge rows — writes only
+ * happen here, from the server.
+ */
+async function recordUsage(record: AiRequestRecord): Promise<void> {
+  const { error } = await serviceClient().from('ai_requests').insert({
+    user_id: record.userId ?? null,
+    project_id: record.projectId ?? null,
+    feature: record.feature,
+    provider: record.provider,
+    model: record.model,
+    used_fallback: record.usedFallback,
+    status: record.status,
+    latency_ms: record.latencyMs,
+    prompt_tokens: record.promptTokens ?? null,
+    completion_tokens: record.completionTokens ?? null,
+    total_tokens: record.totalTokens ?? null,
+    estimated_cost_usd: record.estimatedCostUsd ?? null,
+    attempt_count: record.attemptCount,
+    error_code: record.errorCode ?? null,
+    error_message: record.errorMessage ?? null,
+  });
+  if (error) {
+    // Logged, never thrown: observability must not break the feature it
+    // observes. The provider layer also swallows this, so this is belt and
+    // braces.
+    console.error('[ai] failed to record usage', error.message);
+  }
+}
+
+/**
+ * Quota share for this process.
+ *
+ * The API and the worker are separate Railway services with separate memories,
+ * so their in-process limiters cannot see each other. Splitting the documented
+ * quota between them keeps the SUM under the real ceiling. See D-022.
+ *
+ * The worker does the bulk work (indexing, quiz workflows), so it gets the
+ * larger share of generation; the API only serves interactive Tutor traffic.
+ */
+function quotaShare(): { groq: number; gemini: number } {
+  const isWorker = process.env.ASC_ROLE === 'worker';
+  return isWorker ? { groq: 0.6, gemini: 0.9 } : { groq: 0.4, gemini: 0.1 };
+}
+
+let groq: GroqProvider | undefined;
+let gemini: GeminiEmbeddingProvider | undefined;
+
+export function generationProvider(): GroqProvider {
+  const env = loadEnv();
+  if (!env.GROQ_API_KEY) {
+    throw new Error('GROQ_API_KEY is not set. AI generation is unavailable. See .env.example.');
+  }
+  groq ??= new GroqProvider({
+    apiKey: env.GROQ_API_KEY,
+    baseUrl: env.GROQ_BASE_URL,
+    primaryModel: env.GROQ_PRIMARY_MODEL,
+    fallbackModel: env.GROQ_FALLBACK_MODEL,
+    requestsPerMinute: env.GROQ_RPM,
+    tokensPerMinute: env.GROQ_TPM,
+    requestsPerDay: env.GROQ_RPD,
+    tokensPerDay: env.GROQ_TPD,
+    quotaShare: quotaShare().groq,
+    recordUsage,
+  });
+  return groq;
+}
+
+export function embeddingProvider(): GeminiEmbeddingProvider {
+  const env = loadEnv();
+  if (!env.GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY is not set. Indexing and retrieval are unavailable.');
+  }
+  gemini ??= new GeminiEmbeddingProvider({
+    apiKey: env.GEMINI_API_KEY,
+    model: env.GEMINI_EMBEDDING_MODEL,
+    dimensions: env.EMBEDDING_DIMENSIONS,
+    requestsPerMinute: env.GEMINI_RPM,
+    requestsPerDay: env.GEMINI_RPD,
+    batchSize: env.EMBEDDING_BATCH_SIZE,
+    batchDelayMs: env.EMBEDDING_BATCH_DELAY_MS,
+    quotaShare: quotaShare().gemini,
+    recordUsage,
+  });
+  return gemini;
+}
