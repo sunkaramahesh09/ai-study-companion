@@ -471,3 +471,36 @@ user, the worker entrypoint starts and pg-boss creates its schema in Postgres,
 and SIGTERM drains cleanly with exit code 0.
 
 ---
+
+## D-019 — Vercel installs production-only; build tools must be requested explicitly
+**Date:** 2026-09-16 · **Area:** Deployment
+
+**Symptom:** Vercel build failed with `sh: line 1: tsc: command not found`,
+exit 127.
+
+**Cause:** Vercel sets `NODE_ENV=production` for builds, and `npm ci` honours
+that by omitting `devDependencies`. TypeScript and Vite are devDependencies —
+correctly so, since they are build tools, not runtime dependencies — so the
+build tools were absent from the machine asked to run the build. The package
+count was the tell: **129 installed on Vercel vs 219 locally.**
+
+**Fix:** `installCommand: "npm ci --include=dev"` in `vercel.json`.
+
+**Why not the alternative:** setting `NPM_CONFIG_PRODUCTION=false` in the Vercel
+dashboard would also work, but it is invisible configuration living outside the
+repository. Anyone cloning this project would hit the same failure with no clue
+why. The `vercel.json` version travels with the code.
+
+**Reproduced locally before pushing**, rather than redeploying to find out:
+`NODE_ENV=production npm ci` on a clean `git archive` of HEAD → 135 packages,
+no `tsc` binary, failure reproduced. With `--include=dev` → 220 packages, `tsc`
+and `vite` both present, and `npm run build --workspace=@asc/web` succeeds.
+
+**Related to D-018.** Third deployment footgun in one evening, all the same
+shape: a build that behaves differently on the platform than on the developer
+machine, and fails in a way that does not name its real cause. The general
+lesson is to reproduce the platform's conditions locally instead of iterating
+through redeploys — each remote round trip costs minutes, each local one costs
+seconds.
+
+---
