@@ -1,0 +1,29 @@
+{
+  "name": "ai-study-companion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AI-powered learning workspace: materials, grounded Tutor, adaptive assessment, mastery and growth.",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dev:api": "npm run dev --workspace=@asc/api",
+    "dev:worker": "npm run dev:worker --workspace=@asc/api",
+    "dev:web": "npm run dev --workspace=@asc/web",
+    "eval": "npm run eval --workspace=@asc/api"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "5.9.3",
+    "vitest": "^5.0.1"
+  }
+}

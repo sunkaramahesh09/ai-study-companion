@@ -1,0 +1,32 @@
+# dependencies
+node_modules/
+.pnp.*
+.yarn/
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+
+# env & secrets — NEVER commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+service-account*.json
+
+# test & coverage
+coverage/
+.vitest/
+
+# editor / os
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# framework caches
+.vercel/
+.railway/
+.vite/

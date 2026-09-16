@@ -1,0 +1,27 @@
+{
+  "name": "@asc/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Fastify API server and pg-boss worker. Same image, two entrypoints (see D-002).",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --noEmit false --emitDeclarationOnly",
+    "dev": "node --watch src/server.ts",
+    "dev:worker": "node --watch src/worker.ts",
+    "start": "node dist/server.js",
+    "start:worker": "node dist/worker.js",
+    "eval": "node src/eval/run.ts"
+  },
+  "dependencies": {
+    "@asc/ai": "*",
+    "@asc/shared": "*",
+    "@fastify/cors": "^11.3.0",
+    "@supabase/supabase-js": "^2.116.0",
+    "fastify": "^5.12.5",
+    "pg-boss": "^12.32.0",
+    "pino": "^10.3.1",
+    "unpdf": "^1.8.1",
+    "zod": "^4.6.5"
+  }
+}

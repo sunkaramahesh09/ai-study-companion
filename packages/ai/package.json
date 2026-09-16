@@ -1,0 +1,25 @@
+{
+  "name": "@asc/ai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Provider abstraction for generation (Groq) and embeddings (Gemini): rate limiting, retry, failover, usage tracking.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --noEmit false --emitDeclarationOnly"
+  },
+  "dependencies": {
+    "@asc/shared": "*",
+    "@google/genai": "^2.22.0",
+    "openai": "^7.15.0",
+    "zod": "^4.6.5"
+  }
+}
