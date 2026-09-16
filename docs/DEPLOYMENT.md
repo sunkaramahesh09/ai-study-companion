@@ -77,10 +77,25 @@ Two services, one image. The worker holds its own small connection pool
 
 ## 3. Vercel — frontend
 
-1. New Project → import the same GitHub repo.
-2. **Root directory:** leave at the repository root. `vercel.json` already sets
-   the install command, build command and output directory for the monorepo.
-3. **Environment variables:**
+**Create exactly one Vercel project, and only for the frontend.**
+
+Vercel scans the monorepo and offers to import `apps/api` as a second project
+because it detects Fastify. Decline it. The API and worker belong on Railway:
+Vercel runs ephemeral serverless functions, while the API is a long-lived
+process bound to a port and the pg-boss worker is a polling loop holding a
+connection pool — there is no request to trigger background indexing, so a
+serverless worker cannot exist at all. Importing `apps/api` here would also
+ignore the Dockerfile and the one-image-two-entrypoints design (D-002).
+
+1. New Project → import the GitHub repo.
+2. **Root directory: the repository root.** Not `apps/web`. Vercel only reads
+   `vercel.json` from the configured root directory; point it at `apps/web` and
+   the install command, build command and output directory all silently revert
+   to Vercel's defaults, and the build fails with `tsc: command not found`
+   (D-019, D-020).
+3. **Application Preset: Other.** `vercel.json` sets `"framework": null` and
+   specifies every command explicitly.
+4. **Environment variables:**
 
    ```
    VITE_SUPABASE_URL=https://maeifbzqpehidwuprypv.supabase.co
@@ -91,7 +106,7 @@ Two services, one image. The worker holds its own small connection pool
    Only `VITE_`-prefixed variables reach the browser bundle. The service role
    key must never appear here — it bypasses RLS.
 
-4. Deploy, then **go back to Railway and set `CORS_ORIGINS` to the Vercel URL.**
+5. Deploy, then **go back to Railway and set `CORS_ORIGINS` to the Vercel URL.**
    This is the step most easily forgotten; the symptom is a frontend that loads
    fine and fails every API call with an opaque CORS error.
 
