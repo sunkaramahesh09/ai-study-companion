@@ -534,3 +534,35 @@ bumped together. Pinned exactly (`5.9.3`, per D-003) so a drift between
 workspaces is a visible diff rather than a silent resolution difference.
 
 ---
+
+## D-021 — A schemeless API base URL fails silently; normalize it and guard the response
+**Date:** 2026-09-16 · **Area:** Frontend / Reliability
+
+**Found by:** inspecting the deployed Vercel bundle after the first production
+deploy — the Railway hostname was present but with no `https://` in front of it.
+
+**Why it is worse than a normal misconfiguration:** `fetch()` treats a
+schemeless value as a *relative path*. So `VITE_API_BASE_URL` set to
+`api.example.com` makes every call resolve against the frontend's own origin,
+where the SPA rewrite in `vercel.json` answers it with `index.html` and
+**HTTP 200**. Nothing throws at the network layer. The app receives a
+"successful" response, and the failure only appears later as a JSON parse error
+with no connection to the actual cause.
+
+**Two defences:**
+
+1. `normalizeBaseUrl()` prepends `https://` when the scheme is missing and warns
+   in the console. Assuming https is the correct recovery — the only realistic
+   cause is a deploy variable set to a bare hostname, and there is no case where
+   a schemeless absolute host should resolve against the frontend origin. Empty
+   stays empty, since same-origin deployments legitimately call `/api/...`.
+
+2. `api()` rejects any 2xx response whose content-type is not JSON, with a
+   message naming the likely cause. A misrouted request answered by the frontend
+   host now fails immediately and explains itself.
+
+**Kept the config fix too.** The deployment variable still needs the scheme; the
+code change exists so this class of mistake announces itself instead of
+producing a green deploy and a confusing runtime error.
+
+---
