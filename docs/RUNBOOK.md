@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 00:20 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-17 00:25 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -62,8 +62,29 @@ guard are unit-tested against a stubbed SDK rather than by burning real quota.
 **Tests: 110 passing.** 19 CRUD tests incl. cross-user access through the HTTP
 routes, and a mass-assignment test posting another user's `user_id`.
 
-**Next action:** task 8 — PDF upload + background processing (Storage, the
-`material.process` pg-boss job, status lifecycle, retry + idempotency).
+**Task 8 complete.** PDF upload and background processing, working end to end.
+
+- Private `materials` Storage bucket, path `<user_id>/<project_id>/<id>.pdf`,
+  no client INSERT policy — the API is the only way in (D-026).
+- `POST /api/materials` multipart; PDF verified by magic bytes, not by the
+  client's Content-Type.
+- `material.process` pg-boss job: download → extract per page → chunk → ready,
+  with ownership carried in the payload and filtered explicitly (service role
+  bypasses RLS).
+- Idempotent: chunks upserted on `(material_id, chunk_index)`, stale trailing
+  chunks deleted, `singletonKey` prevents double-queueing.
+- Frontend: upload with progress, status polling that stops when nothing is
+  pending, retry and delete.
+
+**Verified live, whole pipeline:** non-PDF rejected · 247 KB upload → queued →
+worker → ready, 25 pages / 25 chunks · every chunk carries a valid page number ·
+**reprocess produced no duplicate chunks** · all four lifecycle events recorded.
+
+**Tests: 122 passing** (12 new for extraction and chunking, incl. a real-PDF
+test asserting each chunk's text actually appears on the page it cites).
+
+**Next action:** task 9 — embeddings into `material_chunks.embedding` (Gemini,
+batched ~20 at ~700ms, unit-normalized per D-017) and the retrieval query.
 
 ---
 
@@ -93,7 +114,7 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 ### Thu — material pipeline, RAG, Tutor
 - [x] **6. Spaces + Projects CRUD** — incl. goal field, one-request project dashboard, learning events. *Done:* 19 integration tests + live verification.
 - [x] **7. `packages/ai` provider layer** — Groq + Gemini impls, backoff+jitter, TPM-aware token-bucket limiters, primary→fallback failover, `ai_requests` row per call. *Done:* 56 unit tests incl. mocked-429 failover; live smoke verified both providers + 3 ai_requests rows.
-- [ ] **8. PDF upload + background processing** — Storage upload, `material.process` pg-boss job, queued→processing→ready/failed in UI, retries + idempotency so a retry can't double-insert chunks. *Done when:* kill worker mid-job, confirm clean resume.
+- [x] **8. PDF upload + background processing** — Storage upload, `material.process` pg-boss job, queued→processing→ready/failed in UI, retries + idempotency so a retry can't double-insert chunks. *Done:* live end-to-end, reprocess produced zero duplicate chunks.
 - [ ] **9. Page-aware chunking + embedding** — per-page extract, ~800-token chunks with overlap, never crossing a page boundary (D-005). Gemini batched ~20 @ ~700ms. *Done when:* 40-page PDF indexes with no 429; page attribution spot-checked.
 - [ ] **10. Retrieval + Tutor with grounded citations** — project-scoped vector search, compact context (TPM), primary model, `Source: <doc> — Page N` linking back to material. *Done when:* cited page actually contains the claim.
 - [ ] **11. Unsupported-question handling** — deterministic evidence-sufficiency gate before generation. *Done when:* question absent from material yields a refusal, not a fabrication. **Explicit PRD evaluation criterion — protect this.**

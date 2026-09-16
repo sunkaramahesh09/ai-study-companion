@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getProject, touchProject, type ProjectDashboard as Dash } from '../lib/queries.ts';
-import { EmptyState, ErrorNote, MasteryBar, Spinner, StatusPill } from '../components/Ui.tsx';
+import { EmptyState, ErrorNote, MasteryBar, Spinner } from '../components/Ui.tsx';
+import { MaterialUpload } from '../components/MaterialUpload.tsx';
 
 const EVENT_LABELS: Record<string, string> = {
   project_created: 'Project created',
@@ -65,29 +66,7 @@ export function ProjectDashboard() {
       )}
 
       <div className="two-col">
-        <div className="card">
-          <h3>Materials</h3>
-          {materials.length === 0 ? (
-            <EmptyState
-              title="No materials yet"
-              hint="Upload a PDF and the Tutor will answer from it, with citations back to the page."
-            />
-          ) : (
-            <ul className="list">
-              {materials.map((m) => (
-                <li key={m.id}>
-                  <span className="clamp">{m.filename}</span>
-                  <span className="row-end">
-                    {m.status === 'ready' && m.page_count != null && (
-                      <span className="muted small">{m.page_count}p · {m.chunk_count} chunks</span>
-                    )}
-                    <StatusPill status={m.status} />
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <MaterialUpload projectId={project.id} initial={materials} />
 
         <div className="card">
           <h3>Concept mastery</h3>

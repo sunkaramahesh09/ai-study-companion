@@ -5,6 +5,8 @@ process.env.ASC_ROLE = 'worker';
 
 import { PgBoss } from 'pg-boss';
 import { loadEnv } from './env.ts';
+import { QUEUES, type MaterialProcessJob } from './lib/queue.ts';
+import { processMaterial } from './jobs/materialProcess.ts';
 
 /**
  * Background worker entrypoint (D-002).
@@ -39,9 +41,24 @@ async function main() {
   await boss.start();
   console.log('[worker] started');
 
-  // Job handlers register here as the pipeline lands:
-  //   task 8  — material.process   (PDF extract → chunk → embed → ready)
-  //   task 17 — quiz.completed     (evaluate → mastery → weakness → recommend)
+  await boss.createQueue(QUEUES.materialProcess).catch(() => {});
+
+  // Concurrency of 2: document processing is IO-bound (download, extract) but
+  // task 9 adds embedding calls, which are rate-limited per process (D-022).
+  // Running many in parallel would just queue behind the limiter.
+  await boss.work<MaterialProcessJob>(
+    QUEUES.materialProcess,
+    { batchSize: 1 },
+    async ([job]) => {
+      if (!job) return;
+      console.log('[worker] material.process', job.data.materialId);
+      await processMaterial(job.data);
+    },
+  );
+  console.log('[worker] handler registered: ' + QUEUES.materialProcess);
+
+  // Further handlers land with their tasks:
+  //   task 17 — quiz.completed  (evaluate → mastery → weakness → recommend)
   //   task 19 — recommendation.generate
 
   const shutdown = async (signal: string) => {

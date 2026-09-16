@@ -1,5 +1,7 @@
 import type { Project, ProjectCreateInput, Space, SpaceCreateInput } from '@asc/shared';
 import { api } from './api.ts';
+import { normalizeBaseUrl } from './baseUrl.ts';
+import { supabase } from './supabase.ts';
 
 /**
  * Typed wrappers over the API. Keeping the endpoint strings in one file means a
@@ -27,6 +29,8 @@ export type MaterialSummary = {
   status: 'queued' | 'processing' | 'ready' | 'failed';
   page_count: number | null;
   chunk_count: number;
+  /** Set when status is 'failed'. Always a readable message, never a stack trace. */
+  error_message: string | null;
   created_at: string;
 };
 
@@ -65,3 +69,52 @@ export const getProject = (id: string) => api<ProjectDashboard>(`/api/projects/$
 
 export const touchProject = (id: string) =>
   api<{ ok: boolean }>(`/api/projects/${id}/touch`, { method: 'POST' });
+
+export const listMaterials = (projectId: string) =>
+  api<{ materials: MaterialSummary[] }>(`/api/materials?projectId=${projectId}`).then((r) => r.materials);
+
+export const retryMaterial = (id: string) =>
+  api<{ ok: boolean }>(`/api/materials/${id}/retry`, { method: 'POST' });
+
+export const deleteMaterial = (id: string) => api<void>(`/api/materials/${id}`, { method: 'DELETE' });
+
+/**
+ * Uploads via XMLHttpRequest rather than fetch, because fetch still has no
+ * upload progress event and a 25 MB PDF on a slow connection needs one.
+ */
+export async function uploadMaterial(
+  projectId: string,
+  file: File,
+  onProgress?: (pct: number) => void,
+): Promise<MaterialSummary> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  const base = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL);
+
+  const form = new FormData();
+  // projectId must precede the file: the server reads fields alongside the
+  // stream, and a field after the file would not be available yet.
+  form.append('projectId', projectId);
+  form.append('file', file);
+
+  return await new Promise<MaterialSummary>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${base}/api/materials`);
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress?.(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      try {
+        const body = JSON.parse(xhr.responseText) as { material?: MaterialSummary; message?: string };
+        if (xhr.status >= 200 && xhr.status < 300 && body.material) resolve(body.material);
+        else reject(new Error(body.message ?? `Upload failed (${xhr.status})`));
+      } catch {
+        reject(new Error(`Upload failed (${xhr.status})`));
+      }
+    };
+    xhr.onerror = () => reject(new Error('Network error during upload.'));
+    xhr.send(form);
+  });
+}

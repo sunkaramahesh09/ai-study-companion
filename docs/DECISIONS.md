@@ -669,3 +669,74 @@ would reject it. Two independent layers, because isolation is a core PRD
 requirement (§15).
 
 ---
+
+## D-026 — Uploads proxy through the API, not a signed URL straight to Storage
+**Date:** 2026-09-17 · **Area:** Materials
+
+**Chosen:** the client POSTs a multipart file to `POST /api/materials`. The API
+validates it, uploads to Supabase Storage with the service role, writes the
+`materials` row and enqueues the processing job — one request, one place.
+
+**Rejected: signed upload URLs.** They scale better (bytes never touch the API)
+and would be right for production. But they split one logical action into three
+round trips — mint a URL, upload, confirm — and every interruption between them
+leaves inconsistent state: an object with no row, or a row pointing at a file
+that was never uploaded or is not a PDF. Reconciling that needs a sweeper job,
+which is more machinery than a 25 MB prototype upload warrants.
+
+**Validation the proxy makes possible:** the PDF is verified by its magic bytes
+(`%PDF-`), not by the client-supplied `Content-Type`, which is trivially
+spoofed. There is a test that uploads text declared as `application/pdf` and
+asserts a 400.
+
+**Storage has no INSERT policy for `authenticated`** for the same reason — the
+bucket cannot be written directly, so the API is the only path in.
+
+**With more time:** signed URLs plus a reconciliation job, and streaming
+straight to Storage instead of buffering.
+
+---
+
+## D-027 — No OCR: image-only PDFs are rejected with a clear message
+**Date:** 2026-09-17 · **Area:** Materials / Known limitation
+
+**Chosen:** text-layer PDFs only, via `unpdf`. When extraction yields no usable
+text the material is marked `failed` with: "This looks like a scanned document,
+and image-only PDFs are not supported."
+
+**Why:** the PRD notes documents "may contain... scanned pages" (§5) but places
+rich document understanding under Should Have. OCR would mean another provider
+and a much slower pipeline, against a Saturday deadline with Must Have items
+still open. Scope order says the core loop works properly first.
+
+**Why it fails loudly rather than quietly:** a scanned PDF that processed
+"successfully" with zero chunks would sit in the UI marked ready while the Tutor
+could retrieve nothing from it — the user would conclude the Tutor was broken.
+Failing with a specific reason is far better than silently indexing nothing.
+
+**Goes in Known Limitations.** With more time: OCR fallback when a page has no
+text layer.
+
+---
+
+## D-028 — Chunk overlap is clamped to half the target size
+**Date:** 2026-09-17 · **Area:** Retrieval / Cost
+
+**Found by:** a unit test asserting chunking terminates on pathological input.
+It did terminate — and produced **12,451 near-duplicate chunks from a single
+page** with `targetTokens: 50, overlapTokens: 49`.
+
+**Why it matters beyond waste:** each chunk becomes an embedding. Gemini's free
+tier allows ~1000 requests per day, so one misconfigured document could exhaust
+the entire daily embedding budget and leave every other document unindexable
+until the window rolled.
+
+**Fix:** overlap is clamped to `targetTokens / 2`, guaranteeing every chunk
+advances at least half a window and bounding chunk count at roughly
+`2 * length / target`.
+
+**The general point:** "it terminates" was the wrong bar. A loop that finishes
+but produces 12,000 units of billable work is a failure with a slower fuse, and
+the test that caught it was checking the weaker property.
+
+---
