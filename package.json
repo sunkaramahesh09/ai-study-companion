@@ -19,7 +19,7 @@
     "dev:api": "npm run dev --workspace=@asc/api",
     "dev:worker": "npm run dev:worker --workspace=@asc/api",
     "dev:web": "npm run dev --workspace=@asc/web",
-    "eval": "npm run eval --workspace=@asc/api"
+    "eval": "node --env-file=.env apps/api/src/eval/run.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

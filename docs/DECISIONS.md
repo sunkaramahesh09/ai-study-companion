@@ -1568,3 +1568,72 @@ test found it in the first run. `finished_at IS NULL` is now surfaced as
 "did not finish" rather than having partial numbers presented as a result.
 
 ---
+
+## D-054 — The evaluation suite grades against a document we wrote
+**Date:** 2026-09-17 · **Area:** Evaluation
+
+**Decision:** the fixture is four pages of biology written for the purpose, with
+a recorded ground truth (`GROUND_TRUTH`: question → the page the answer is
+actually printed on).
+
+**Why not real material:** the Tutor cases assert that a citation points at the
+page the fact is genuinely on. Against a borrowed textbook that is not
+checkable — a plausible citation and a correct one look identical — and the
+suite becomes unfalsifiable while still reporting green. Knowing the ground
+truth exactly is what makes "groundedness" a measurement rather than a vibe.
+
+**Grading is rule-based, not model-based.** A model judging another model's
+citation costs tokens, adds variance, and is less trustworthy than checking a
+page number against a known layout. Model-based grading was not needed anywhere
+in the 17 cases.
+
+**Cases run sequentially.** Groq's binding constraint is 8000 TPM, not RPM, and
+a Tutor answer costs ~3000 tokens. Parallel suites would spend the minute's
+budget in seconds and then sit in backoff — slower overall, and the resulting
+429s would pollute the AI-health numbers the admin dashboard reports.
+
+**A thrown case is recorded as a failure, never a crash.** A suite that dies on
+its third case says nothing about the other fourteen, and the regressions this
+exists to catch are exactly the kind that throw. `errored` is counted separately
+from `failed`, because "it blew up" and "it ran and scored badly" need different
+responses.
+
+**Unscored cases are excluded from the suite mean** rather than counted as zero.
+A pass/fail case has no score; folding it in as 0 would drag the mean down with
+cases that were never scored — and the mean is the number most likely to be
+quoted, so it is the one most worth getting right.
+
+### Two bugs the suite found in its own first run
+
+**1. The evaluation was destroying its own cost record.** The fixture created
+and deleted a throwaway user per run. Providers record usage fire-and-forget
+(`void this.record(...)`) so that an analytics write can never fail or delay a
+real request — correct in production, but it meant those writes landed *after*
+teardown had deleted the user, and each one was rejected with
+`violates foreign key constraint "ai_requests_user_id_fkey"`. Making the
+provider await its usage write would fix the race by breaking the property that
+matters more, so the fixture now uses one persistent `evaluation@eval.invalid`
+account instead.
+
+That was not the whole story. `ai_requests.project_id` cascades on delete, so
+tearing down the fixture *project* still took the usage rows with it — and the
+first "fixed" run reported 17/17 passing alongside zero recorded AI requests,
+which is the shape of a number that is wrong rather than small. The run's cost
+is now captured into `eval_runs.summary._cost` before teardown. A measured run:
+**12 requests, 5,016 tokens, ~$0.00093** for the assessment suite alone.
+
+**2. A case that asserted the wrong behaviour.** `stays-quiet-when-nothing-is-
+wrong` expected no recommendation for a healthy learner. The rules deliberately
+emit a low-priority "keep going" nudge, because the PRD's question is "what
+should I do next?" and silence is not an answer to it. The case was wrong, not
+the code. It now asserts what actually matters — a healthy learner is never
+shown a *weakness alert*, and the recommendation that does appear is
+low-priority — which is a stronger claim than silence would have been.
+
+**Known limitation:** 17 cases is a floor, not a comprehensive suite. Notably
+absent: multi-turn Tutor coherence, grading consistency across repeated runs of
+the same answer, and retrieval quality on a document large enough for chunk
+boundaries to matter (the fixture is four pages, so it exercises attribution but
+not scale).
+
+---
