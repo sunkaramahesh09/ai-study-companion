@@ -7,6 +7,10 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    // The parsed error body, when the server sent one. A 409 conflict carries
+    // structured data (e.g. `attemptId` for an in-progress quiz) that a caller
+    // may need to act on — collapsing everything to `message` throws it away.
+    readonly body?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -112,9 +116,10 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     let message = res.statusText;
+    let body: Record<string, unknown> | undefined;
     try {
-      const body = (await res.json()) as { message?: string };
-      if (body.message) message = body.message;
+      body = (await res.json()) as Record<string, unknown>;
+      if (typeof body.message === 'string') message = body.message;
     } catch {
       // Non-JSON error body; the status line is the best we have.
     }
@@ -124,7 +129,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     // not permitted — and must NOT sign anyone out.
     if (res.status === 401) onSessionExpired?.();
 
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, body);
   }
 
   return (await res.json()) as T;

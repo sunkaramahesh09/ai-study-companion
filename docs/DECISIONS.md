@@ -1903,3 +1903,34 @@ that sets the header out of habit is not punished for it — the route's own zod
 schema remains what decides whether a payload is valid.
 
 ---
+
+## D-061 — A conflicting quiz start dead-ended instead of resuming
+**Date:** 2026-09-17 · **Area:** Quiz / Frontend · **Reported from use**
+
+**Reported:** *"it is saying that already I am in quiz but where is that
+test"* — the Quiz page showed "Can't start a quiz yet — You already have a
+quiz in progress" with no way to reach that quiz.
+
+**Cause:** `POST /api/quizzes` correctly returns 409 with the open attempt's
+`attemptId` when one already exists (one open attempt per project — resuming
+beats silently abandoning work). But `apps/web/src/lib/api.ts` collapsed every
+error response down to `message` alone before throwing `ApiError`, so
+`attemptId` never left the fetch call. The Quiz page had no way to act on it
+and could only render a dead-end error card, permanently — there was no UI
+path to resume or abandon the stuck attempt.
+
+**Fix:** `ApiError` now carries the parsed response body. On a 409 from
+`startQuiz`, the Quiz page fetches the existing attempt (`GET
+/api/quizzes/:id`), finds its first unanswered question (or calls the
+existing idempotent `/next` if every issued question was somehow already
+answered), and renders it directly — the learner lands back in their quiz
+instead of on an error. A "Start a new quiz instead" action (`POST
+/quizzes/:id/abandon` then restart) is shown alongside it, for when resuming
+isn't what they wanted.
+
+**Not a new bug in the answer/next split (D-059).** That fix is doing what it
+was built to do: the verdict *is* instant, and the wait the learner now sees
+is only for the next question's generation — a real model call — overlapped
+with them reading their feedback. Nothing to change there.
+
+---

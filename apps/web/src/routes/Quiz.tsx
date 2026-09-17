@@ -1,7 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { ApiError } from '../lib/api.ts';
 import {
+  abandonQuiz,
   answerQuiz,
+  getQuizAttempt,
   nextQuizQuestion,
   startQuiz,
   type AnswerResult,
@@ -24,17 +27,86 @@ export function Quiz() {
   // not, and conflating them is what made the verdict feel slow.
   const [loadingNext, setLoadingNext] = useState(false);
   const [nextQuestion, setNextQuestion] = useState<QuizQuestion | null>(null);
+  // Set only when we're showing a quiz resumed from a 409 conflict, so the
+  // "start over" affordance only appears in that situation.
+  const [resumed, setResumed] = useState(false);
+  const [restarting, setRestarting] = useState(false);
 
-  useEffect(() => {
-    if (!projectId) return;
-    startQuiz(projectId, 5)
+  function load(projId: string) {
+    setStarting(true);
+    setError(null);
+    startQuiz(projId, 5)
       .then((r) => {
         setAttemptId(r.attempt.id);
         setQuestion(r.question);
+        setResumed(false);
       })
-      .catch(setError)
+      .catch(async (err: unknown) => {
+        // A learner already has an attempt in progress for this project — the
+        // API returns 409 with the attemptId rather than starting a new one
+        // (one open attempt per project). Resume it instead of dead-ending on
+        // an error card with no way to reach the quiz that is supposedly
+        // "already in progress".
+        const openAttemptId =
+          err instanceof ApiError && err.status === 409 && typeof err.body?.attemptId === 'string'
+            ? err.body.attemptId
+            : null;
+        if (!openAttemptId) {
+          setError(err);
+          return;
+        }
+        try {
+          const { attempt, questions } = await getQuizAttempt(openAttemptId);
+          const pending = questions.find((q) => !q.answered_at) ?? null;
+          if (pending) {
+            setAttemptId(attempt.id);
+            setQuestion(pending);
+            setResumed(true);
+            return;
+          }
+          // Every issued question is answered but the attempt is still
+          // in_progress (e.g. interrupted right after grading) — ask for the
+          // next one the same way normal play does.
+          const next = await nextQuizQuestion(attempt.id);
+          if (next.question) {
+            setAttemptId(attempt.id);
+            setQuestion(next.question);
+            setResumed(true);
+          } else {
+            setFinished({ score: next.score ?? 0, answered: attempt.questions_answered });
+          }
+        } catch (resumeErr) {
+          setError(resumeErr);
+        }
+      })
       .finally(() => setStarting(false));
+  }
+
+  useEffect(() => {
+    if (!projectId) return;
+    load(projectId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
+
+  async function startOver() {
+    if (!attemptId || !projectId || restarting) return;
+    setRestarting(true);
+    try {
+      await abandonQuiz(attemptId);
+      setAttemptId(null);
+      setQuestion(null);
+      setResult(null);
+      setSelected(null);
+      setText('');
+      setNextQuestion(null);
+      setResumed(false);
+      load(projectId);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setRestarting(false);
+    }
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -143,6 +215,14 @@ export function Quiz() {
 
       {question && (
         <div className="card stack">
+          {resumed && (
+            <p className="muted small">
+              Continuing your quiz already in progress.{' '}
+              <button type="button" className="link" onClick={startOver} disabled={restarting}>
+                {restarting ? 'Starting over…' : 'Start a new quiz instead'}
+              </button>
+            </p>
+          )}
           <div className="section-head" style={{ margin: 0 }}>
             <div>
               <span className="muted small">

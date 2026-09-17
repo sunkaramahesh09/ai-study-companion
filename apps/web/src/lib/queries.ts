@@ -233,6 +233,16 @@ export const answerQuiz = (
 export const nextQuizQuestion = (attemptId: string) =>
   api<NextQuestionResult>(`/api/quizzes/${attemptId}/next`, { method: 'POST' });
 
+/**
+ * Fetches an existing attempt so it can be resumed — e.g. after `startQuiz`
+ * 409s because one is already in progress. Unanswered questions come back
+ * with `correct_index` stripped, same as everywhere else.
+ */
+export const getQuizAttempt = (attemptId: string) =>
+  api<{ attempt: QuizAttempt; questions: (QuizQuestion & { answered_at: string | null })[] }>(
+    `/api/quizzes/${attemptId}`,
+  );
+
 export const abandonQuiz = (attemptId: string) =>
   api<{ ok: boolean }>(`/api/quizzes/${attemptId}/abandon`, { method: 'POST' });
 

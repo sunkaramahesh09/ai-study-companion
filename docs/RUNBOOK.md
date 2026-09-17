@@ -89,7 +89,7 @@ test asserting each chunk's text actually appears on the page it cites).
 **491 tests passing** + **17/17 evaluation cases** + a green production
 rehearsal. Typecheck clean, web build verified to contain the app.
 
-### Three shipped bugs found from real use, all fixed and deployed
+### Four shipped bugs found from real use, all fixed and deployed
 
 1. **CORS advertised only `GET,HEAD,POST`** (D-058). Every PATCH and DELETE was
    blocked by the browser: dismiss a recommendation, rename a space or project,
@@ -108,11 +108,21 @@ rehearsal. Typecheck clean, web build verified to contain the app.
    with an empty body in the body parser, before auth. **The material Retry
    button had never worked.** Two of the four affected callers swallow errors by
    design, which is what kept it invisible.
+4. **A conflicting quiz start dead-ended instead of resuming** (D-061). The API
+   correctly 409s with the open attempt's `attemptId` when a quiz is already in
+   progress, but `apps/web/src/lib/api.ts` threw away every field except
+   `message`, so the Quiz page could only show a permanent error card with no
+   way to reach the "in progress" quiz it was talking about. `ApiError` now
+   carries the parsed body; the Quiz page resumes the open attempt's pending
+   question on a 409, with a "Start a new quiz instead" escape hatch that
+   abandons it. **Confirmed the answer/next split (D-059) itself is working as
+   designed** — feedback is instant; the remaining wait is real model latency
+   for the next question, overlapped with reading time.
 
-**The lesson worth carrying:** all three were invisible to a green test suite
+**The lesson worth carrying:** all four were invisible to a green test suite
 because each lived in a layer the tests do not exercise — the browser's CORS
-enforcement, wall-clock latency, and the HTTP body parser. `npm run rehearse`
-now covers the first two.
+enforcement, wall-clock latency, the HTTP body parser, and an error response's
+fields beyond `message`. `npm run rehearse` now covers the first two.
 
 **Tasks 10, 11 and 12 complete.** Grounded Tutor, unsupported-question
 handling, and the prompt-injection boundary — the three highest-risk items on
