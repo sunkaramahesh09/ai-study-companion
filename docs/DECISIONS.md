@@ -1671,3 +1671,57 @@ not evidence that a later read returns those bytes. The bucket also enforces
 control behind the route's magic-byte check, found the same way.
 
 ---
+
+## D-056 — The failure paths the user actually sees
+**Date:** 2026-09-17 · **Area:** Reliability / Frontend
+
+The provider layer already had retry, backoff, failover and a 60s timeout
+(D-023, D-033), and the Tutor route already returned 503 with the learner's
+question preserved. What was missing was everything *above* the provider —
+three gaps, all of which produce a silent or unusable failure:
+
+**1. No request timeout in the browser.** A server that accepts the connection
+and then goes quiet never causes `fetch` to reject. The spinner spins forever
+and there is no error to act on — worse than an error, because the user cannot
+tell it apart from slowness and will not retry.
+
+Two ceilings, not one. Ordinary requests get 30s. Requests that sit behind a
+model get 150s, because the TPM limiter **waits** rather than failing (D-033):
+a Tutor answer queued behind others can legitimately spend most of a minute
+before the model is even called, on top of the provider's own 60s timeout. A
+single 30s ceiling would cancel correct requests and look like a server fault.
+
+**2. An expired session showed up as an error on every panel.** A 401
+mid-session means the token is expired or revoked, so every subsequent request
+fails identically; the app now returns to sign-in once. **403 deliberately does
+not do this** — a 403 means the caller *is* authenticated and merely lacks the
+role, and signing someone out for opening the admin page would be a bug. Both
+are tested, because the distinction is easy to collapse in a later refactor.
+
+**3. No error boundary.** React 19 unmounts the whole tree on an uncaught
+render error, so one broken panel produced a white page indistinguishable from
+the app failing to load. The most likely trigger is real and routine: an API
+shape that changed under an already-deployed frontend, which is the normal state
+of the world between a backend deploy and a frontend deploy.
+
+The boundary is keyed on the **router's** pathname, not `window.location`.
+`window.location` does not change identity on a client-side navigation, so the
+boundary would stay latched for the rest of the session and navigating away
+would not clear it.
+
+**A network failure now says something useful.** The browser's own "Failed to
+fetch" tells a user nothing; it is replaced with "Could not reach the server.
+Check your connection and try again."
+
+**Provider failure is tested against a stub, not a real outage.** Waiting for
+one is not a strategy, and provoking a genuine 429 storm would pollute the
+AI-health figures the admin dashboard reports. Embeddings stay real in that
+test, because indexing has to work for a request to reach generation at all —
+which is the failure point under test.
+
+**Covered by the same pass:** an answer that cites nothing is recorded as
+`grounded: false` and emits `tutor_unsupported` rather than being shown as a
+normal answer. That is the failure mode the whole grounding feature exists to
+prevent, so it has to be visible in the data.
+
+---

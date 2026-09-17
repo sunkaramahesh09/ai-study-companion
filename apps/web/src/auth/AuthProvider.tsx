@@ -1,5 +1,6 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, use, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { setSessionExpiredHandler } from '../lib/api.ts';
 import { supabase } from '../lib/supabase.ts';
 
 export type Profile = { id: string; email: string; role: 'user' | 'admin' };
@@ -40,6 +41,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false;
       sub.subscription.unsubscribe();
     };
+  }, []);
+
+  /**
+   * The API reports an expired or revoked session by returning 401.
+   *
+   * Signing out here means the user gets the sign-in screen once, instead of
+   * every panel on the page rendering "Unauthorized" while the app behaves as
+   * though it is still logged in. Only 401 triggers this — a 403 means the
+   * caller IS authenticated and simply lacks the role, and signing them out
+   * for visiting an admin page would be a bug.
+   */
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      void supabase.auth.signOut();
+    });
+    return () => setSessionExpiredHandler(null);
   }, []);
 
   useEffect(() => {
