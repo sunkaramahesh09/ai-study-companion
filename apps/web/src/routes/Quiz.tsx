@@ -52,10 +52,19 @@ export function Quiz() {
         setFinished({ score: r.progress.correct / r.progress.answered, answered: r.progress.answered });
         return;
       }
+      // An API that still returns the next question inline (an older deploy,
+      // or this bundle loaded against one) is handled without a round trip.
+      // Deploy skew is normal for the few minutes between the API and the
+      // frontend going out, and the Next button must not hang during it.
+      if (r.question) {
+        setNextQuestion(r.question);
+        return;
+      }
+
       // The verdict is already on screen. Fetch the next question in the
       // background while the learner reads their feedback — by the time they
       // reach for "Next question" it is usually already here.
-      if (r.nextPending) {
+      if (r.nextPending !== false) {
         setLoadingNext(true);
         nextQuizQuestion(attemptId)
           .then((n) => {
