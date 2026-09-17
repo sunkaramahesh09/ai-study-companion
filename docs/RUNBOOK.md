@@ -89,10 +89,8 @@ test asserting each chunk's text actually appears on the page it cites).
 
 **NEXT ACTION: task 10 — the grounded Tutor.**
 
-> The user's sign-off said "continue from task 19". That is almost certainly a
-> typo for 10: tasks 10-18 are not built, and task 19 (recommendations) depends
-> on task 14 (deterministic core) and task 17 (quiz workflow). **Confirm with
-> the user in one line before starting**, then proceed from whichever they say.
+> **Confirmed by the user on 2026-09-17: start at task 10.** No need to ask
+> again — begin building immediately.
 
 ### What task 10 needs (everything is in place for it)
 - `retrieve(db, projectId, query)` in `apps/api/src/lib/retrieval.ts` returns
