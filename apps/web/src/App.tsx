@@ -13,6 +13,7 @@ import { GlobalAnalytics } from './routes/GlobalAnalytics.tsx';
 import { Admin } from './routes/Admin.tsx';
 import { Shell } from './components/Shell.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
+import { Icon } from './components/Icon.tsx';
 import './styles.css';
 
 function Gate() {
@@ -25,7 +26,7 @@ function Gate() {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', minHeight: '100dvh', background: 'var(--bg-page)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-4)' }}>
-          <div className="sidebar-logo-icon" style={{ width: 64, height: 64, fontSize: 32 }}>🎓</div>
+          <div className="sidebar-logo-icon" style={{ width: 64, height: 64 }}><Icon name="cap" size={32} /></div>
           <div style={{ display: 'flex', gap: '6px' }}>
             <span className="typing-dot" />
             <span className="typing-dot" />

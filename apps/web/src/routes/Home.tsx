@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Icon } from '../components/Icon.tsx';
 import { listSpaces, getGlobalAnalytics, type GlobalAnalytics } from '../lib/queries.ts';
 import { Spinner, StatCard, ProgressRing } from '../components/Ui.tsx';
 import type { Space } from '@asc/shared';
@@ -76,7 +77,10 @@ export function Home() {
 
             <div className="home-hero-body">
               <div>
-                <p style={{ fontSize: 'var(--text-lg)', opacity: 0.9, marginBottom: 'var(--space-1)' }}>👋 {greeting},</p>
+                <p style={{ fontSize: 'var(--text-lg)', opacity: 0.9, marginBottom: 'var(--space-1)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                <Icon name="wave" size={18} style={{ color: 'var(--primary-500)' }} />
+                {greeting},
+              </p>
                 <h2>Let's keep learning!</h2>
                 <p style={{ marginTop: 'var(--space-2)' }}>
                   Your AI-powered study companion is here to help you understand, practice and excel.
@@ -100,7 +104,8 @@ export function Home() {
                   }}
                 />
                 <div className="home-hero-callout" aria-hidden="true">
-                  💡 Small steps every day lead to big results!
+                  <Icon name="bulb" size={15} style={{ color: 'var(--warning-500)', flexShrink: 0 }} />
+                  Small steps every day lead to big results!
                 </div>
               </div>
             </div>
@@ -109,25 +114,25 @@ export function Home() {
           {/* Stats */}
           <div className="home-stats stagger">
             <StatCard
-              icon="🗂️"
+              icon={<Icon name="folder" size={22} style={{ color: 'var(--primary-600)' }} />}
               iconBg="var(--lavender-100)"
               value={analytics?.totals.spaces ?? '—'}
               label="Study Spaces"
             />
             <StatCard
-              icon="💬"
+              icon={<Icon name="tutor" size={22} style={{ color: 'var(--info-500)' }} />}
               iconBg="var(--info-50)"
               value={analytics?.assessment.answered ?? '—'}
               label="Questions Answered"
             />
             <StatCard
-              icon="✅"
+              icon={<Icon name="check-circle" size={22} style={{ color: 'var(--success-600)' }} />}
               iconBg="var(--success-50)"
               value={quizzesCompleted}
               label="Quizzes Completed"
             />
             <StatCard
-              icon="📊"
+              icon={<Icon name="chart-bar" size={22} style={{ color: 'var(--warning-600)' }} />}
               iconBg="var(--warning-50)"
               value={accuracy !== null ? `${Math.round(accuracy * 100)}%` : '—'}
               label="Recent Accuracy"
@@ -146,10 +151,10 @@ export function Home() {
             </div>
 
             <div className="quick-actions" style={{ marginBottom: 'var(--space-4)' }}>
-              <Link to="/spaces" className="quick-action">💡 Explain a concept in simple terms</Link>
-              <Link to="/spaces" className="quick-action">📝 Get an example from your notes</Link>
-              <Link to="/spaces" className="quick-action">⚠️ Find common mistakes on a topic</Link>
-              <Link to="/spaces" className="quick-action">🔗 See how topics connect</Link>
+              <Link to="/spaces" className="quick-action"><Icon name="bulb" size={16} />Explain a concept in simple terms</Link>
+              <Link to="/spaces" className="quick-action"><Icon name="note" size={16} />Get an example from your notes</Link>
+              <Link to="/spaces" className="quick-action"><Icon name="alert" size={16} />Find common mistakes on a topic</Link>
+              <Link to="/spaces" className="quick-action"><Icon name="link" size={16} />See how topics connect</Link>
             </div>
 
             <div className="ask">
@@ -221,7 +226,7 @@ export function Home() {
           {/* Study Streak */}
           <div className="card">
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
-              <span style={{ fontSize: 22 }}>🔥</span>
+              <Icon name="flame" size={22} style={{ color: 'var(--warning-500)' }} />
               <div>
                 <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700 }}>{analytics?.activity.streak.current ?? 0}</div>
                 <div className="muted small">days in a row</div>

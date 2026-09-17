@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar.tsx';
+import { Icon } from './Icon.tsx';
 
 export function Shell({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -24,7 +25,7 @@ export function Shell({ children }: { children: ReactNode }) {
           aria-label="Toggle navigation menu"
           aria-expanded={sidebarOpen}
         >
-          ☰
+          <Icon name="menu" size={18} />
         </button>
         {/* Keyed on the path so React remounts on navigation and the
             pageEnter animation replays — otherwise it would run once on first

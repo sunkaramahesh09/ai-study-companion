@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Icon, type IconName } from './Icon.tsx';
 
 /** Loading spinner with animated dots */
 export function Spinner({ label = 'Loading…' }: { label?: string }) {
@@ -42,7 +43,7 @@ export function ErrorNote({ error, onRetry }: { error: unknown; onRetry?: () => 
       alignItems: 'center',
       gap: 'var(--space-3)',
     }}>
-      <span style={{ fontSize: '20px' }}>⚠️</span>
+      <Icon name="alert" size={20} />
       <div style={{ flex: 1 }}>
         <p className="error" style={{ fontWeight: 600, fontSize: 'var(--text-sm)' }}>{message}</p>
       </div>
@@ -66,7 +67,7 @@ export function EmptyState({
   hint,
   action,
 }: {
-  icon?: string;
+  icon?: ReactNode;
   title: string;
   hint: string;
   action?: ReactNode;
@@ -103,15 +104,16 @@ export function MasteryBar({ score, size = 'normal' }: { score: number; size?: '
 
 /** Status pill badge */
 export function StatusPill({ status }: { status: string }) {
-  const icons: Record<string, string> = {
-    ready: '✅',
-    processing: '⏳',
-    queued: '⏳',
-    failed: '❌',
+  const icons: Record<string, IconName> = {
+    ready: 'check-circle',
+    processing: 'clock',
+    queued: 'clock',
+    failed: 'x-circle',
   };
+  const name = icons[status];
   return (
     <span className={`pill pill-${status}`}>
-      {icons[status] && <span>{icons[status]}</span>}
+      {name && <Icon name={name} size={14} />}
       {status}
     </span>
   );
@@ -210,7 +212,7 @@ export function StatCard({
   label,
   change,
 }: {
-  icon: string;
+  icon: ReactNode;
   iconBg: string;
   value: string | number;
   label: string;
@@ -237,7 +239,7 @@ export function PageHeader({
   description,
   action,
 }: {
-  icon?: string;
+  icon?: ReactNode;
   title: string;
   description?: string;
   action?: ReactNode;

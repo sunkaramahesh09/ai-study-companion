@@ -18,15 +18,16 @@ import {
 import { EmptyState, ErrorNote, Spinner, PageHeader } from '../components/Ui.tsx';
 import { RowBars, Stat, pct } from '../components/Charts.tsx';
 import { ActivityPanel, AiUsagePanel, TutorPanel, WindowPicker } from '../components/AnalyticsPanels.tsx';
+import { Icon, type IconName } from '../components/Icon.tsx';
 
 type Tab = 'overview' | 'users' | 'activity' | 'ai' | 'evaluation';
 
-const TABS: { id: Tab; icon: string; label: string }[] = [
-  { id: 'overview', icon: '📋', label: 'Overview' },
-  { id: 'users', icon: '👥', label: 'Users' },
-  { id: 'activity', icon: '📊', label: 'Activity' },
-  { id: 'ai', icon: '🤖', label: 'AI' },
-  { id: 'evaluation', icon: '🧪', label: 'Evaluation' },
+const TABS: { id: Tab; icon: IconName; label: string }[] = [
+  { id: 'overview', icon: 'clipboard', label: 'Overview' },
+  { id: 'users', icon: 'users', label: 'Users' },
+  { id: 'activity', icon: 'chart-bar', label: 'Activity' },
+  { id: 'ai', icon: 'tutor', label: 'AI' },
+  { id: 'evaluation', icon: 'flask', label: 'Evaluation' },
 ];
 
 export function Admin() {
@@ -39,7 +40,7 @@ export function Admin() {
       <section className="fade-in">
         <Link to="/home" className="back">← Back to Home</Link>
         <EmptyState
-          icon="🔒"
+          icon={<Icon name="lock" size={26} />}
           title="Administrator access required"
           hint="Your account does not have the admin role. This page is gated on the server too — there is nothing to see here without it."
         />
@@ -52,7 +53,7 @@ export function Admin() {
       <Link to="/home" className="back">← Back to Home</Link>
 
       <PageHeader
-        icon="⚙️"
+        icon={<Icon name="settings" size={26} />}
         title="Admin Dashboard"
         description="Users, learning activity, AI usage and system health."
         action={tab !== 'users' && tab !== 'evaluation' ? <WindowPicker days={days} onChange={setDays} /> : undefined}
@@ -67,7 +68,7 @@ export function Admin() {
             className={tab === t.id ? 'tab tab-on' : 'tab'}
             onClick={() => setTab(t.id)}
           >
-            {t.icon} {t.label}
+            <Icon name={t.icon} size={15} /> {t.label}
           </button>
         ))}
       </div>
@@ -320,7 +321,7 @@ function EvaluationTab() {
     return (
       <div className="card fade-in" style={{ marginTop: 'var(--space-4)' }}>
         <EmptyState
-          icon="🧪"
+          icon={<Icon name="flask" size={26} />}
           title="No evaluation has been run yet"
           hint="Run `npm run eval` to score the Tutor's groundedness and citation correctness, retrieval relevance, unsupported-question handling and grading quality. Results are persisted and appear here."
         />
@@ -388,7 +389,7 @@ function EvaluationTab() {
               {results.map((r) => (
                 <tr key={r.id}>
                   <td className="mono small">{r.case_id}</td>
-                  <td className={r.passed ? 'ok' : 'error'}>{r.passed ? '✅ pass' : '❌ FAIL'}</td>
+                  <td className={r.passed ? 'ok' : 'error'}>{r.passed ? 'pass' : 'FAIL'}</td>
                   <td>{r.score === null ? '—' : pct(r.score)}</td>
                 </tr>
               ))}

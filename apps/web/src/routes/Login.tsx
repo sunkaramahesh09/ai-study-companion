@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '../auth/AuthProvider.tsx';
+import { Icon } from '../components/Icon.tsx';
 
 export function Login() {
   const { signIn, signUp } = useAuth();
@@ -49,7 +50,7 @@ export function Login() {
 
         <div style={{ position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-8)' }}>
-            <div className="sidebar-logo-icon" style={{ width: 40, height: 40, fontSize: 20 }}>🎓</div>
+            <div className="sidebar-logo-icon" style={{ width: 40, height: 40 }}><Icon name="cap" size={20} /></div>
             <div>
               <span style={{ fontWeight: 700, fontSize: 'var(--text-lg)' }}>AI.Prof</span>
               <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'block' }}>Your AI Study Companion</span>
@@ -58,7 +59,7 @@ export function Login() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-6)', marginBottom: 'var(--space-4)' }}>
             <div>
-              <div className="login-badge">✨ AI-Powered Learning</div>
+              <div className="login-badge"><Icon name="sparkle" size={14} /> AI-Powered Learning</div>
               <h1 className="login-headline">
                 Learn smarter.<br />
                 <span className="gradient">Master faster.</span>
@@ -83,7 +84,8 @@ export function Login() {
               <span className="login-sparkle login-sparkle-1" aria-hidden="true">✦</span>
               <span className="login-sparkle login-sparkle-2" aria-hidden="true">✦</span>
               <div className="login-callout" aria-hidden="true">
-                💡 Small steps every day lead to big results!
+                <Icon name="bulb" size={15} style={{ color: 'var(--warning-500)', flexShrink: 0 }} />
+                Small steps every day lead to big results!
               </div>
             </div>
           </div>
@@ -94,21 +96,21 @@ export function Login() {
 
           <div className="login-features">
             <div className="login-feature">
-              <div className="login-feature-icon" style={{ background: 'var(--lavender-100)', color: 'var(--primary-500)' }}>💬</div>
+              <div className="login-feature-icon" style={{ background: 'var(--lavender-100)', color: 'var(--primary-500)' }}><Icon name="tutor" size={20} /></div>
               <div>
                 <h4>AI Tutor</h4>
                 <p>Get clear explanations, real examples, and instant help from your materials.</p>
               </div>
             </div>
             <div className="login-feature">
-              <div className="login-feature-icon" style={{ background: 'var(--info-50)', color: 'var(--info-500)' }}>📝</div>
+              <div className="login-feature-icon" style={{ background: 'var(--info-50)', color: 'var(--info-500)' }}><Icon name="note" size={20} /></div>
               <div>
                 <h4>Adaptive Quizzes</h4>
                 <p>Practice with AI-generated questions tailored to your progress.</p>
               </div>
             </div>
             <div className="login-feature">
-              <div className="login-feature-icon" style={{ background: 'var(--success-50)', color: 'var(--success-500)' }}>📈</div>
+              <div className="login-feature-icon" style={{ background: 'var(--success-50)', color: 'var(--success-500)' }}><Icon name="trend-up" size={20} /></div>
               <div>
                 <h4>Personalized Growth</h4>
                 <p>Track your mastery and get smart recommendations for what to learn next.</p>
@@ -127,7 +129,7 @@ export function Login() {
       <div className="login-right">
         <div className="login-form-container">
           <div style={{ textAlign: 'right', marginBottom: 'var(--space-6)', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-            Better Students. Brighter Futures. ✨
+            Better Students. Brighter Futures.
           </div>
 
           <div className="login-tabs">
@@ -149,7 +151,7 @@ export function Login() {
 
           <div className="login-welcome">
             <h2>
-              {mode === 'signin' ? 'Welcome back 👋' : 'Get started 🚀'}
+              {mode === 'signin' ? 'Welcome back' : 'Get started'}
             </h2>
             <p>
               {mode === 'signin'
@@ -163,7 +165,7 @@ export function Login() {
               <label>
                 Full Name
                 <div className="login-input-group">
-                  <span className="login-input-icon">👤</span>
+                  <span className="login-input-icon"><Icon name="user" size={16} /></span>
                   <input
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
@@ -178,7 +180,7 @@ export function Login() {
             <label>
               Email
               <div className="login-input-group">
-                <span className="login-input-icon">✉️</span>
+                <span className="login-input-icon"><Icon name="mail" size={16} /></span>
                 <input
                   type="email"
                   value={email}
@@ -193,7 +195,7 @@ export function Login() {
             <label>
               Password
               <div className="login-input-group" style={{ position: 'relative' }}>
-                <span className="login-input-icon">🔒</span>
+                <span className="login-input-icon"><Icon name="lock" size={16} /></span>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
@@ -222,7 +224,7 @@ export function Login() {
                   tabIndex={-1}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? '🙈' : '👁️'}
+                  <Icon name={showPassword ? 'eye-off' : 'eye'} size={16} />
                 </button>
               </div>
             </label>
@@ -266,7 +268,7 @@ export function Login() {
           </div>
 
           <div className="login-privacy">
-            <span>🔒</span>
+            <Icon name="lock" size={14} />
             <span>Your learning data stays private. We never share your materials or personal information.</span>
           </div>
         </div>

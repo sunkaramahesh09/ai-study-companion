@@ -10,6 +10,7 @@ import {
   TutorPanel,
   WindowPicker,
 } from '../components/AnalyticsPanels.tsx';
+import { Icon } from '../components/Icon.tsx';
 
 export function GlobalAnalytics() {
   const [days, setDays] = useState(30);
@@ -37,7 +38,7 @@ export function GlobalAnalytics() {
       <Link to="/home" className="back">← Back to Home</Link>
 
       <PageHeader
-        icon="📊"
+        icon={<Icon name="chart-bar" size={26} />}
         title="Global Analytics"
         description="Everything across your Spaces and Projects."
         action={<WindowPicker days={days} onChange={setDays} />}
@@ -45,7 +46,7 @@ export function GlobalAnalytics() {
 
       {data.totals.projects === 0 ? (
         <EmptyState
-          icon="📊"
+          icon={<Icon name="chart-bar" size={26} />}
           title="Nothing to measure yet"
           hint="Create a Space and a Project, add some material, and your activity will show up here."
         />

@@ -130,3 +130,27 @@ pre code {
 ul, ol { list-style: none; }
 .bullets { list-style: disc; padding-left: 18px; font-size: var(--text-base); }
 .bullets li { margin-bottom: var(--space-1); }
+
+/* ─── Inline icons ────────────────────────────────────────────────────── */
+
+/* Icons sitting in a line of text sit on the text baseline rather than the
+   line box, so they read as part of the sentence instead of hanging below it.
+   Emoji got this for free from the font; a stroke SVG has to be told. */
+svg[aria-hidden='true'] {
+  vertical-align: -0.16em;
+  flex-shrink: 0;
+}
+/* Inside a flex row the parent already handles alignment, and the baseline
+   nudge would fight it. */
+.pill svg,
+.quick-action svg,
+.btn svg,
+.btn-primary svg,
+.btn-secondary svg,
+.sidebar-link svg,
+.sidebar-add-link svg,
+.home-stat-icon svg,
+.upload-icon svg,
+.login-input-icon svg {
+  vertical-align: baseline;
+}

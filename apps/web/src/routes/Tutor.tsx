@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { askTutor, getMessages, type TutorMessage } from '../lib/queries.ts';
 import { ErrorNote, PageHeader } from '../components/Ui.tsx';
+import { Icon, type IconName } from '../components/Icon.tsx';
 
 export function Tutor() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -71,11 +72,11 @@ export function Tutor() {
     }
   }
 
-  const quickActions = [
-    { icon: '💡', label: 'Explain simply' },
-    { icon: '📝', label: 'Give an example' },
-    { icon: '✅', label: 'Quiz me on this' },
-    { icon: '📖', label: 'Help me revise' },
+  const quickActions: { icon: IconName; label: string }[] = [
+    { icon: 'bulb', label: 'Explain simply' },
+    { icon: 'note', label: 'Give an example' },
+    { icon: 'quiz', label: 'Quiz me on this' },
+    { icon: 'book', label: 'Help me revise' },
   ];
 
   return (
@@ -83,7 +84,7 @@ export function Tutor() {
       <Link to={`/projects/${projectId}`} className="back">← Back to Project</Link>
 
       <PageHeader
-        icon="💬"
+        icon={<Icon name="tutor" size={26} />}
         title="AI Tutor"
         description="Answers come from your uploaded material, with the page they came from."
       />
@@ -92,7 +93,7 @@ export function Tutor() {
       <div className="chat">
         {messages.length === 0 && !busy && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 'var(--space-4)', padding: 'var(--space-8)' }}>
-            <div style={{ fontSize: 48, marginBottom: 'var(--space-2)' }}>🎓</div>
+            <div style={{ fontSize: 48, marginBottom: 'var(--space-2)' }}><Icon name="cap" size={16} /></div>
             <h3 style={{ textAlign: 'center' }}>Ask Your AI Tutor</h3>
             <p className="muted" style={{ textAlign: 'center', maxWidth: 420 }}>
               Ask anything about your material. If it isn't covered, I'll say so rather than guess.
@@ -104,7 +105,7 @@ export function Tutor() {
                   className="quick-action"
                   onClick={() => setQuestion(qa.label)}
                 >
-                  {qa.icon} {qa.label}
+                  <Icon name={qa.icon} size={15} /> {qa.label}
                 </button>
               ))}
             </div>
@@ -114,12 +115,12 @@ export function Tutor() {
         {messages.map((m) => (
           <div key={m.id} className={`turn turn-${m.role}`}>
             <div className={`turn-avatar ${m.role === 'assistant' ? 'turn-avatar-ai' : 'turn-avatar-user'}`}>
-              {m.role === 'assistant' ? '🎓' : '👤'}
+              <Icon name={m.role === 'assistant' ? 'cap' : 'user'} size={16} />
             </div>
             <div className="turn-content">
               {m.role === 'assistant' && m.citations.length > 0 && (
                 <div className="turn-grounded-badge">
-                  📚 Based on your materials
+                  <Icon name="book" size={15} /> Based on your materials
                 </div>
               )}
               <div className="turn-body">{m.content}</div>
@@ -130,7 +131,7 @@ export function Tutor() {
                     <details key={c.chunkId} className="citation">
                       <summary>
                         <span className="cite-tag">S{c.sourceId}</span>
-                        <span style={{ fontSize: 14 }}>📄</span>
+                        <span style={{ fontSize: 14 }}><Icon name="file" size={16} /></span>
                         <span>{c.filename} — Page {c.pageNumber}</span>
                       </summary>
                       <p className="muted small">{c.snippet}</p>
@@ -142,7 +143,7 @@ export function Tutor() {
               {/* A refusal is a correct outcome, so it is labelled as such
                   rather than styled like an error. */}
               {m.role === 'assistant' && m.grounded === false && (
-                <span className="pill pill-queued">⚠️ No supporting evidence found</span>
+                <span className="pill pill-queued"><Icon name="alert" size={15} /> No supporting evidence found</span>
               )}
 
               {m.role === 'assistant' && (
@@ -153,7 +154,7 @@ export function Tutor() {
                     aria-label="Copy response"
                     onClick={() => void onCopy(m.id, m.content)}
                   >
-                    {copiedId === m.id ? '✅' : '📋'}
+                    <Icon name={copiedId === m.id ? 'check' : 'clipboard'} size={14} />
                   </button>
                 </div>
               )}
@@ -163,7 +164,7 @@ export function Tutor() {
 
         {busy && (
           <div className="turn turn-assistant">
-            <div className="turn-avatar turn-avatar-ai">🎓</div>
+            <div className="turn-avatar turn-avatar-ai"><Icon name="cap" size={16} /></div>
             <div className="turn-content">
               <div className="turn-body" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                 <span className="typing-dot" />
@@ -191,7 +192,7 @@ export function Tutor() {
               disabled={busy}
             />
             <button type="submit" className="ask-send" disabled={busy || question.trim().length < 3}>
-              {busy ? '⏳' : '✈️'} {busy ? 'Thinking…' : 'Send'}
+              <Icon name={busy ? 'clock' : 'arrow-right'} size={15} /> {busy ? 'Thinking…' : 'Send'}
             </button>
           </div>
         </form>

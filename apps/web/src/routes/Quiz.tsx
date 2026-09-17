@@ -11,6 +11,7 @@ import {
   type QuizQuestion,
 } from '../lib/queries.ts';
 import { ErrorNote, Spinner, ProgressRing, PageHeader } from '../components/Ui.tsx';
+import { Icon } from '../components/Icon.tsx';
 
 export function Quiz() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -175,7 +176,7 @@ export function Quiz() {
       <section className="fade-in">
         <Link to={`/projects/${projectId}`} className="back">← Back to Project</Link>
         <div className="card" style={{ textAlign: 'center', padding: 'var(--space-8)' }}>
-          <span style={{ fontSize: 48, marginBottom: 'var(--space-3)', display: 'block' }}>📝</span>
+          <span style={{ fontSize: 48, marginBottom: 'var(--space-3)', display: 'block' }}><Icon name="note" size={16} /></span>
           <h2>Can't start a quiz yet</h2>
           <ErrorNote error={error} />
           <p className="muted" style={{ marginTop: 'var(--space-3)', maxWidth: 420, margin: 'var(--space-3) auto' }}>
@@ -196,7 +197,7 @@ export function Quiz() {
       <section className="fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-5)', paddingTop: 'var(--space-8)' }}>
         <div className="card" style={{ textAlign: 'center', maxWidth: 480, width: '100%', padding: 'var(--space-8)' }}>
           <span style={{ fontSize: 56, display: 'block', marginBottom: 'var(--space-3)' }}>
-            {scorePct >= 80 ? '🏆' : scorePct >= 60 ? '👏' : '📚'}
+            <Icon name={scorePct >= 80 ? 'trophy' : scorePct >= 60 ? 'star' : 'book'} size={56} />
           </span>
           <h2>Quiz Complete!</h2>
           <div style={{ display: 'flex', justifyContent: 'center', margin: 'var(--space-5) 0' }}>
@@ -213,7 +214,7 @@ export function Quiz() {
             background — you don't need to wait here.
           </p>
           <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center', marginTop: 'var(--space-5)' }}>
-            <Link to={`/projects/${projectId}/growth`} className="cta">📈 See your growth</Link>
+            <Link to={`/projects/${projectId}/growth`} className="cta"><Icon name="trend-up" size={15} /> See your growth</Link>
             <Link to={`/projects/${projectId}`} className="cta-ghost">Back to project</Link>
           </div>
         </div>
@@ -229,7 +230,7 @@ export function Quiz() {
       <Link to={`/projects/${projectId}`} className="back">← Back to Project</Link>
 
       <PageHeader
-        icon="✅"
+        icon={<Icon name="check-circle" size={26} />}
         title="Quiz"
         description="Test your understanding and track your mastery."
       />
@@ -248,13 +249,14 @@ export function Quiz() {
           {/* Question Header */}
           <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
             <span className="pill" style={{ background: 'var(--lavender-50)', color: 'var(--primary-600)', borderColor: 'var(--lavender-200)' }}>
-              🧠 {question.conceptName ?? 'Concept'}
+              <Icon name="brain" size={14} /> {question.conceptName ?? 'Concept'}
             </span>
             <span className="pill">
-              {'⭐'.repeat(question.difficulty)} Difficulty {question.difficulty}/5
+              <Icon name="star" size={13} /> Difficulty {question.difficulty}/5
             </span>
             <span className="pill">
-              {question.question_type === 'open' ? '✍️ Written Answer' : '🔘 Multiple Choice'}
+              <Icon name={question.question_type === 'open' ? 'note' : 'check-circle'} size={13} />{' '}
+                {question.question_type === 'open' ? 'Written Answer' : 'Multiple Choice'}
             </span>
           </div>
 
@@ -294,7 +296,7 @@ export function Quiz() {
                 </>
               )}
               <button type="submit" disabled={!canSubmit || busy}>
-                {busy ? '⏳ Checking…' : '✈️ Submit Answer'}
+                <Icon name={busy ? 'clock' : 'arrow-right'} size={15} /> {busy ? 'Checking…' : 'Submit Answer'}
               </button>
             </form>
           )}
@@ -306,10 +308,10 @@ export function Quiz() {
             <div className="stack" style={{ marginTop: 'var(--space-4)' }}>
               <div className={result.isCorrect ? 'verdict verdict-ok' : 'verdict verdict-no'}>
                 {result.questionType === 'open'
-                  ? `📊 Scored ${Math.round(result.score * 100)}%`
+                  ? `Scored ${Math.round(result.score * 100)}%`
                   : result.isCorrect
-                    ? '✅ Correct!'
-                    : '❌ Not quite'}
+                    ? 'Correct!'
+                    : 'Not quite'}
               </div>
 
               {result.questionType === 'mcq' && result.correctIndex !== undefined && (
@@ -320,7 +322,7 @@ export function Quiz() {
                   border: '1px solid var(--success-100)',
                 }}>
                   <p>
-                    <strong>✅ Correct answer:</strong> {(question.options ?? [])[result.correctIndex]}
+                    <strong><Icon name="check-circle" size={15} /> Correct answer:</strong> {(question.options ?? [])[result.correctIndex]}
                     {result.explanation ? <><br /><span className="muted">{result.explanation}</span></> : null}
                   </p>
                 </div>
@@ -332,7 +334,7 @@ export function Quiz() {
                   <p style={{ marginBottom: 'var(--space-3)' }}>{result.grade.feedback}</p>
                   {result.grade.understood.length > 0 && (
                     <div style={{ marginBottom: 'var(--space-3)' }}>
-                      <strong className="ok">✅ You covered</strong>
+                      <strong className="ok"><Icon name="check-circle" size={15} /> You covered</strong>
                       <ul className="bullets">
                         {result.grade.understood.map((u, i) => <li key={i}>{u}</li>)}
                       </ul>
@@ -340,7 +342,7 @@ export function Quiz() {
                   )}
                   {result.grade.missing.length > 0 && (
                     <div>
-                      <strong className="warn">⚠️ Missing</strong>
+                      <strong className="warn"><Icon name="alert" size={15} /> Missing</strong>
                       <ul className="bullets">
                         {result.grade.missing.map((m, i) => <li key={i}>{m}</li>)}
                       </ul>
@@ -359,7 +361,7 @@ export function Quiz() {
                   alignItems: 'center',
                   gap: 'var(--space-2)',
                 }}>
-                  📊 Mastery for this concept: {Math.round(result.mastery.before * 100)}% →{' '}
+                  <Icon name="chart-bar" size={15} /> Mastery for this concept: {Math.round(result.mastery.before * 100)}% →{' '}
                   <strong>{Math.round(result.mastery.after * 100)}%</strong>
                   {result.mastery.delta >= 0 ? ' ▲' : ' ▼'}
                 </div>
@@ -367,10 +369,10 @@ export function Quiz() {
 
               <button onClick={next} disabled={!nextQuestion}>
                 {loadingNext
-                  ? '⏳ Preparing the next question…'
+                  ? 'Preparing the next question…'
                   : nextQuestion
                     ? `→ Next question (${result.progress.answered + 1} of ${result.progress.target})`
-                    : '⏳ Finishing…'}
+                    : 'Finishing…'}
               </button>
             </div>
           )}

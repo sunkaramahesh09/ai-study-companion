@@ -10,6 +10,7 @@ import {
   TutorPanel,
   WindowPicker,
 } from '../components/AnalyticsPanels.tsx';
+import { Icon } from '../components/Icon.tsx';
 
 export function Analytics() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -37,7 +38,7 @@ export function Analytics() {
       <Link to={`/projects/${projectId}`} className="back">← Back to Project</Link>
 
       <PageHeader
-        icon="📊"
+        icon={<Icon name="chart-bar" size={26} />}
         title="Analytics"
         description={data.project.name}
         action={<WindowPicker days={days} onChange={setDays} />}

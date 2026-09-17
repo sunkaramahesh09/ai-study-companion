@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { resolveRecommendation, type RecommendationRow } from '../lib/queries.ts';
+import { Icon } from './Icon.tsx';
 
 /**
  * "What to do next" on the project dashboard (PRD §12).
@@ -83,7 +84,7 @@ export function Recommendations({
           const action = ACTIONS[r.action_type] ?? ACTIONS['review_material']!;
           return (
             <div key={r.id} className="topic-rec-card fade-in">
-              <span className="topic-rec-priority priority-medium">⚡ Recommended</span>
+              <span className="topic-rec-priority priority-medium"><Icon name="zap" size={15} /> Recommended</span>
               <strong style={{ display: 'block', fontSize: 'var(--text-md)', marginBottom: 'var(--space-2)' }}>
                 {r.title}
               </strong>

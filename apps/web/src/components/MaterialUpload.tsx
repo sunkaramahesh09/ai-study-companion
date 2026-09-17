@@ -7,6 +7,7 @@ import {
   type MaterialSummary,
 } from '../lib/queries.ts';
 import { EmptyState, ErrorNote, FileTypeIcon, StatusPill } from './Ui.tsx';
+import { Icon } from './Icon.tsx';
 
 const MAX_MB = 25;
 const isPending = (m: MaterialSummary) => m.status === 'queued' || m.status === 'processing';
@@ -102,7 +103,7 @@ export function MaterialUpload({ projectId, initial }: { projectId: string; init
         }}
         onClick={() => progress === null && inputRef.current?.click()}
       >
-        <div className="upload-icon">📄</div>
+        <div className="upload-icon"><Icon name="upload" size={28} /></div>
         <strong style={{ display: 'block', fontSize: 'var(--text-md)' }}>
           {progress !== null ? `Uploading… ${progress}%` : 'Drop a PDF here or click to browse'}
         </strong>
@@ -127,7 +128,7 @@ export function MaterialUpload({ projectId, initial }: { projectId: string; init
       {materials.length === 0 ? (
         <div style={{ marginTop: 'var(--space-3)' }}>
           <EmptyState
-            icon="📂"
+            icon={<Icon name="folder" size={26} />}
             title="No materials yet"
             hint={`Upload a PDF (up to ${MAX_MB} MB). Processing runs in the background — you can close this page.`}
           />
@@ -152,7 +153,7 @@ export function MaterialUpload({ projectId, initial }: { projectId: string; init
               <StatusPill status={m.status} />
               {m.status === 'failed' && (
                 <button className="btn-icon" onClick={() => void onRetry(m.id)} title="Retry" aria-label={`Retry ${m.filename}`}>
-                  🔄
+                  <Icon name="refresh" size={15} />
                 </button>
               )}
               <button
@@ -161,7 +162,7 @@ export function MaterialUpload({ projectId, initial }: { projectId: string; init
                 title="Delete"
                 aria-label={`Delete ${m.filename}`}
               >
-                🗑️
+                <Icon name="trash" size={15} />
               </button>
             </div>
           ))}

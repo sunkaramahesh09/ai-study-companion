@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { Icon } from './Icon.tsx';
 
 /**
  * Catches a render-time crash so one broken panel does not blank the app.
@@ -31,7 +32,7 @@ export class ErrorBoundary extends Component<
 
     return (
       <div className="card fade-in" style={{ maxWidth: 600, margin: 'var(--space-8) auto', padding: 'var(--space-8)', textAlign: 'center' }}>
-        <span style={{ fontSize: 48, display: 'block', marginBottom: 'var(--space-4)' }}>💥</span>
+        <span style={{ fontSize: 48, display: 'block', marginBottom: 'var(--space-4)' }}><Icon name="alert" size={16} /></span>
         <h3>{this.props.fallbackTitle ?? 'Something went wrong on this page'}</h3>
         <p className="muted" style={{ marginBottom: 'var(--space-4)' }}>
           The rest of the app still works. Reloading usually clears this — if it does not, the page may

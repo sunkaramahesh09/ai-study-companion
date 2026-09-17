@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import type { Project } from '@asc/shared';
 import { createProject, listProjects } from '../lib/queries.ts';
 import { EmptyState, ErrorNote, Spinner, PageHeader } from '../components/Ui.tsx';
+import { Icon } from '../components/Icon.tsx';
 
 export function SpaceDetail() {
   const { spaceId } = useParams<{ spaceId: string }>();
@@ -41,7 +42,7 @@ export function SpaceDetail() {
       <Link to="/spaces" className="back">← All Spaces</Link>
 
       <PageHeader
-        icon="📋"
+        icon={<Icon name="clipboard" size={26} />}
         title="Projects"
         description="A Project is one focused learning journey with its own materials and progress."
         action={
@@ -82,7 +83,7 @@ export function SpaceDetail() {
 
       {projects?.length === 0 && (
         <EmptyState
-          icon="🎯"
+          icon={<Icon name="target" size={26} />}
           title="No Projects in this Space"
           hint="Create one, then upload material for the Tutor to learn from."
           action={<button onClick={() => setCreating(true)}>Create a Project</button>}
@@ -99,7 +100,7 @@ export function SpaceDetail() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 20, flexShrink: 0,
               }}>
-                📁
+                <Icon name="folder" size={16} />
               </div>
               <div style={{ minWidth: 0 }}>
                 <strong>{p.name}</strong>
@@ -107,7 +108,7 @@ export function SpaceDetail() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-sm)', color: 'var(--text-muted)', marginTop: 'var(--space-2)' }}>
-              <span>📅 Last active {new Date(p.lastActiveAt).toLocaleDateString()}</span>
+              <span><Icon name="calendar" size={15} /> Last active {new Date(p.lastActiveAt).toLocaleDateString()}</span>
             </div>
           </Link>
         ))}

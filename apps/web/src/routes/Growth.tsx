@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getGrowth, type ConceptGrowth, type GrowthResponse } from '../lib/queries.ts';
 import { EmptyState, ErrorNote, MasteryBar, Spinner, ProgressRing, PageHeader } from '../components/Ui.tsx';
+import { Icon } from '../components/Icon.tsx';
 
 const TREND_LABEL: Record<ConceptGrowth['growth']['trend'], string> = {
-  improving: '📈 Improving',
-  stable: '➡️ Stable',
-  needs_attention: '⚠️ Needs attention',
-  new: '🆕 Not assessed',
+  improving: 'Improving',
+  stable: 'Stable',
+  needs_attention: 'Needs attention',
+  new: 'Not assessed',
 };
 
 /** A tiny inline chart. A trend is easier to see than to read. */
@@ -50,10 +51,10 @@ export function Growth() {
       <Link to={`/projects/${projectId}`} className="back">← Back to Project</Link>
 
       <PageHeader
-        icon="📊"
+        icon={<Icon name="chart-bar" size={26} />}
         title="Progress & Growth"
         description="How your understanding is changing. Mastery is an estimate from your answers, not a grade."
-        action={<Link to={`/projects/${projectId}/quiz`} className="cta">✅ Take a quiz</Link>}
+        action={<Link to={`/projects/${projectId}/quiz`} className="cta"><Icon name="check-circle" size={15} /> Take a quiz</Link>}
       />
 
       {/* Mastery Overview */}
@@ -81,19 +82,19 @@ export function Growth() {
           <div className="stats" style={{ flex: 1 }}>
             <div className="stat">
               <span className="stat-n ok">{summary.improving}</span>
-              <span className="muted small">📈 Improving</span>
+              <span className="muted small"><Icon name="trend-up" size={15} /> Improving</span>
             </div>
             <div className="stat">
               <span className="stat-n">{summary.stable}</span>
-              <span className="muted small">➡️ Stable</span>
+              <span className="muted small"><Icon name="arrow-flat" size={14} /> Stable</span>
             </div>
             <div className="stat">
               <span className="stat-n error">{summary.needsAttention}</span>
-              <span className="muted small">⚠️ Need attention</span>
+              <span className="muted small"><Icon name="alert" size={15} /> Need attention</span>
             </div>
             <div className="stat">
               <span className="stat-n">{summary.assessed}/{summary.total}</span>
-              <span className="muted small">🧠 Assessed</span>
+              <span className="muted small"><Icon name="brain" size={15} /> Assessed</span>
             </div>
           </div>
         </div>
@@ -108,7 +109,7 @@ export function Growth() {
             fontSize: 'var(--text-sm)',
             fontWeight: 600,
           }}>
-            🎉 Great progress! You're above {Math.round(avgMastery * 100)}% mastery across assessed concepts.
+            <Icon name="trophy" size={15} /> Great progress! You're above {Math.round(avgMastery * 100)}% mastery across assessed concepts.
           </div>
         )}
       </div>
@@ -116,7 +117,7 @@ export function Growth() {
       {/* Concept List */}
       {concepts.length === 0 ? (
         <EmptyState
-          icon="🧠"
+          icon={<Icon name="brain" size={26} />}
           title="No concepts yet"
           hint="Upload material and let it process — concepts are extracted from it automatically."
         />

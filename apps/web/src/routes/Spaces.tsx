@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import { createSpace, listSpaces } from '../lib/queries.ts';
 import type { Space } from '@asc/shared';
 import { EmptyState, ErrorNote, Spinner, PageHeader } from '../components/Ui.tsx';
+import { Icon, type IconName } from '../components/Icon.tsx';
 
-const SPACE_ICONS = ['💾', '🤖', '💻', '🌐', '📱', '🎓', '🔬', '📐'];
+const SPACE_ICONS: IconName[] = ['book', 'brain', 'file', 'link', 'flask', 'cap', 'target', 'folder'];
 const SPACE_COLORS = [
   { bg: 'var(--lavender-100)', color: 'var(--primary-500)' },
   { bg: 'var(--success-50)', color: 'var(--success-600)' },
@@ -46,7 +47,7 @@ export function Spaces() {
   return (
     <section className="fade-in">
       <PageHeader
-        icon="📦"
+        icon={<Icon name="upload" size={26} />}
         title="Spaces"
         description="A Space is a broad area you want to learn. Projects live inside it."
         action={
@@ -96,7 +97,7 @@ export function Spaces() {
 
       {spaces?.length === 0 && !creating && (
         <EmptyState
-          icon="📚"
+          icon={<Icon name="book" size={26} />}
           title="No Spaces yet"
           hint="Start with a broad area — a subject, a certification, a skill you want to build."
           action={<button onClick={() => setCreating(true)}>Create your first Space</button>}
@@ -137,7 +138,7 @@ export function Spaces() {
                   <strong style={{ fontSize: 'var(--text-md)' }}>{s.name}</strong>
                   {s.description && <p className="muted clamp" style={{ fontSize: 'var(--text-sm)' }}>{s.description}</p>}
                   <div className="space-card-meta">
-                    <span>📋 {s.projectCount ?? 0} Projects</span>
+                    <span><Icon name="clipboard" size={14} /> {s.projectCount ?? 0} Projects</span>
                   </div>
                 </Link>
               );
