@@ -47,6 +47,7 @@ export function ProjectDashboard() {
           {project.goal && <p className="muted">Goal: {project.goal}</p>}
         </div>
         <div className="cta-row">
+          <Link to={`/projects/${project.id}/analytics`} className="cta-ghost">Analytics</Link>
           <Link to={`/projects/${project.id}/growth`} className="cta-ghost">Growth</Link>
           <Link to={`/projects/${project.id}/quiz`} className="cta-ghost">Take a quiz</Link>
           <Link to={`/projects/${project.id}/tutor`} className="cta">Ask the Tutor</Link>

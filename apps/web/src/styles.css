@@ -375,3 +375,69 @@ textarea {
   .growth-row { flex-direction: column; align-items: flex-start; }
   .growth-meter { width: 100%; }
 }
+
+/* --- analytics ------------------------------------------------------------ */
+
+/* Stats wrap rather than squeezing: five tiles on one row at 1100px become
+   two rows on a laptop instead of five unreadable slivers. */
+.stats { flex-wrap: wrap; }
+.stats .stat { min-width: 132px; }
+
+.nav-link { color: var(--muted); text-decoration: none; font-size: 13px; }
+.nav-link:hover { color: var(--text); }
+
+.window-picker { display: flex; gap: 6px; flex-shrink: 0; }
+.chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.chip:hover { color: var(--text); }
+.chip-on { border-color: var(--accent); color: var(--accent); background: rgba(109, 140, 255, 0.1); }
+
+/* Daily bars. One measure, one hue — identity never rests on colour here. */
+.chart { display: flex; align-items: flex-end; gap: 2px; margin: 16px 0 6px; }
+.chart-col { flex: 1; height: 100%; display: flex; align-items: flex-end; min-width: 0; }
+.chart-bar-track { width: 100%; height: 100%; display: flex; align-items: flex-end; }
+.chart-bar {
+  width: 100%;
+  background: var(--accent);
+  /* Rounded data-end only; the baseline end stays square so the bar reads as
+     anchored to zero rather than floating. */
+  border-radius: 4px 4px 0 0;
+  min-height: 2px;
+}
+/* A day with no activity is a visible baseline tick, so a gap reads as "nothing
+   happened" rather than as missing data. */
+.chart-bar-zero { background: var(--border); border-radius: 0; }
+.chart-caption { margin: 0; }
+.chart-empty { margin: 16px 0; }
+
+.panel-sub { margin: 20px 0 8px; font-size: 13px; color: var(--muted); font-weight: 600; }
+
+.rowbars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.rowbars li { display: grid; grid-template-columns: minmax(0, 140px) 1fr 64px; align-items: center; gap: 10px; }
+.rowbar-label { font-size: 13px; }
+.rowbar-track { background: var(--bg); border-radius: 999px; height: 8px; overflow: hidden; }
+.rowbar-fill { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.rowbar-value { text-align: right; }
+
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.table td { padding: 7px 8px; border-bottom: 1px solid var(--border); }
+.table tr:last-child td { border-bottom: none; }
+.table td:not(:first-child), .table th:not(:first-child) { text-align: right; }
+
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+section > .card { margin-top: 16px; }

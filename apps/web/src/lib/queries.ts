@@ -260,3 +260,76 @@ export const getRecommendations = (projectId: string) =>
 
 export const resolveRecommendation = (id: string, status: 'dismissed' | 'completed') =>
   api<{ ok: boolean }>(`/api/recommendations/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
+
+// --- analytics -------------------------------------------------------------
+
+export type DayBucket = { date: string; total: number; byType: Record<string, number> };
+export type StudyStreak = { current: number; longest: number; activeDays: number };
+
+export type AssessmentSummary = {
+  answered: number;
+  correct: number;
+  accuracy: number | null;
+  averageDifficulty: number | null;
+  byType: Record<'mcq' | 'open', { answered: number; correct: number; accuracy: number | null }>;
+  byDifficulty: { difficulty: number; answered: number; correct: number; accuracy: number | null }[];
+  recentAccuracy: number | null;
+  priorAccuracy: number | null;
+};
+
+export type AiUsageSummary = {
+  requests: number;
+  successes: number;
+  failures: number;
+  successRate: number | null;
+  totalTokens: number;
+  estimatedCostUsd: number;
+  medianLatencyMs: number | null;
+  p95LatencyMs: number | null;
+  fallbackRate: number | null;
+  byFeature: { feature: string; requests: number; totalTokens: number; estimatedCostUsd: number }[];
+  byModel: { model: string; requests: number; totalTokens: number }[];
+};
+
+export type ActivitySummary = {
+  buckets: DayBucket[];
+  streak: StudyStreak;
+  totalEvents: number;
+  byType: Record<string, number>;
+};
+
+export type TutorSummary = { answered: number; refused: number; rate: number | null };
+
+export type ProjectAnalytics = {
+  project: { id: string; name: string };
+  window: { days: number; since: string };
+  activity: ActivitySummary;
+  assessment: AssessmentSummary & {
+    attempts: {
+      total: number;
+      completed: number;
+      abandoned: number;
+      inProgress: number;
+      averageScore: number | null;
+    };
+  };
+  mastery: { concepts: number; assessed: number; average: number | null };
+  tutor: TutorSummary;
+  ai: AiUsageSummary;
+};
+
+export type GlobalAnalytics = {
+  window: { days: number; since: string };
+  totals: { spaces: number; projects: number };
+  activity: ActivitySummary;
+  assessment: AssessmentSummary;
+  tutor: TutorSummary;
+  ai: AiUsageSummary;
+  projects: { id: string; name: string; spaceId: string; events: number }[];
+};
+
+export const getProjectAnalytics = (projectId: string, days: number) =>
+  api<ProjectAnalytics>(`/api/projects/${projectId}/analytics?days=${days}`);
+
+export const getGlobalAnalytics = (days: number) =>
+  api<GlobalAnalytics>(`/api/analytics?days=${days}`);

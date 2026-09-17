@@ -9,6 +9,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <header className="topbar">
         <Link to="/" className="brand">AI Study Companion</Link>
         <div className="topbar-right">
+          <Link to="/analytics" className="nav-link">Analytics</Link>
           <span className="muted small">{profile?.email}</span>
           {profile?.role === 'admin' && <span className="badge">admin</span>}
           <button className="link" onClick={() => void signOut()}>Sign out</button>

@@ -11,5 +11,6 @@
 
 export * from './schemas.ts';
 export * from './learning/index.ts';
+export * from './analytics/index.ts';
 
 export const PACKAGE_NAME = '@asc/shared' as const;

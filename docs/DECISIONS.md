@@ -1441,3 +1441,83 @@ working or merely implemented — and the assertion the integration test makes,
 since a model's phrasing is not a contract but what the server chose to send is.
 
 ---
+
+## D-051 — Analytics charts are single-series, and the palette was measured
+**Date:** 2026-09-17 · **Area:** Analytics / Accessibility
+
+**Decision:** every chart in the analytics views plots one measure with one
+hue. Identity is carried by position and by a written label, never by colour.
+
+**Why, concretely:** running the app's existing chart colours through a
+colour-vision validator against the dark surface (`#171a23`) gave:
+
+| pair | normal ΔE | deuteranopia ΔE |
+|---|---|---|
+| `--ok` `#4ade80` ↔ `--error` `#f87171` | 32.8 | **7.9** |
+
+ΔE 8 is the separation target, and 6–8 is a floor that is only acceptable with
+a secondary encoding. Green-versus-red is the one pairing this palette cannot
+carry on its own — and it is exactly the pairing a "good/bad" chart reaches for
+first. Single-series charts sidestep it entirely rather than relying on every
+future chart author remembering.
+
+**Where the pair survives, it is already labelled:** the growth trend pills read
+"Improving" / "Needs attention" in text, and the growth sparkline sits directly
+beside its pill. That is the secondary encoding the floor requires.
+
+**Also applied:** zero-valued days render as a visible baseline tick rather than
+nothing, so a gap reads as "no activity" instead of as missing data; and every
+unmeasured figure renders as an em dash, never as 0 — "not measured" and
+"measured zero" are different claims, and conflating them tells a new account it
+has 0% accuracy.
+
+**Known limitation:** the app is dark-mode only, so no light-mode palette was
+validated. A light theme would need the ramps re-stepped against a light
+surface, not flipped.
+
+---
+
+## D-052 — A green web build was proving nothing
+**Date:** 2026-09-17 · **Area:** Build / Deployment
+
+**Found:** `npm run build --workspace=@asc/web` emitted a 262 kB bundle
+containing **no application code at all** — only vendor libraries and a single
+`throw`. It had been doing this since task 1, and "web build OK" was recorded as
+evidence in the runbook the whole time.
+
+**Cause:** `src/lib/supabase.ts` throws at module scope when `VITE_SUPABASE_URL`
+/ `VITE_SUPABASE_ANON_KEY` are absent. Vite inlines `VITE_*` at build time, and
+it reads `.env` from the Vite root (`apps/web/`) — but this repo keeps its
+single `.env` at the monorepo root, where the API and worker read it with
+`node --env-file=.env`. So every local build saw `undefined`, the guard
+condition folded to a constant, and the minifier correctly proved the throw
+unconditional and eliminated the entire application downstream of it as dead
+code.
+
+**Why it was invisible:** the build exits 0, prints a plausible bundle size, and
+warns about nothing. Nothing in a build log distinguishes this from a healthy
+build. It was found by grepping `dist` for a string from the app and getting
+zero hits — a check nobody runs by habit.
+
+**Production was never affected:** Vercel has the variables set, and the live
+bundle is 503 kB with the app present. This was a local false green, not an
+outage. But it is the *mechanism* of an outage: rename a variable in Vercel and
+the next deploy is a blank page with a green checkmark.
+
+**Three fixes, deliberately layered:**
+1. `envDir: '../../'` in `vite.config.ts` — the local build now reads the same
+   `.env` as everything else, so the correct thing happens by default.
+2. A Vite plugin that throws at `configResolved` when a required `VITE_*` is
+   missing from a production build. Fixes the known cause loudly.
+3. `scripts/verify-bundle.mjs`, run as a postbuild step, which greps the output
+   for markers from four separate app files and checks a size floor. This
+   checks the **output** rather than the cause, so a different cause with the
+   same symptom — a bad tree-shake, a misconfigured entry — also cannot ship
+   quietly. Verified by deliberately truncating a built bundle and confirming a
+   non-zero exit.
+
+**The general lesson, and it is the same one as landmine 4:** an artifact that
+was never inspected is not evidence. "The build passed" described the exit code,
+not the bundle.
+
+---
