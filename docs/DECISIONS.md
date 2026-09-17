@@ -1359,3 +1359,85 @@ Fixed by instructing the model to translate evidence into plain language, and
 covered by a test asserting the fallback text never contains those terms.
 
 ---
+
+## D-049 — Growth trends are derived on read, and read from the newest window
+**Date:** 2026-09-17 · **Area:** Growth / Mastery
+
+**Decision:** classify a concept as improving / stable / needs-attention by
+running `analyseGrowth` over `mastery_history` at request time, rather than
+storing a trend column updated on write.
+
+**Why:** a stored flag is a second source of truth for something the history
+already contains. It can only ever be as correct as the last writer, and
+changing how growth is judged would lose the past rather than re-read it.
+Reading is cheap here — the history is indexed on `(project_id, created_at)`.
+
+**Two judgement calls inside the classification:**
+
+1. **Absolute standing outranks direction.** A learner who moved from 0.15 to
+   0.22 is improving, and telling them so while they still miss most questions
+   would be misleading. Below 0.45 the concept is reported as needing attention
+   whichever way it is moving — the summary sentence still credits the
+   improvement.
+2. **`averageMastery` covers assessed concepts only.** Averaging in the 0.5
+   prior of untested concepts produces a confident-looking number built mostly
+   from placeholders. Untested concepts report "—", not 50%.
+
+**Bug this caught:** the history query was ordered ascending with `limit(500)`,
+which caps the window at the OLDEST 500 rows. A project past that many
+assessments would have shown a trend frozen at its earliest history while the
+current score kept moving — a wrong answer that looks like a right one, because
+nothing about the output says it is stale. Now ordered descending and reversed.
+
+**Known limitation:** `delta` is first-to-last across the retained window, so it
+is a lifetime trend, not a recent one. A learner who climbed and then slipped
+inside the window reads as improving. Fixing it properly means comparing a
+recent segment against what preceded it, which needs more history than a
+three-day build produces to tune honestly.
+
+---
+
+## D-050 — Learner facts are selected deterministically, against the top passage
+**Date:** 2026-09-17 · **Area:** Tutor / Persistent context
+
+**Decision:** `selectFacts()` in `@asc/shared` narrows stored `learner_facts`
+to the ones that apply to the current question. Pure function, no AI, no I/O.
+
+**Why not send them all:** two reasons, and the second is the one that matters.
+TPM is the binding constraint on the generation provider, so every fact sent is
+evidence not sent. More importantly, a Tutor that opens an answer about
+convolution by mentioning an unrelated weakness in regularisation reads as a
+profile being recited, not as memory. Relevance is what makes remembered
+context feel like memory at all.
+
+**How relevance is judged:** lexical set-intersection between the fact's concept
+name and the question, requiring *every* significant term so "gradient" alone
+does not pull in a fact about gradient descent. Deliberately not embeddings —
+the facts name concepts extracted from this project's own material, so the
+vocabulary already agrees, and an embedding call would add latency and quota to
+a decision a set intersection answers.
+
+**Kinds are treated differently.** `goal` and `preference` shape *how* to
+explain whatever the topic is, so they skip the relevance gate. `weakness`,
+`strength` and `mistake_pattern` must earn their place, and score zero when
+they do not — filtered out, not merely ranked low.
+
+**Salience decays on read** with a 10-day half-life, shorter than mastery's 21.
+"Currently weak on this" is a claim about the present; repeating it months later
+is likely to be wrong in the direction that damages trust.
+
+**Bug this caught, in the integration test:** relevance was first matched
+against the *whole* retrieval set. On a two-chunk document retrieval returns
+essentially everything, so every stored fact looked relevant and the gate was
+vacuous — exactly the wholesale behaviour it was built to prevent, passing as
+selective. Matching is now against the top-ranked chunk only, which still
+serves the case evidence-matching exists for ("explain that more simply", which
+names no concept but follows a passage that does).
+
+**Selection is reported, not just applied:** `factsUsed` rides on the tutor
+response diagnostics and into the `tutor_answer` event. How often durable
+context actually reaches a prompt is the measure of whether personalisation is
+working or merely implemented — and the assertion the integration test makes,
+since a model's phrasing is not a contract but what the server chose to send is.
+
+---

@@ -1,3 +1,4 @@
+import { selectFacts, type LearnerFact } from '@asc/shared';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { generationProvider } from './ai.ts';
 import { retrieve, type RetrievedChunk } from './retrieval.ts';
@@ -23,6 +24,8 @@ export type TutorAnswer = {
   latencyMs: number;
   retrieved: number;
   bestDistance: number | null;
+  /** Which durable facts were actually used, for analytics and evaluation. */
+  factsUsed: { kind: string; content: string }[];
 };
 
 export type AskOptions = {
@@ -32,7 +35,12 @@ export type AskOptions = {
   goal?: string | null;
   /** Prior turns, oldest first. Kept short on purpose — see below. */
   history?: { role: 'user' | 'assistant'; content: string }[];
-  facts?: { kind: string; content: string }[];
+  /**
+   * Candidate learner facts. Narrowed to the ones that actually apply to this
+   * question after retrieval — the route does not decide, because relevance
+   * depends on the evidence that retrieval returns.
+   */
+  facts?: LearnerFact[];
 };
 
 /**
@@ -61,6 +69,9 @@ const HISTORY_TURNS = 4;
  * (D-029), so the tail chunks were rarely what an answer cited anyway.
  */
 const TUTOR_MATCH_COUNT = 6;
+
+/** How much of the retrieval set the learner-fact relevance gate sees. */
+const EVIDENCE_CHUNKS_FOR_FACTS = 1;
 const TUTOR_CONTEXT_TOKENS = 1600;
 
 export async function askTutor(db: SupabaseClient, opts: AskOptions): Promise<TutorAnswer> {
@@ -88,11 +99,25 @@ export async function askTutor(db: SupabaseClient, opts: AskOptions): Promise<Tu
       latencyMs: Date.now() - startedAt,
       retrieved: 0,
       bestDistance: retrieval.bestDistance,
+      factsUsed: [],
     };
   }
 
   const chunks: RetrievedChunk[] = retrieval.chunks;
-  const system = buildSystemPrompt({ goal: opts.goal, facts: opts.facts });
+
+  // Selective, not wholesale (PRD §11). Done here rather than in the route
+  // because relevance is judged against the retrieved evidence as well as the
+  // question: "explain that more simply" names no concept, but the sources it
+  // follows up on do. Deterministic — no AI, no extra quota. See D-050.
+  const selected = selectFacts(opts.facts ?? [], {
+    question: opts.question,
+    // Top-ranked chunk only. Matching against every retrieved chunk makes the
+    // relevance gate vacuous on a small project, where retrieval returns most
+    // of the document — a question about ribosomes then pulls in a fact about
+    // mitochondria simply because both pages came back.
+    evidence: chunks.slice(0, EVIDENCE_CHUNKS_FOR_FACTS).map((c) => c.content).join(' '),
+  });
+  const system = buildSystemPrompt({ goal: opts.goal, facts: selected.facts });
   const user = buildUserPrompt(opts.question, renderSources(chunks));
 
   const provider = generationProvider();
@@ -141,6 +166,7 @@ export async function askTutor(db: SupabaseClient, opts: AskOptions): Promise<Tu
       latencyMs: Date.now() - startedAt,
       retrieved: chunks.length,
       bestDistance: retrieval.bestDistance,
+      factsUsed: [],
     };
   }
 
@@ -163,5 +189,6 @@ export async function askTutor(db: SupabaseClient, opts: AskOptions): Promise<Tu
     latencyMs: Date.now() - startedAt,
     retrieved: chunks.length,
     bestDistance: retrieval.bestDistance,
+    factsUsed: selected.facts.map((f) => ({ kind: f.kind, content: f.content })),
   };
 }

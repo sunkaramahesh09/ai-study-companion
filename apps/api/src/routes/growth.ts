@@ -21,7 +21,7 @@ export const growthRoutes: FastifyPluginAsync = async (app) => {
    * Trends are computed from `mastery_history` on read, not stored. That means
    * changing how growth is judged re-reads the same evidence rather than
    * losing it, and the classification can never drift out of sync with the
-   * scores it describes.
+   * scores it describes. See D-049.
    */
   app.get('/api/projects/:id/growth', { preHandler: app.requireAuth }, async (req, reply) => {
     const params = parseOrReply(uuidParamSchema, req.params, reply);

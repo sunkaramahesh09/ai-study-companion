@@ -6,7 +6,7 @@ import { masteryBand, type MasteryState } from './mastery.ts';
  * The PRD asks for concepts to be classified as improving, stable, or requiring
  * attention (§10). The classification is derived from `mastery_history` rather
  * than stored as a flag, so changing how growth is judged re-reads the same
- * evidence instead of losing it.
+ * evidence instead of losing it. See D-049.
  */
 
 export type MasteryPoint = {

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { getProject, touchProject, type ProjectDashboard as Dash } from '../lib/queries.ts';
 import { EmptyState, ErrorNote, MasteryBar, Spinner } from '../components/Ui.tsx';
 import { MaterialUpload } from '../components/MaterialUpload.tsx';
+import { Recommendations } from '../components/Recommendations.tsx';
 
 const EVENT_LABELS: Record<string, string> = {
   project_created: 'Project created',
@@ -58,17 +59,7 @@ export function ProjectDashboard() {
         <div className="stat"><span className="stat-n">{conceptCount}</span><span className="muted small">concepts</span></div>
       </div>
 
-      {recommendations.length > 0 && (
-        <div className="card accent">
-          <h3>What to do next</h3>
-          {recommendations.map((r) => (
-            <div key={r.id}>
-              <strong>{r.title}</strong>
-              <p className="muted">{r.body}</p>
-            </div>
-          ))}
-        </div>
-      )}
+      <Recommendations projectId={project.id} initial={recommendations} />
 
       <div className="two-col">
         <MaterialUpload projectId={project.id} initial={materials} />

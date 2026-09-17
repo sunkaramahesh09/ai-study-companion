@@ -1,9 +1,18 @@
-import { uuidParamSchema } from '@asc/shared';
+import { uuidParamSchema, type LearnerFact } from '@asc/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { parseOrReply, replyDbError } from '../lib/errors.ts';
 import { recordEvent } from '../lib/events.ts';
 import { askTutor } from '../lib/tutor.ts';
+
+/**
+ * Candidate facts pulled per question before relevance narrowing.
+ *
+ * Wider than the number that reaches the prompt on purpose: the most salient
+ * facts are not necessarily the ones this question is about, so the filter
+ * needs something to choose from.
+ */
+const FACT_CANDIDATES = 12;
 
 const askSchema = z.object({
   projectId: z.string().uuid(),
@@ -103,15 +112,17 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
       .order('created_at', { ascending: false })
       .limit(6);
 
-    // Durable learner context, most salient first (PRD §11). Populated by
-    // task 19; retrieving it here now means the Tutor improves without a
-    // rewrite once facts start existing.
+    // Durable learner context (PRD §11). These are CANDIDATES: `askTutor`
+    // narrows them to the ones that apply to this question, because relevance
+    // depends on the retrieved evidence, which does not exist yet here.
+    // The concept name comes along so the match can be made against the
+    // concept rather than against the sentence describing it.
     const { data: facts } = await req
       .db!.from('learner_facts')
-      .select('kind, content')
+      .select('kind, content, salience, last_seen_at, concepts(name)')
       .eq('project_id', body.projectId)
       .order('salience', { ascending: false })
-      .limit(4);
+      .limit(FACT_CANDIDATES);
 
     await req.db!.from('messages').insert({
       conversation_id: conversationId,
@@ -139,7 +150,15 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
           role: m.role as 'user' | 'assistant',
           content: m.content as string,
         })),
-        facts: (facts ?? []) as { kind: string; content: string }[],
+        facts: (facts ?? []).map((f) => ({
+          kind: f.kind as LearnerFact['kind'],
+          content: f.content as string,
+          // supabase-js types an embedded to-one relation as an array; the
+          // wire format is an object. Accept either rather than trusting one.
+          conceptName: conceptName(f.concepts),
+          salience: Number(f.salience),
+          lastSeenAt: f.last_seen_at ? new Date(f.last_seen_at as string) : null,
+        })),
       });
     } catch (err) {
       req.log.error({ err }, 'tutor generation failed');
@@ -187,6 +206,9 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
         bestDistance: answer.bestDistance,
         model: answer.model,
         latencyMs: answer.latencyMs,
+        // How often durable context actually reaches a prompt is the measure
+        // of whether personalisation is working or just implemented.
+        factsUsed: answer.factsUsed.length,
       },
     });
 
@@ -201,7 +223,15 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
         model: answer.model,
         usedFallback: answer.usedFallback,
         latencyMs: answer.latencyMs,
+        factsUsed: answer.factsUsed.map((f) => f.kind),
       },
     };
   });
 };
+
+/** Reads the name off an embedded `concepts` relation, array-shaped or not. */
+function conceptName(embedded: unknown): string | null {
+  const row = Array.isArray(embedded) ? embedded[0] : embedded;
+  const name = (row as { name?: unknown } | null | undefined)?.name;
+  return typeof name === 'string' ? name : null;
+}
