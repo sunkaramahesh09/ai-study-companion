@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 14:45 · **Day:** Thu · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-17 15:30 · **Day:** Thu · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -85,14 +85,34 @@ test asserting each chunk's text actually appears on the page it cites).
 
 ## >>> RESUME HERE <<<
 
-**Session 2026-09-17 14:30.** **All 25 build tasks complete**, committed and
-pushed. **465 tests passing** + **17/17 evaluation cases** + a green
-end-to-end production rehearsal. Typecheck clean, web build
-verified to actually contain the app (which it previously did not — D-052).
+**Session 2026-09-17 15:30.** All 25 build tasks complete, plus the README.
+**491 tests passing** + **17/17 evaluation cases** + a green production
+rehearsal. Typecheck clean, web build verified to contain the app.
 
-Production is current: API and frontend both redeployed and checked by fetching
-the live bundle and grepping it for the new code, not by trusting a green
-deploy.
+### Three shipped bugs found from real use, all fixed and deployed
+
+1. **CORS advertised only `GET,HEAD,POST`** (D-058). Every PATCH and DELETE was
+   blocked by the browser: dismiss a recommendation, rename a space or project,
+   remove a material, delete a space or project. **Every edit and every delete
+   in the app.** Invisible to tests (`app.inject` skips the network) and to the
+   rehearsal (Node's fetch ignores CORS). The rehearsal *did* check CORS — only
+   that a bad origin is rejected. **A negative CORS assertion is not a positive
+   one.** Now checks both, per method.
+2. **Quiz grading waited on the next question** (D-059). `/answer` returned the
+   verdict *and* generated the next question, so an integer comparison took as
+   long as a model call behind a limiter that waits — ~1 minute to learn whether
+   an answer was right. Split into `/answer` + `POST /quizzes/:id/next`, which
+   the client fetches while the learner reads their feedback. Now ~3.6s live.
+3. **Every body-less POST 400'd before reaching its route** (D-060). The client
+   set `Content-Type: application/json` unconditionally; Fastify rejects that
+   with an empty body in the body parser, before auth. **The material Retry
+   button had never worked.** Two of the four affected callers swallow errors by
+   design, which is what kept it invisible.
+
+**The lesson worth carrying:** all three were invisible to a green test suite
+because each lived in a layer the tests do not exercise — the browser's CORS
+enforcement, wall-clock latency, and the HTTP body parser. `npm run rehearse`
+now covers the first two.
 
 **Tasks 10, 11 and 12 complete.** Grounded Tutor, unsupported-question
 handling, and the prompt-injection boundary — the three highest-risk items on
@@ -458,8 +478,9 @@ It caught D-011 within a minute of the schema landing.
 | 23 | Job + validation test pass | 8 job resilience cases, 20 validation cases |
 | 24 | Resilience sweep | 15 cases; timeouts, 401-vs-403, error boundary |
 | 25 | Production rehearsal | `npm run rehearse` green end to end against the live stack |
+| — | Bugs from real use | CORS methods, quiz latency, body-less POST (D-058/059/060) |
 
-**465 tests passing**, plus 17 evaluation cases (`npm run eval`) and the
+**491 tests passing**, plus 17 evaluation cases (`npm run eval`) and the
 production rehearsal (`npm run rehearse`). `npx vitest run` from the repo root.
 Live-AI tests need the real keys: `node --env-file=.env ./node_modules/.bin/vitest run`.
 

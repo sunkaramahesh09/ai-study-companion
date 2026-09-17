@@ -12,7 +12,7 @@ quizzes, and watch concept mastery move as evidence accumulates.
 | **Providers** | Groq (generation) · Gemini (embeddings) |
 
 ```
-478 automated tests · 17 AI evaluation cases · a full production loop rehearsal
+491 automated tests · 17 AI evaluation cases · a full production loop rehearsal
 ```
 
 ---
@@ -80,7 +80,7 @@ npm run dev:web                  # http://localhost:5173
 
 | Command | What it does |
 |---|---|
-| `npm test` | 478 tests. **Set the env vars** — integration tests skip silently without them |
+| `npm test` | 491 tests. **Set the env vars** — integration tests skip silently without them |
 | `npm run typecheck` | All four workspaces |
 | `npm run build` | Builds everything; the web build **fails** if `VITE_*` is missing (see below) |
 | `npm run eval` | 17 AI evaluation cases against real models (~4 min, spends quota) |
@@ -283,6 +283,13 @@ the way it is. A few worth reading on their own:
 - **D-052** — the web build shipped a bundle containing **no application code**
   for most of this project's life, and reported success every time.
 - **D-053** — why admin routes use the caller's JWT instead of the service role.
+- **D-058** — CORS advertised only `GET,HEAD,POST`, so every edit and delete in
+  the app was dead in the browser. Nothing caught it: CORS is enforced by the
+  browser, and the rehearsal only asserted that a *bad* origin is rejected. A
+  negative CORS assertion is not a positive one.
+- **D-060** — the client set `Content-Type: application/json` on every request,
+  so every body-less POST was rejected by Fastify's body parser before reaching
+  the route. The material Retry button had never worked.
 
 ---
 
@@ -308,6 +315,9 @@ that does not.
 - **PDF only.** No DOCX, no plain text, no URLs.
 - **The Tutor does not stream.** Answers arrive whole. Streaming is in the PRD's
   "Should Have", and the Must-Haves came first.
+- **Open-ended answers still take a few seconds to grade**, because grading one
+  genuinely requires a model call. Multiple-choice grading is instant. What was
+  fixed (D-059) is that neither now waits on generating the *next* question.
 - **Live-model tests occasionally flake** on content assertions. Deterministic
   assertions — what the server *chose* to send — are preferred where possible;
   see `learnerContext.test.ts`, which asserts on `factsUsed` rather than on
