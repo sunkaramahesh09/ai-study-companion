@@ -333,3 +333,104 @@ export const getProjectAnalytics = (projectId: string, days: number) =>
 
 export const getGlobalAnalytics = (days: number) =>
   api<GlobalAnalytics>(`/api/analytics?days=${days}`);
+
+// --- admin -----------------------------------------------------------------
+
+export type AdminOverview = {
+  window: { days: number; since: string };
+  users: { total: number; admins: number; newInWindow: number };
+  content: {
+    spaces: number;
+    projects: number;
+    materials: number;
+    materialsByStatus: Record<string, number>;
+  };
+  activity: ActivitySummary;
+  tutor: TutorSummary;
+  ai: AiUsageSummary;
+  jobs: {
+    available: boolean;
+    error: string | null;
+    queues: { name: string; queued: number; active: number; failed: number; total: number }[];
+  };
+  evaluation: { runs: EvalRun[]; lastRunAt: string | null };
+};
+
+export type AdminUser = {
+  id: string;
+  email: string | null;
+  role: string;
+  createdAt: string;
+  spaces: number;
+  projects: number;
+  events: number;
+  tokens: number;
+  estimatedCostUsd: number;
+};
+
+export type AdminEvent = {
+  id: string;
+  user_id: string;
+  project_id: string | null;
+  event_type: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+};
+
+export type AiFailure = {
+  id: string;
+  user_id: string | null;
+  project_id: string | null;
+  feature: string;
+  model: string;
+  status: string;
+  latency_ms: number | null;
+  attempt_count: number;
+  error_code: string | null;
+  error_message: string | null;
+  created_at: string;
+};
+
+export type EvalRun = {
+  id: string;
+  git_sha: string | null;
+  notes: string | null;
+  summary: Record<string, { passed?: number; failed?: number; mean_score?: number }>;
+  started_at: string;
+  finished_at: string | null;
+  incomplete?: boolean;
+};
+
+export type EvalResult = {
+  id: string;
+  suite: string;
+  case_id: string;
+  passed: boolean;
+  score: number | null;
+  detail: Record<string, unknown>;
+  created_at: string;
+};
+
+export type ActivityFilters = { days?: number; userId?: string; projectId?: string; type?: string };
+
+export const getAdminOverview = (days: number) =>
+  api<AdminOverview>(`/api/admin/overview?days=${days}`);
+
+export const getAdminUsers = () => api<{ users: AdminUser[] }>('/api/admin/users').then((r) => r.users);
+
+export const getAdminActivity = (filters: ActivityFilters) => {
+  const q = new URLSearchParams();
+  if (filters.days) q.set('days', String(filters.days));
+  if (filters.userId) q.set('userId', filters.userId);
+  if (filters.projectId) q.set('projectId', filters.projectId);
+  if (filters.type) q.set('type', filters.type);
+  return api<{ events: AdminEvent[] }>(`/api/admin/activity?${q}`).then((r) => r.events);
+};
+
+export const getAdminAi = (days: number) =>
+  api<{ window: { days: number }; summary: AiUsageSummary; recentFailures: AiFailure[] }>(
+    `/api/admin/ai?days=${days}`,
+  );
+
+export const getAdminEvals = () =>
+  api<{ runs: EvalRun[]; latestResults: EvalResult[]; latestRunId: string | null }>('/api/admin/evals');

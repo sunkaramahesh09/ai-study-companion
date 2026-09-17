@@ -9,6 +9,7 @@ import { Quiz } from './routes/Quiz.tsx';
 import { Growth } from './routes/Growth.tsx';
 import { Analytics } from './routes/Analytics.tsx';
 import { GlobalAnalytics } from './routes/GlobalAnalytics.tsx';
+import { Admin } from './routes/Admin.tsx';
 import { Shell } from './components/Shell.tsx';
 import './styles.css';
 
@@ -38,6 +39,7 @@ function Gate() {
         <Route path="/projects/:projectId/growth" element={<Growth />} />
         <Route path="/projects/:projectId/analytics" element={<Analytics />} />
         <Route path="/analytics" element={<GlobalAnalytics />} />
+        <Route path="/admin" element={<Admin />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Shell>

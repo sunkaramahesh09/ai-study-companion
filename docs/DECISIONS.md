@@ -1521,3 +1521,50 @@ was never inspected is not evidence. "The build passed" described the exit code,
 not the bundle.
 
 ---
+
+## D-053 — Admin reach comes from Postgres, not from the route handler
+**Date:** 2026-09-17 · **Area:** Admin / Security
+
+**Decision:** admin routes query through `req.db` — the caller's own JWT — and
+rely on the `or public.is_admin()` clause already present in the RLS SELECT
+policies to widen what comes back. They do **not** use the service-role client.
+
+**Why, given the service role would have been simpler:** both approaches return
+every row to an admin. They differ entirely in what happens when something goes
+wrong. With the service role, the route handler's `requireAdmin` preHandler is
+the *only* thing between a caller and every user's data: a missing preHandler on
+one new route, a typo in a decorator name, a refactor that reorders middleware,
+and the endpoint silently serves everything to anyone. With the caller's JWT,
+that same mistake yields an endpoint that returns the caller's own rows —
+a bug, but not a breach. The blast radius of the likely error is what is being
+chosen here, not the happy path.
+
+The one place the service role is still right is the worker, which has no
+caller and carries ownership explicitly in the job payload (D-026).
+
+**The test that proves the mechanism:** a user is promoted to admin mid-test and
+then makes a request with the **same token issued before the promotion**. It
+returns 200. If reach depended on anything inside the token, it could not. This
+is the same property verified live in production at task 4, now covered by a
+test that will fail if someone later "optimises" the handler to a service client.
+
+**Job health is reported as data, never as a failure.** `/api/admin/overview`
+wraps the pg-boss query and returns `{ available: false, error }` when the queue
+is unreachable. An observability page that goes blank exactly when something is
+broken is worse than no page: the moment the queue is down is the moment someone
+is looking at this screen.
+
+**Material status is treated as the pipeline's real truth**, independent of what
+the queue believes. A material sitting in `processing` while the queue is empty
+is precisely the signature of a worker that died mid-job — visible only because
+the two are shown side by side.
+
+**Caught while writing the test:** the route had been written against invented
+`eval_runs` columns (`status`, `passed`, `failed`, `total`). The real table
+stores a `summary` jsonb and a nullable `finished_at`. It typechecked, because
+the Supabase client types these selects loosely, and would have 500'd in
+production on a page nobody would have opened until demo day. The integration
+test found it in the first run. `finished_at IS NULL` is now surfaced as
+"did not finish" rather than having partial numbers presented as a result.
+
+---

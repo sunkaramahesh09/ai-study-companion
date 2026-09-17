@@ -11,7 +11,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="topbar-right">
           <Link to="/analytics" className="nav-link">Analytics</Link>
           <span className="muted small">{profile?.email}</span>
-          {profile?.role === 'admin' && <span className="badge">admin</span>}
+          {profile?.role === 'admin' && <Link to="/admin" className="badge badge-link">admin</Link>}
           <button className="link" onClick={() => void signOut()}>Sign out</button>
         </div>
       </header>
