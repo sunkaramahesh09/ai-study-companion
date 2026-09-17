@@ -1054,3 +1054,90 @@ payload exists). The prompt additionally asks it to describe such text rather
 than reproduce it verbatim.
 
 ---
+
+## D-038 — Mastery moves by surprise, and staleness discounts evidence rather than the score
+**Date:** 2026-09-17 · **Area:** Learning core
+
+**Chosen:** a simplified IRT / Elo update. A learner has a latent ability, a
+question has a difficulty, and the estimate moves by `rate × (outcome −
+expected)`. The whole model is one line; everything else is calibration.
+
+**Why this shape:** the PRD rejects "wrong → easy, correct → hard" (§9) and asks
+for selection that weighs mastery, mistakes, recent performance, difficulty and
+history. Moving by the *surprise* gives that for free — answering a hard
+question correctly when the estimate said you probably would not moves it a long
+way, while answering an easy one correctly when you were expected to barely
+moves it at all. A rule that keyed on the outcome alone could not distinguish
+those.
+
+**Calibration decisions, each testable:**
+- **Prior 0.5, not 0.** Zero asserts the learner knows nothing, which the system
+  has no evidence for, and would mark every freshly extracted concept as
+  critical. 0.5 says "we do not know yet"; `evidenceCount` carries confidence
+  separately.
+- **Learning rate falls as evidence accumulates**, so the estimate settles
+  instead of oscillating on every answer.
+- **A single answer can never reach `secure`**, however it went. A lucky guess
+  must not read as mastery.
+
+**Staleness discounts EVIDENCE, not the score.** The obvious implementation —
+decaying mastery downward while the learner is away — invents evidence of
+forgetting that was never observed. Instead, old evidence lowers *confidence*,
+which makes the system more willing to update when the learner returns. Same
+intuition, honest mechanism, and it keeps the stored score meaning "what the
+evidence showed" rather than "what we guess it might be now". Half-life 21 days.
+
+**With more time:** calibrate `STEEPNESS` and `BASE_RATE` against real answer
+data instead of reasoning about the curve shape. The current values are
+defensible but not empirical, and this is flagged in Known Limitations.
+
+---
+
+## D-039 — Recent mistakes are the smallest selection weight, because they are already counted
+**Date:** 2026-09-17 · **Area:** Learning core
+
+**Found by:** a unit test asserting that a concept at 0.20 mastery outranks one
+at 0.65. It did not. With `mistakes` weighted at 0.8, three recent misses on a
+moderately-known concept beat a concept the learner barely knows at all.
+
+**Cause: double-counting.** A wrong answer has *already* pushed mastery down
+through `updateMastery`, so it is present in the `need` signal. Weighting
+mistakes as a co-equal signal counts the same evidence twice and sends the
+learner to the wrong concept.
+
+**Fix:** `mistakes` dropped to 0.4, the smallest of the four weights. Its real
+job is narrow and worth stating: mastery lags the most recent answers, so recent
+mistakes break ties toward what the learner is struggling with *right now*. Two
+tests pin both halves — a genuinely weaker concept still wins, and between two
+equally weak concepts the struggling one wins.
+
+**The general trap:** when signals are derived from overlapping evidence, weights
+are not independent knobs. Tuning them by intuition produces a scorer that looks
+principled and ranks badly.
+
+---
+
+## D-040 — Live AI tests are stochastic; a single green run is not a pass
+**Date:** 2026-09-17 · **Area:** Testing
+
+**Observed:** the full suite failed one test, then passed 265/265 twice in a row
+with no code change. The failing test was one of the live Tutor behaviour cases.
+
+**This is not flakiness to paper over — it is the subject matter.** Model output
+varies run to run (D-035 documents an injection that succeeded on one sample and
+failed on the next). Any suite that exercises a real model inherits that.
+
+**How the suite is structured because of it:**
+- The deterministic learning core (task 14) has **zero** AI dependency, so its 84
+  tests are genuinely repeatable. That is most of what matters about mastery,
+  selection, mistakes and recommendations.
+- Provider mechanics — retry, failover, limiter, schema validation — are tested
+  against a stubbed SDK, so they are repeatable too.
+- Only *behavioural* claims about the model hit the real API, and the
+  security-critical ones assert over repeated samples rather than one.
+
+**Honest statement for the submission:** a green run of the live tests is
+evidence, not proof. The evaluation suite in task 22 is where behaviour gets
+measured across a curated set rather than asserted once.
+
+---

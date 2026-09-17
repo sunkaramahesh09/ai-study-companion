@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 10:05 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-17 10:45 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -94,11 +94,22 @@ the whole plan.
 **Task 13 complete.** Concept extraction: even-spaced sampling inside a token
 budget, fallback model, zod-validated before persisting, no-op on re-run.
 
-**NEXT ACTION: task 14 — the deterministic learning core.** Pure functions in
-`@asc/shared`, no AI: mastery update, adaptive concept+difficulty selection,
-repeated-mistake detection, recommendation triggers. The unit tests ARE the
-deliverable — this is the stated PRD criterion that the system should not reach
-for an LLM by default. Everything on Friday sits on top of it.
+**Task 14 complete.** The deterministic learning core — 84 tests, zero AI.
+
+`packages/shared/src/learning/`:
+- `mastery.ts` — IRT/Elo update moving by SURPRISE, prior 0.5, confidence from
+  evidence, staleness discounting evidence not score (D-038).
+- `selection.ts` — four weighted signals (need, uncertainty, mistakes,
+  repetition) + difficulty targeting a 70% success rate, derived from the
+  mastery estimate rather than the last answer.
+- `mistakes.ts` — repeated-mistake patterns with recovery detection and
+  difficulty-aware severity.
+- `recommend.ts` — trigger rules with priority ordering and a 12h cooldown.
+
+**NEXT ACTION: task 15 — MCQ quiz generation and flow.** Selection is already
+deterministic (task 14); only the question WORDING is generated, on the fallback
+model, JSON-validated before persisting, with reusable questions cached in
+`question_bank` by (concept, difficulty, type).
 
 Much of task 11 already exists as a by-product of task 10: `retrieve()`
 distinguishes `no_materials` / `not_indexed` / `no_relevant_evidence`, the
@@ -183,7 +194,7 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 
 ### Fri — assessment, mastery, growth, recommendations
 - [x] **13. Concept extraction** — LLM over a sampled, token-capped subset of chunks (not the whole doc), zod-validated before persisting.
-- [ ] **14. Deterministic learning core** — pure functions in `packages/shared`, no AI: mastery update (evidence-weighted, difficulty-aware, recency-decayed), adaptive concept+difficulty selection, repeated-mistake detection, recommendation trigger rules. *Done when:* unit tests cover each. **The unit tests ARE the deliverable — stated evaluation criterion. Protect this.**
+- [x] **14. Deterministic learning core** — pure functions in `packages/shared`, no AI: mastery update (evidence-weighted, difficulty-aware, recency-decayed), adaptive concept+difficulty selection, repeated-mistake detection, recommendation trigger rules. *Done:* 84 pure-function tests, no AI anywhere in the chain. Two design bugs caught by tests (D-039).
 - [ ] **15. Quiz — MCQ generation + flow** — selection deterministic (task 14), only wording generated, on the fallback model; JSON mode + schema in prompt + zod validation before persist; reusable questions cached in `question_bank` by (concept, difficulty, type). *Done when:* next question tracks the selection function, not a coin flip.
 - [ ] **16. Open-ended assessment + grading** — fallback model, one answer at a time; feedback explains what was understood and what's missing, not just a score; validated before it touches mastery.
 - [ ] **17. Quiz-completion workflow** — pg-boss chain: evaluate → update mastery → detect weakness → generate recommendation. Idempotent by attempt id. *Done when:* close the browser mid-flight, mastery + recommendation still land (PRD §13).
