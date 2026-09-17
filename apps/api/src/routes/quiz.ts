@@ -1,8 +1,9 @@
-import { uuidParamSchema } from '@asc/shared';
+import { selectQuestionType, uuidParamSchema } from '@asc/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { parseOrReply, replyDbError } from '../lib/errors.ts';
 import { recordEvent } from '../lib/events.ts';
+import { generateOpenQuestion, gradeOpenAnswer } from '../lib/grading.ts';
 import { generateQuestion, markBankUsed, saveToBank } from '../lib/questions.ts';
 import { applyMastery, chooseNext } from '../lib/quiz.ts';
 import { serviceClient } from '../lib/supabase.ts';
@@ -12,11 +13,20 @@ const startSchema = z.object({
   targetLength: z.coerce.number().int().min(1).max(20).default(5),
 });
 
-const answerSchema = z.object({
-  questionId: z.string().uuid(),
-  /** MCQ answer. Open-ended answers arrive as `text` in task 16. */
-  selectedIndex: z.number().int().min(0).max(3),
-});
+/**
+ * One endpoint, two answer shapes. Which one is required depends on the stored
+ * question type, checked in the handler — a client cannot pick its own format
+ * to dodge grading.
+ */
+const answerSchema = z
+  .object({
+    questionId: z.string().uuid(),
+    selectedIndex: z.number().int().min(0).max(3).optional(),
+    text: z.string().trim().min(1).max(4000).optional(),
+  })
+  .refine((b) => b.selectedIndex !== undefined || b.text !== undefined, {
+    message: 'Provide selectedIndex for multiple choice, or text for an open answer.',
+  });
 
 /** Never sent to the client while a question is unanswered. */
 const PUBLIC_QUESTION = 'id, position, question_type, difficulty, prompt, options, concept_id';
@@ -152,7 +162,7 @@ export const quizRoutes: FastifyPluginAsync = async (app) => {
 
     const { data: question, error: questionError } = await req
       .db!.from('quiz_questions')
-      .select('id, position, concept_id, difficulty, correct_index, expected_points, answered_at, prompt')
+      .select('id, position, concept_id, difficulty, question_type, correct_index, expected_points, answered_at, prompt, concepts(name)')
       .eq('id', body.questionId)
       .eq('attempt_id', params.id)
       .single();
@@ -164,8 +174,58 @@ export const quizRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const answeredAt = new Date();
-    const isCorrect = body.selectedIndex === question.correct_index;
-    const correctness = isCorrect ? 1 : 0;
+    const isOpen = question.question_type === 'open';
+
+    // The stored type decides which answer shape is required, so a client
+    // cannot choose its own format to dodge grading.
+    if (isOpen && body.text === undefined) {
+      return reply.code(400).send({ error: 'invalid_request', message: 'This question needs a written answer.' });
+    }
+    if (!isOpen && body.selectedIndex === undefined) {
+      return reply.code(400).send({ error: 'invalid_request', message: 'This question needs an option choice.' });
+    }
+
+    let correctness: number;
+    let isCorrect: boolean;
+    let feedback: Record<string, unknown>;
+    let userAnswer: string;
+
+    if (isOpen) {
+      const rubric = (question.expected_points as { expectedPoints?: string[] } | null)?.expectedPoints ?? [];
+      let grade;
+      try {
+        grade = await gradeOpenAnswer({
+          question: question.prompt as string,
+          expectedPoints: rubric,
+          answer: body.text!,
+          conceptName: (question.concepts as { name?: string } | null)?.name ?? 'this concept',
+          userId: req.user!.id,
+          projectId: attempt.project_id,
+        });
+      } catch (err) {
+        req.log.error({ err }, 'grading failed');
+        // Nothing is recorded, so the learner can resubmit rather than having an
+        // ungraded attempt counted against their mastery.
+        return reply.code(503).send({
+          error: 'grading_unavailable',
+          message: 'Could not mark that answer right now. Please try submitting again.',
+        });
+      }
+      correctness = grade.score;
+      // A partial answer is not a pass. This threshold only drives the
+      // correct/incorrect counters; mastery uses the continuous score.
+      isCorrect = grade.score >= 0.6;
+      userAnswer = body.text!;
+      feedback = { ...grade, rubric };
+    } else {
+      isCorrect = body.selectedIndex === question.correct_index;
+      correctness = isCorrect ? 1 : 0;
+      userAnswer = String(body.selectedIndex);
+      feedback = {
+        correctIndex: question.correct_index,
+        explanation: (question.expected_points as { explanation?: string } | null)?.explanation ?? null,
+      };
+    }
 
     // Service role: quiz_questions is SELECT-only for `authenticated`, so a
     // learner cannot mark their own answers correct. Scoped to the caller's id
@@ -173,14 +233,11 @@ export const quizRoutes: FastifyPluginAsync = async (app) => {
     await serviceClient()
       .from('quiz_questions')
       .update({
-        user_answer: String(body.selectedIndex),
+        user_answer: userAnswer,
         is_correct: isCorrect,
         score: correctness,
         answered_at: answeredAt.toISOString(),
-        feedback: {
-          correctIndex: question.correct_index,
-          explanation: (question.expected_points as { explanation?: string } | null)?.explanation ?? null,
-        },
+        feedback,
       })
       .eq('id', question.id)
       .eq('user_id', req.user!.id);
@@ -217,7 +274,14 @@ export const quizRoutes: FastifyPluginAsync = async (app) => {
       userId: req.user!.id,
       projectId: attempt.project_id,
       type: 'question_answered',
-      payload: { attemptId: attempt.id, questionId: question.id, isCorrect, difficulty: question.difficulty },
+      payload: {
+        attemptId: attempt.id,
+        questionId: question.id,
+        isCorrect,
+        score: correctness,
+        questionType: question.question_type,
+        difficulty: question.difficulty,
+      },
       idempotencyKey: `question_answered:${question.id}`,
     });
 
@@ -233,8 +297,16 @@ export const quizRoutes: FastifyPluginAsync = async (app) => {
 
     const result = {
       isCorrect,
-      correctIndex: question.correct_index,
-      explanation: (question.expected_points as { explanation?: string } | null)?.explanation ?? null,
+      score: correctness,
+      questionType: question.question_type,
+      // MCQ reveals the right option AFTER answering; open-ended returns the
+      // full breakdown of what was understood and what was missing.
+      ...(isOpen
+        ? { grade: feedback }
+        : {
+            correctIndex: question.correct_index,
+            explanation: (question.expected_points as { explanation?: string } | null)?.explanation ?? null,
+          }),
       mastery,
       progress: { answered, correct, target: attempt.target_length },
     };
@@ -313,23 +385,58 @@ async function issueQuestion(
     .from('quiz_questions')
     .select('prompt')
     .eq('attempt_id', attemptId);
+  const avoidPrompts = (previous ?? []).map((p) => p.prompt as string);
 
-  const generated = await generateQuestion({
-    db,
-    projectId,
-    userId,
-    conceptId: selection.conceptId,
-    conceptName: selection.conceptName,
-    difficulty: selection.difficulty,
-    avoidPrompts: (previous ?? []).map((p) => p.prompt as string),
-  });
+  // Format is a deterministic decision (@asc/shared), like concept and
+  // difficulty. The model writes questions; it does not choose what kind.
+  const questionType = selectQuestionType(position, selection.difficulty);
 
-  await saveToBank(db, { projectId, userId, conceptId: selection.conceptId, difficulty: selection.difficulty }, generated);
-  if (generated.fromCache) await markBankUsed(db, generated.question.prompt, selection.conceptId);
+  let row: Record<string, unknown>;
 
-  // Service role for the same reason as the answer update: the client must not
-  // be able to author questions. correct_index is stored here and deliberately
-  // excluded from PUBLIC_QUESTION.
+  if (questionType === 'open') {
+    const generated = await generateOpenQuestion({
+      db,
+      projectId,
+      userId,
+      conceptName: selection.conceptName,
+      difficulty: selection.difficulty,
+      avoidPrompts,
+    });
+    row = {
+      question_type: 'open',
+      prompt: generated.question.prompt,
+      options: null,
+      correct_index: null,
+      // Rubric stored WITH the question, so grading is against a fixed standard
+      // rather than one invented at marking time.
+      expected_points: { expectedPoints: generated.question.expectedPoints },
+      source_chunk_ids: generated.sourceChunkIds,
+    };
+  } else {
+    const generated = await generateQuestion({
+      db,
+      projectId,
+      userId,
+      conceptId: selection.conceptId,
+      conceptName: selection.conceptName,
+      difficulty: selection.difficulty,
+      avoidPrompts,
+    });
+    await saveToBank(db, { projectId, userId, conceptId: selection.conceptId, difficulty: selection.difficulty }, generated);
+    if (generated.fromCache) await markBankUsed(db, generated.question.prompt, selection.conceptId);
+    row = {
+      question_type: 'mcq',
+      prompt: generated.question.prompt,
+      options: generated.question.options,
+      correct_index: generated.question.correctIndex,
+      expected_points: { explanation: generated.question.explanation },
+      source_chunk_ids: generated.sourceChunkIds,
+    };
+  }
+
+  // Service role: the client must not be able to author questions.
+  // correct_index and the rubric are stored here and excluded from
+  // PUBLIC_QUESTION, so neither reaches the learner before they answer.
   const { data, error } = await serviceClient()
     .from('quiz_questions')
     .insert({
@@ -338,17 +445,12 @@ async function issueQuestion(
       user_id: userId,
       concept_id: selection.conceptId,
       position,
-      question_type: 'mcq',
       difficulty: selection.difficulty,
-      prompt: generated.question.prompt,
-      options: generated.question.options,
-      correct_index: generated.question.correctIndex,
-      expected_points: { explanation: generated.question.explanation },
-      source_chunk_ids: generated.sourceChunkIds,
+      ...row,
     })
     .select(PUBLIC_QUESTION)
     .single();
 
   if (error) throw new Error(`Could not save question: ${error.message}`);
-  return { ...data, conceptName: selection.conceptName, fromCache: generated.fromCache };
+  return { ...data, conceptName: selection.conceptName };
 }

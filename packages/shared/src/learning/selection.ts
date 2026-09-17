@@ -205,3 +205,29 @@ export { expectedSuccess };
 function round4(n: number): number {
   return Math.round(n * 10_000) / 10_000;
 }
+
+export type QuestionType = 'mcq' | 'open';
+
+/**
+ * Chooses the question FORMAT. Deterministic, like every other selection
+ * decision — the model writes questions, it does not decide what kind to ask.
+ *
+ * The PRD requires both formats (§9). They test different things: multiple
+ * choice measures recognition cheaply and grades exactly, while an open answer
+ * is the only way to see whether a learner can express an idea in their own
+ * words — and it is the only format that can produce feedback about what they
+ * understood versus what they missed.
+ *
+ * Rules, in order:
+ *  - Difficulty 1 is recall. "Name the process that converts light to sugar" is
+ *    a worse open question than a multiple choice, and grading free text for a
+ *    one-word fact is expensive noise.
+ *  - Otherwise every third question is open-ended. Frequent enough that a quiz
+ *    genuinely exercises expression, rare enough that a five-question quiz is
+ *    not five paragraphs of typing — and each open answer costs a grading call
+ *    against a tight TPM budget.
+ */
+export function selectQuestionType(position: number, difficulty: number): QuestionType {
+  if (difficulty <= 1) return 'mcq';
+  return position % 3 === 2 ? 'open' : 'mcq';
+}

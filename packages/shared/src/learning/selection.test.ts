@@ -6,6 +6,7 @@ import {
   scoreConcept,
   selectDifficulty,
   selectNextQuestion,
+  selectQuestionType,
   type ConceptCandidate,
 } from './selection.ts';
 
@@ -234,5 +235,34 @@ describe('selectNextQuestion', () => {
     expect(
       selectNextQuestion(pool, T0, { ...DEFAULT_WEIGHTS, mistakes: 5 })!.conceptId,
     ).toBe('missed');
+  });
+});
+
+describe('selectQuestionType', () => {
+  it('keeps recall questions multiple choice', () => {
+    // Grading free text for a one-word fact is expensive noise.
+    for (const position of [0, 1, 2, 3, 4, 5]) {
+      expect(selectQuestionType(position, 1)).toBe('mcq');
+    }
+  });
+
+  it('makes every third question open-ended', () => {
+    expect(selectQuestionType(0, 3)).toBe('mcq');
+    expect(selectQuestionType(1, 3)).toBe('mcq');
+    expect(selectQuestionType(2, 3)).toBe('open');
+    expect(selectQuestionType(5, 3)).toBe('open');
+  });
+
+  it('gives a five-question quiz one or two open answers, not five', () => {
+    // Each open answer costs a grading call, and nobody wants to type five
+    // paragraphs to finish a quiz.
+    const types = [0, 1, 2, 3, 4].map((p) => selectQuestionType(p, 3));
+    const open = types.filter((t) => t === 'open').length;
+    expect(open).toBeGreaterThanOrEqual(1);
+    expect(open).toBeLessThanOrEqual(2);
+  });
+
+  it('is deterministic', () => {
+    expect(selectQuestionType(2, 4)).toBe(selectQuestionType(2, 4));
   });
 });
