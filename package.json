@@ -19,7 +19,8 @@
     "dev:api": "npm run dev --workspace=@asc/api",
     "dev:worker": "npm run dev:worker --workspace=@asc/api",
     "dev:web": "npm run dev --workspace=@asc/web",
-    "eval": "node --env-file=.env apps/api/src/eval/run.ts"
+    "eval": "node --env-file=.env apps/api/src/eval/run.ts",
+    "rehearse": "node --env-file=.env scripts/rehearse-production.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

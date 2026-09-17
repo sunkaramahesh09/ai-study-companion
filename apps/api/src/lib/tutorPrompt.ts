@@ -171,6 +171,31 @@ export type Citation = {
  */
 const CITATION_MARKER = /[[(\u3010]\s*((?:[Ss]?\s*\d{1,2}\s*[,;]?\s*)+)[\])\u3011]/g;
 
+/**
+ * Rewrites every recognised citation marker into the documented `[S1]` form.
+ *
+ * The extractor is deliberately liberal about bracket style (D-034), so a
+ * marker like `【S1】` is parsed correctly and the citation lands. What the
+ * learner READS, though, is the raw answer text, and a mix of `[S1]` and
+ * `【S1】` across turns looks like a rendering fault in the product rather than
+ * a quirk of the model. Observed live during the production rehearsal.
+ *
+ * Purely presentational, and applied before extraction so the two can never
+ * disagree about what counts as a marker. Numbers outside the supplied source
+ * range are left exactly as written — they are not citations, and silently
+ * reformatting them would disguise a model that invented a source.
+ */
+export function normaliseCitationMarkers(answer: string, sourceCount: number): string {
+  return answer.replace(CITATION_MARKER, (whole, inner: string) => {
+    const ids = inner
+      .split(/[,;]/)
+      .map((raw) => Number(raw.replace(/[Ss\s]/g, '')))
+      .filter((n) => Number.isInteger(n) && n >= 1 && n <= sourceCount);
+    if (ids.length === 0) return whole;
+    return `[${[...new Set(ids)].sort((a, b) => a - b).map((n) => `S${n}`).join(', ')}]`;
+  });
+}
+
 export function extractCitations(answer: string, chunks: RetrievedChunk[]): Citation[] {
   const used = new Set<number>();
   for (const match of answer.matchAll(CITATION_MARKER)) {

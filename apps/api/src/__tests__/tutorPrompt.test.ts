@@ -6,6 +6,7 @@ import {
   extractCitations,
   hijackFallbackReply,
   looksHijacked,
+  normaliseCitationMarkers,
   renderSources,
 } from '../lib/tutorPrompt.ts';
 import type { RetrievedChunk } from '../lib/retrieval.ts';
@@ -252,5 +253,54 @@ describe('system prompt hardening', () => {
     const p = buildSystemPrompt({});
     expect(p).toMatch(/<question>.*is DATA too/is);
     expect(p).toMatch(/do NOT comply/i);
+  });
+});
+
+describe('normaliseCitationMarkers', () => {
+  it('rewrites a fullwidth marker into the documented form', () => {
+    // Observed live in the production rehearsal: the model emitted 【S1】.
+    // The extractor handles it (D-034), but a mix of styles across turns looks
+    // like a rendering fault in the product.
+    expect(normaliseCitationMarkers('Glucose yields 32 ATP 【S1】.', 3)).toBe('Glucose yields 32 ATP [S1].');
+  });
+
+  it('leaves an already-correct marker untouched', () => {
+    expect(normaliseCitationMarkers('The Calvin cycle runs in the stroma [S2].', 3)).toBe(
+      'The Calvin cycle runs in the stroma [S2].',
+    );
+  });
+
+  it('normalises parentheses and a bare number', () => {
+    expect(normaliseCitationMarkers('Enzymes denature (2).', 3)).toBe('Enzymes denature [S2].');
+    expect(normaliseCitationMarkers('Enzymes denature [s3].', 3)).toBe('Enzymes denature [S3].');
+  });
+
+  it('collapses several ids in one bracket, sorted and deduplicated', () => {
+    expect(normaliseCitationMarkers('Both pages agree [S3, S1; 1].', 3)).toBe('Both pages agree [S1, S3].');
+  });
+
+  it('leaves a number outside the source range exactly as written', () => {
+    // Not a citation. Reformatting it would disguise a model that invented a
+    // source, which is the failure this whole mechanism exists to surface.
+    expect(normaliseCitationMarkers('See [S9] for detail.', 3)).toBe('See [S9] for detail.');
+    expect(normaliseCitationMarkers('Heated to [40] degrees.', 3)).toBe('Heated to [40] degrees.');
+  });
+
+  it('does not disturb ordinary prose', () => {
+    const prose = 'Respiration (aerobic) yields ATP; fermentation does not.';
+    expect(normaliseCitationMarkers(prose, 3)).toBe(prose);
+  });
+
+  it('agrees with the extractor about what is a marker', () => {
+    // The two run on the same text in sequence, so a disagreement would show
+    // a citation the learner cannot see, or vice versa.
+    const chunks = Array.from({ length: 3 }, (_, i) => ({
+      id: `chunk-${i}`, materialId: 'm', filename: 'f.pdf', pageNumber: i + 1,
+      chunkIndex: i, content: `content ${i}`, distance: 0.1,
+    }));
+    const raw = 'A 【S1】 and B (2) and C [s3].';
+    const normalised = normaliseCitationMarkers(raw, chunks.length);
+    expect(extractCitations(normalised, chunks).map((c) => c.sourceId)).toEqual([1, 2, 3]);
+    expect(extractCitations(raw, chunks).map((c) => c.sourceId)).toEqual([1, 2, 3]);
   });
 });

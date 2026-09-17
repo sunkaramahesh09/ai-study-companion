@@ -1725,3 +1725,50 @@ normal answer. That is the failure mode the whole grounding feature exists to
 prevent, so it has to be visible in the data.
 
 ---
+
+## D-057 — Rehearsing the loop against production, not against the code
+**Date:** 2026-09-17 · **Area:** Deployment / Verification
+
+**`npm run rehearse` drives the whole PRD loop against the deployed URLs with a
+brand-new account**, then deletes it. Sign up → space → project → PDF upload →
+background indexing → grounded Tutor answer → refusal → injection attempt →
+adaptive quiz → mastery → growth → analytics → cross-account isolation.
+
+**Why this is not redundant with 465 passing tests.** Every integration test in
+this repo builds the Fastify app **in-process** and points it at the production
+database. That proves the *code* is correct. It proves nothing about whether
+the deployed container is running that code, whether the worker process is
+alive, whether the two services can reach each other, or whether CORS is right
+— and those are exactly the things that break a demo. The rehearsal is the only
+check that exercises the deployment rather than the repository.
+
+**Two properties it asserts that a test cannot:**
+- The material is indexed by the **deployed worker**. Nothing is running
+  locally; if the Railway worker service is dead, the material never leaves
+  `queued` and the rehearsal fails there.
+- The frontend bundle is fetched and **grepped for application code**, because
+  a build can succeed and ship none (D-052).
+
+**First full run passed every check**, including a grounded answer citing page 1
+in 1152 ms, a refusal on an off-topic question, an injection attempt that was
+not obeyed, mastery moving on a wrong answer (Δ −0.2862), and a second account
+getting 404 on the project, its growth, its analytics and its materials.
+
+### What the rehearsal caught that nothing else had
+
+The model returned its citation as `【S1】` — fullwidth brackets. The extractor
+already handles that deliberately (D-034), so the citation resolved correctly
+and no test failed. But the learner reads the raw answer text, and a mix of
+`[S1]` and `【S1】` across turns looks like a rendering fault in the product.
+
+Markers are now normalised to the documented `[S1]` form before the answer is
+persisted, and normalisation runs **before** extraction so the two can never
+disagree about what counts as a marker. Numbers outside the supplied source
+range are left exactly as written — they are not citations, and silently
+reformatting them would disguise a model that invented a source, which is the
+failure this whole mechanism exists to surface.
+
+This is the class of thing only a real run finds: nothing was broken, every test
+was green, and the product still looked wrong.
+
+---

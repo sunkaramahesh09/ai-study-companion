@@ -8,6 +8,7 @@ import {
   buildUserPrompt,
   extractCitations,
   hijackFallbackReply,
+  normaliseCitationMarkers,
   looksHijacked,
   renderSources,
   type Citation,
@@ -170,7 +171,10 @@ export async function askTutor(db: SupabaseClient, opts: AskOptions): Promise<Tu
     };
   }
 
-  const citations = extractCitations(result.text, chunks);
+  // Normalise first, so what the learner reads and what the extractor parses
+  // can never disagree about what counts as a marker.
+  const answerText = normaliseCitationMarkers(result.text.trim(), chunks.length);
+  const citations = extractCitations(answerText, chunks);
 
   // Evidence was retrieved and the model produced an answer, but it cited
   // nothing. Either it answered from general knowledge — exactly what this
@@ -180,7 +184,7 @@ export async function askTutor(db: SupabaseClient, opts: AskOptions): Promise<Tu
   const grounded = citations.length > 0;
 
   return {
-    answer: result.text.trim(),
+    answer: answerText,
     citations,
     grounded,
     reason: 'ok',
