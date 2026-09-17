@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 14:10 · **Day:** Thu · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-17 14:15 · **Day:** Thu · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -85,8 +85,8 @@ test asserting each chunk's text actually appears on the page it cites).
 
 ## >>> RESUME HERE <<<
 
-**Session 2026-09-17 14:10.** Tasks 1-22 complete, committed and pushed.
-**415 tests passing** + **17/17 evaluation cases**, typecheck clean, web build
+**Session 2026-09-17 14:15.** Tasks 1-23 complete, committed and pushed.
+**443 tests passing** + **17/17 evaluation cases**, typecheck clean, web build
 verified to actually contain the app (which it previously did not — D-052).
 
 Production is current: API and frontend both redeployed and checked by fetching
@@ -209,23 +209,42 @@ non-zero exit.
   different cascades) and one case asserted behaviour the design deliberately
   does not have. Run cost now lands in `eval_runs.summary._cost`.
 
-**NEXT ACTION: task 23 — test pass.** Fill the gaps the checklist names:
-auth/isolation/validation edges, job retry + failure paths. Then 24 (error
-handling + resilience sweep) and 25 (production loop rehearsal on the live URL
-with a fresh account). Sunday is docs + video only.
+**Task 23 complete.** Test pass over the two gaps that were real.
+
+- `jobResilience.test.ts` — 8 cases on job failure, retry and recovery
+  (PRD §13): failure status survives the rethrow, a failed material recovers
+  without re-upload, three runs produce zero duplicate chunks, a shrinking
+  document drops stale trailing chunks, a forged ownership payload processes
+  nothing, a deleted material is skipped not retried, a partially embedded
+  document is never called ready.
+- `validation.test.ts` — 20 cases on the HTTP edge (PRD §15). All passed on the
+  first run; the validation layer was already sound.
+- Found: Supabase Storage returns the OLD object after an in-place overwrite
+  while reporting success (D-055). No product impact — every upload takes a
+  fresh UUID path — but it invalidated two tests.
+
+**NEXT ACTION: task 24 — error handling + resilience sweep.** Timeouts,
+provider failure fallback, invalid AI output paths, failed-job recovery, and
+user-facing error states. Much is already in place (D-023 invalid_output,
+primary→fallback failover, the 503 the Tutor returns with the question saved);
+this task is about finding what is NOT, especially in the frontend where a
+failed request currently has fewer tested paths than the backend.
+
+Then 25 (production loop rehearsal on the live URL with a fresh account).
+Sunday is docs + video only.
 
 ### Schedule reality check
 
 It is **Thursday afternoon**. The real deadline is **Saturday night**, with
 Sunday morning as buffer for deployment checks and documentation only.
 
-Tasks 1-22 are done. **Three build tasks remain (23, 24, 25)** plus Sunday's docs and
+Tasks 1-23 are done. **Two build tasks remain (24, 25)** plus Sunday's docs and
 video. Friday's plan was to reach 19 and it landed a day early, so Friday is
-spent on 20-22; Saturday has 23-25 — the first genuine slack in
+spent on 20-23; Saturday has 24-25, which is ample — the first genuine slack in
 this build.
 
 **Every "protect at any cost" item is now built and tested** — 11, 12, 14 and
-22. What remains (23 test gaps, 24 resilience sweep, 25 live rehearsal) is
+22. What remains (24 resilience sweep, 25 live rehearsal) is
 hardening, and the cut list below applies to it normally.
 
 ---
@@ -275,7 +294,7 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 - [x] **20. Learning events + Project/Global analytics** — events emitted throughout earlier tasks; analytics read from them. *Done:* 27 pure-function tests + 12 route tests; caught D-052 (the web build was shipping no app code).
 - [x] **21. Admin Dashboard** — users, spaces, projects, filterable activity, AI usage + cost, job health, eval results; role-gated server-side. *Done:* 18 tests; non-admin 403 on every route; admin reach proven to come from the DB, not the token (D-053).
 - [x] **22. AI evaluation suite** — curated cases: Tutor groundedness + citation correctness, retrieval relevance, unsupported-question handling, structured-output reliability, grading quality. `npm run eval`, results persisted + shown in admin. *Done:* 17/17 across 5 suites (D-054). **Was the protected item; it is now built.**
-- [ ] **23. Test pass** — fill gaps: auth/isolation/validation, mastery/adaptive/recommendation, job retry + failure.
+- [x] **23. Test pass** — fill gaps: auth/isolation/validation, mastery/adaptive/recommendation, job retry + failure. *Done:* 28 new cases (8 job resilience, 20 validation); found D-055.
 - [ ] **24. Error handling + resilience sweep** — timeouts, provider failure fallback, invalid AI output paths, failed-job recovery, user-facing error states.
 - [ ] **25. Production deploy + full loop rehearsal** on the live URL with a fresh account.
 
@@ -366,9 +385,9 @@ It caught D-011 within a minute of the schema landing.
 
 ---
 
-## State as of 2026-09-17 14:10 — full snapshot
+## State as of 2026-09-17 14:15 — full snapshot
 
-### Built and verified (tasks 1-22)
+### Built and verified (tasks 1-23)
 
 | # | Task | Evidence it actually works |
 |---|---|---|
@@ -394,8 +413,9 @@ It caught D-011 within a minute of the schema landing.
 | 20 | Project + Global analytics | 39 tests; cross-user isolation on both endpoints |
 | 21 | Admin dashboard | 18 tests; promotion mid-session proves reach is not in the token |
 | 22 | AI evaluation suite | `npm run eval` → 17/17 across 5 suites, persisted with git sha |
+| 23 | Job + validation test pass | 8 job resilience cases, 20 validation cases |
 
-**415 tests passing**, plus 17 evaluation cases run separately via `npm run eval`. `npx vitest run` from the repo root.
+**443 tests passing**, plus 17 evaluation cases run separately via `npm run eval`. `npx vitest run` from the repo root.
 Live-AI tests need the real keys: `node --env-file=.env ./node_modules/.bin/vitest run`.
 
 ### Production (all verified live, not localhost)
@@ -453,6 +473,12 @@ Working tree clean except `.env` and `.env.railway` (both gitignored).
 8. **`npx vitest run` skips every live test silently** — they are guarded on
    env vars being present. Use `node --env-file=.env ./node_modules/.bin/vitest run`
    or a green run means much less than it looks like.
+
+10. **Supabase Storage returns the OLD object after an in-place overwrite**,
+    while reporting the upload as successful (D-055). The app is unaffected —
+    every upload takes a fresh UUID path — but never write a test that
+    overwrites a path and reads it back. The bucket also rejects any MIME type
+    other than `application/pdf` at the storage layer.
 
 9. **A PostgREST multi-row insert unions the column keys across rows** and
    sends an explicit NULL for the ones a given row omits. A NOT NULL column
