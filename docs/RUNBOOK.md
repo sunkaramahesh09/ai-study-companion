@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 13:45 · **Day:** Thu · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-17 14:10 · **Day:** Thu · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -85,9 +85,13 @@ test asserting each chunk's text actually appears on the page it cites).
 
 ## >>> RESUME HERE <<<
 
-**Session 2026-09-17 13:45.** Tasks 1-20 complete, committed and pushed.
-**387 tests passing**, typecheck clean, web build verified to actually contain
-the app (which it previously did not — D-052).
+**Session 2026-09-17 14:10.** Tasks 1-22 complete, committed and pushed.
+**415 tests passing** + **17/17 evaluation cases**, typecheck clean, web build
+verified to actually contain the app (which it previously did not — D-052).
+
+Production is current: API and frontend both redeployed and checked by fetching
+the live bundle and grepping it for the new code, not by trusting a green
+deploy.
 
 **Tasks 10, 11 and 12 complete.** Grounded Tutor, unsupported-question
 handling, and the prompt-injection boundary — the three highest-risk items on
@@ -181,26 +185,48 @@ postbuild step that greps the OUTPUT for markers from four app files. The
 postbuild check was verified by truncating a real bundle and confirming a
 non-zero exit.
 
-**NEXT ACTION: task 21 — Admin Dashboard.** Role-gated server-side (`profiles.role`,
-never a token claim — the check already exists and is tested). Needs: users,
-spaces, projects, filterable activity, AI usage + cost, job health, eval results.
-Most of the aggregation already exists in `@asc/shared/analytics`; the admin
-version is the same arithmetic without the per-user filter, plus `pgboss` job
-state. Then 22 (eval suite — **protect this**).
+**Task 21 complete.** Admin Dashboard.
+
+- `/api/admin/overview` · `/users` · `/activity` · `/ai` · `/evals`, gated on
+  `profiles.role` from the database.
+- Queries go through the CALLER'S JWT, not the service role — RLS widens for an
+  admin via `is_admin()`. A missing preHandler then leaks the caller's own rows
+  instead of everyone's (D-053).
+- 18 tests, incl. promotion mid-session proving reach is not in the token.
+- Caught: the evals route was written against invented `eval_runs` columns. It
+  typechecked and would have 500'd on demo day.
+
+**Task 22 complete.** AI evaluation suite — `npm run eval`.
+
+- 17 curated cases across tutor / retrieval / assessment / recommendation /
+  security. **First full run: 17/17 in 262s.**
+- Graded against a purpose-written 4-page fixture with recorded ground truth,
+  so "cited the right page" is checkable (D-054). Rule-based, not model-based.
+- Persists to `eval_runs` / `eval_results` with the git sha; admin Evaluation
+  tab reads it. Exits non-zero on failure.
+- `npm run eval <suite>` runs one suite; `npm run eval -- --list` lists cases.
+- Found two bugs in itself: it was destroying its own cost record (twice, two
+  different cascades) and one case asserted behaviour the design deliberately
+  does not have. Run cost now lands in `eval_runs.summary._cost`.
+
+**NEXT ACTION: task 23 — test pass.** Fill the gaps the checklist names:
+auth/isolation/validation edges, job retry + failure paths. Then 24 (error
+handling + resilience sweep) and 25 (production loop rehearsal on the live URL
+with a fresh account). Sunday is docs + video only.
 
 ### Schedule reality check
 
 It is **Thursday afternoon**. The real deadline is **Saturday night**, with
 Sunday morning as buffer for deployment checks and documentation only.
 
-Tasks 1-20 are done. **Five build tasks remain (21-25)** plus Sunday's docs and
+Tasks 1-22 are done. **Three build tasks remain (23, 24, 25)** plus Sunday's docs and
 video. Friday's plan was to reach 19 and it landed a day early, so Friday is
-now available for 21-22 with Saturday for 23-25 — the first genuine slack in
+spent on 20-22; Saturday has 23-25 — the first genuine slack in
 this build.
 
-**Protect at any cost:** 22 (evaluation) is the only unprotected item still
-outstanding. 11, 12 and 14 are done and tested. If Friday runs long, cut from
-the list below rather than from 22.
+**Every "protect at any cost" item is now built and tested** — 11, 12, 14 and
+22. What remains (23 test gaps, 24 resilience sweep, 25 live rehearsal) is
+hardening, and the cut list below applies to it normally.
 
 ---
 
@@ -247,8 +273,8 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 
 ### Sat — analytics, admin, observability, eval, tests, ship
 - [x] **20. Learning events + Project/Global analytics** — events emitted throughout earlier tasks; analytics read from them. *Done:* 27 pure-function tests + 12 route tests; caught D-052 (the web build was shipping no app code).
-- [ ] **21. Admin Dashboard** — users, spaces, projects, filterable activity, AI usage + cost, job health, eval results; role-gated server-side. *Done when:* non-admin gets 403.
-- [ ] **22. AI evaluation suite** — curated cases: Tutor groundedness + citation correctness, retrieval relevance, unsupported-question handling, structured-output reliability, grading quality. `npm run eval`, results persisted + shown in admin. **Protect this.**
+- [x] **21. Admin Dashboard** — users, spaces, projects, filterable activity, AI usage + cost, job health, eval results; role-gated server-side. *Done:* 18 tests; non-admin 403 on every route; admin reach proven to come from the DB, not the token (D-053).
+- [x] **22. AI evaluation suite** — curated cases: Tutor groundedness + citation correctness, retrieval relevance, unsupported-question handling, structured-output reliability, grading quality. `npm run eval`, results persisted + shown in admin. *Done:* 17/17 across 5 suites (D-054). **Was the protected item; it is now built.**
 - [ ] **23. Test pass** — fill gaps: auth/isolation/validation, mastery/adaptive/recommendation, job retry + failure.
 - [ ] **24. Error handling + resilience sweep** — timeouts, provider failure fallback, invalid AI output paths, failed-job recovery, user-facing error states.
 - [ ] **25. Production deploy + full loop rehearsal** on the live URL with a fresh account.
@@ -301,7 +327,9 @@ npm test                    # vitest, whole repo
 npm run dev:api             # Fastify on :8080
 npm run dev:worker          # pg-boss worker
 npm run dev:web             # Vite on :5173
-npm run eval                # AI evaluation suite (task 22)
+npm run eval                # all 17 evaluation cases (~4 min, spends real quota)
+npm run eval tutor          # one suite: tutor|retrieval|assessment|recommendation|security
+npm run eval -- --list      # list every case and what it protects
 
 # read the PRD (no poppler on this machine)
 python3 -c "import pymupdf; d=pymupdf.open('/Users/mahesh/Project_Requirements.pdf'); print('\n'.join(p.get_text() for p in d))"
@@ -338,9 +366,9 @@ It caught D-011 within a minute of the schema landing.
 
 ---
 
-## State as of 2026-09-17 13:45 — full snapshot
+## State as of 2026-09-17 14:10 — full snapshot
 
-### Built and verified (tasks 1-20)
+### Built and verified (tasks 1-22)
 
 | # | Task | Evidence it actually works |
 |---|---|---|
@@ -364,8 +392,10 @@ It caught D-011 within a minute of the schema landing.
 | 18 | Mastery + Growth UI | 8 route tests; oldest-window bug caught and fixed (D-049) |
 | 19 | Persistent learning context | live: 2-day-old weakness reaches a relevant answer only |
 | 20 | Project + Global analytics | 39 tests; cross-user isolation on both endpoints |
+| 21 | Admin dashboard | 18 tests; promotion mid-session proves reach is not in the token |
+| 22 | AI evaluation suite | `npm run eval` → 17/17 across 5 suites, persisted with git sha |
 
-**387 tests passing.** `npx vitest run` from the repo root.
+**415 tests passing**, plus 17 evaluation cases run separately via `npm run eval`. `npx vitest run` from the repo root.
 Live-AI tests need the real keys: `node --env-file=.env ./node_modules/.bin/vitest run`.
 
 ### Production (all verified live, not localhost)
