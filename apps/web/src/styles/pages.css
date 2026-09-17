@@ -516,32 +516,32 @@
 }
 .decor-range-left i:nth-child(1) {
   clip-path: polygon(0% 100%, 0% 52%, 14% 26%, 27% 46%, 42% 18%, 58% 44%, 74% 22%, 100% 50%, 100% 100%);
-  background: linear-gradient(180deg, rgba(167, 139, 250, 0.16) 0%, rgba(167, 139, 250, 0.03) 100%);
-  filter: blur(2px);
+  background: linear-gradient(180deg, rgba(167, 139, 250, 0.10) 0%, rgba(167, 139, 250, 0.02) 100%);
+  filter: blur(3px);
 }
 .decor-range-left i:nth-child(2) {
   clip-path: polygon(0% 100%, 0% 70%, 12% 48%, 26% 66%, 40% 40%, 56% 64%, 72% 46%, 92% 68%, 100% 60%, 100% 100%);
-  background: linear-gradient(180deg, rgba(139, 108, 240, 0.20) 0%, rgba(139, 108, 240, 0.05) 100%);
-  filter: blur(1px);
+  background: linear-gradient(180deg, rgba(139, 108, 240, 0.13) 0%, rgba(139, 108, 240, 0.03) 100%);
+  filter: blur(2px);
 }
 .decor-range-left i:nth-child(3) {
   clip-path: polygon(0% 100%, 0% 86%, 16% 66%, 32% 84%, 48% 62%, 64% 82%, 80% 66%, 100% 84%, 100% 100%);
-  background: linear-gradient(180deg, rgba(124, 92, 246, 0.22) 0%, rgba(124, 92, 246, 0.07) 100%);
+  background: linear-gradient(180deg, rgba(124, 92, 246, 0.15) 0%, rgba(124, 92, 246, 0.04) 100%);
 }
 
 .decor-range-right {
   right: -6%;
-  width: 52%;
-  height: 34%;
+  width: 56%;
+  height: 40%;
 }
 .decor-range-right i:nth-child(1) {
   clip-path: polygon(0% 100%, 0% 62%, 18% 36%, 36% 58%, 54% 30%, 74% 54%, 100% 38%, 100% 100%);
-  background: linear-gradient(180deg, rgba(167, 139, 250, 0.13) 0%, rgba(167, 139, 250, 0.02) 100%);
-  filter: blur(2px);
+  background: linear-gradient(180deg, rgba(167, 139, 250, 0.14) 0%, rgba(167, 139, 250, 0.02) 100%);
+  filter: blur(3px);
 }
 .decor-range-right i:nth-child(2) {
   clip-path: polygon(0% 100%, 0% 80%, 20% 58%, 38% 76%, 58% 54%, 78% 74%, 100% 62%, 100% 100%);
-  background: linear-gradient(180deg, rgba(139, 108, 240, 0.16) 0%, rgba(139, 108, 240, 0.04) 100%);
+  background: linear-gradient(180deg, rgba(139, 108, 240, 0.17) 0%, rgba(139, 108, 240, 0.04) 100%);
 }
 
 /* ── Sparkles ─────────────────────────────────────────────────────────── */
@@ -598,10 +598,14 @@
   left: -2%;
   right: -2%;
   bottom: 0;
-  height: 42%;
+  height: 38%;
   pointer-events: none;
-  clip-path: polygon(0% 100%, 0% 74%, 13% 52%, 27% 70%, 41% 44%, 57% 68%, 72% 50%, 88% 70%, 100% 58%, 100% 100%);
-  background: linear-gradient(180deg, rgba(167, 139, 250, 0.16) 0%, rgba(167, 139, 250, 0.03) 100%);
+  clip-path: polygon(0% 100%, 0% 78%, 13% 58%, 27% 74%, 41% 52%, 57% 72%, 72% 56%, 88% 74%, 100% 64%, 100% 100%);
+  /* Peaks fade out toward their tops rather than ending on a clean edge. A
+     clip-path alone gives every summit the same full opacity, which across a
+     wide card reads as one horizontal band instead of a ridge. */
+  background: linear-gradient(180deg, rgba(167, 139, 250, 0.015) 0%, rgba(167, 139, 250, 0.09) 55%, rgba(167, 139, 250, 0.13) 100%);
+  opacity: 0.85;
 }
 .home-hero h2 {
   font-size: var(--text-3xl);
