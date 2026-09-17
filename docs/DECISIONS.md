@@ -844,3 +844,70 @@ Saturday deadline. Noted in Known Limitations; a separate staging project is the
 right answer with more time.
 
 ---
+
+## D-032 — Citation format leads the prompt and carries an example
+**Date:** 2026-09-17 · **Area:** Tutor / Groundedness
+
+**Found by:** the first live grounded answer. The Tutor produced a *factually
+correct* answer drawn straight from the PRD — it listed the exact Must Have
+items — with **zero `[S#]` markers**. The groundedness check correctly rejected
+it, so a good answer was reported as ungrounded.
+
+**Cause:** the citation rule was the fourth bullet in a list of five. A model
+asked to be a helpful tutor defaults to prose and markdown bullets, and a rule
+competing with four others in the same list loses.
+
+**Fix:** the citation format is now its own section, placed *before* the general
+rules, with a worked example and an explicit failure statement
+("An answer containing no [S#] markers is invalid"). Result on re-test: both
+answers cited, and every citation resolved to its real page (19 and 9, both
+correct against the source document).
+
+**Rejected: a repair retry.** Re-asking when no markers appear would work, but
+it doubles the cost of the most expensive call in the product against an 8000
+TPM ceiling. Fixing the instruction costs a few tokens once per request instead
+of a whole extra request sometimes.
+
+**Kept the check either way.** `grounded = citations.length > 0` still runs, and
+still records `grounded: false` in the database when an answer cites nothing.
+Prompt quality reduces how often that fires; it is not a reason to stop
+measuring it.
+
+---
+
+## D-033 — Groq quota is split per tier, not globally
+**Date:** 2026-09-17 · **Area:** AI / Cost
+
+**Found by:** the first live Tutor request, which failed with a precise message
+from our own limiter: *"groq:primary: request needs ~3725 tokens but the
+per-minute ceiling is 3200."*
+
+**Cause:** D-022 split the Groq quota 60/40 toward the worker as a single
+number. But the two tiers are **separate quota pools upstream**, and the
+services use them asymmetrically:
+
+- `primary` carries the Tutor's grounded answers — the API's work, and the most
+  token-hungry request in the product (~3700 tokens with evidence and the
+  reasoning allowance).
+- `fallback` carries grading and question wording — the worker's background
+  work. High volume, small prompts, latency-tolerant.
+
+A single split gave the API 40% of the pool it actually lives on.
+
+**Fix:** `quotaShare` accepts per-tier values. API `{primary: 0.75, fallback:
+0.25}`, worker `{primary: 0.25, fallback: 0.75}`.
+
+**Also tuned the Tutor's own budget:** 6 chunks capped at 1600 context tokens
+instead of 8 at 2200, bringing a request to ~2900 tokens. Recall barely moves —
+the measured distance gap between rank 1 and rank 8 is wide (D-029), so the tail
+chunks were rarely what an answer cited.
+
+**Known limitation:** even at 6000 TPM for the API, that is roughly two Tutor
+answers per minute on the free tier. Fine for a demo and for evaluation; real
+multi-user load would need a paid tier or a shared limiter.
+
+**Worth noting:** the failure was immediate and named its own cause, because the
+limiter refuses a request it can never satisfy rather than waiting forever. That
+design decision (limiter.ts) paid for itself the first time it was exercised.
+
+---

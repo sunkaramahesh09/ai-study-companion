@@ -21,8 +21,16 @@ export type GroqConfig = {
   tokensPerMinute: number;
   requestsPerDay: number;
   tokensPerDay: number;
-  /** Fraction of the documented quota this process may use. See D-022. */
-  quotaShare?: number;
+  /**
+   * Fraction of the documented quota this process may use, PER TIER.
+   *
+   * Per tier, not one number, because the two tiers are separate quota pools
+   * upstream and the two services use them very differently: the API serves
+   * interactive Tutor answers on `primary`, while the worker's generation load
+   * (grading, question wording) sits on `fallback`. A single split starves
+   * whichever process actually needs the tier. See D-022.
+   */
+  quotaShare?: number | { primary: number; fallback: number };
   recordUsage?: UsageRecorder;
   timeoutMs?: number;
 };
@@ -52,15 +60,20 @@ export class GroqProvider implements GenerationProvider {
       timeout: config.timeoutMs ?? 60_000,
     });
 
-    const share = config.quotaShare ?? 1;
-    const mk = (tier: ModelTier) =>
-      new RateLimiter({
+    const raw = config.quotaShare ?? 1;
+    const shares =
+      typeof raw === 'number' ? { primary: raw, fallback: raw } : raw;
+
+    const mk = (tier: ModelTier) => {
+      const share = shares[tier];
+      return new RateLimiter({
         name: `groq:${tier}`,
         requestsPerMinute: Math.max(1, Math.floor(config.requestsPerMinute * share)),
         tokensPerMinute: Math.max(1, Math.floor(config.tokensPerMinute * share)),
         requestsPerDay: Math.max(1, Math.floor(config.requestsPerDay * share)),
         tokensPerDay: Math.max(1, Math.floor(config.tokensPerDay * share)),
       });
+    };
 
     this.limiters = { primary: mk('primary'), fallback: mk('fallback') };
   }

@@ -7,6 +7,7 @@ import { materialRoutes } from './routes/materials.ts';
 import { meRoutes } from './routes/me.ts';
 import { projectRoutes } from './routes/projects.ts';
 import { spaceRoutes } from './routes/spaces.ts';
+import { tutorRoutes } from './routes/tutor.ts';
 
 /**
  * API entrypoint. The pg-boss worker is a sibling entrypoint (worker.ts) in
@@ -30,6 +31,7 @@ export async function buildServer() {
   await app.register(spaceRoutes);
   await app.register(projectRoutes);
   await app.register(materialRoutes);
+  await app.register(tutorRoutes);
 
   // Railway healthcheck. Deliberately does not touch the database: this answers
   // "is the process up", which is what a platform restart decision needs.

@@ -118,3 +118,49 @@ export async function uploadMaterial(
     xhr.send(form);
   });
 }
+
+export type CitationDto = {
+  sourceId: number;
+  materialId: string;
+  filename: string;
+  pageNumber: number;
+  chunkId: string;
+  snippet: string;
+};
+
+export type TutorMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  citations: CitationDto[];
+  grounded: boolean | null;
+  created_at: string;
+};
+
+export type AskResponse = {
+  conversationId: string;
+  message: TutorMessage;
+  grounded: boolean;
+  reason: 'ok' | 'no_materials' | 'not_indexed' | 'no_relevant_evidence';
+  diagnostics: {
+    retrieved: number;
+    bestDistance: number | null;
+    model: string | null;
+    usedFallback: boolean;
+    latencyMs: number;
+  };
+};
+
+export const askTutor = (projectId: string, question: string, conversationId?: string) =>
+  api<AskResponse>('/api/tutor/ask', {
+    method: 'POST',
+    body: JSON.stringify({ projectId, question, conversationId }),
+  });
+
+export const listConversations = (projectId: string) =>
+  api<{ conversations: { id: string; title: string | null; updated_at: string }[] }>(
+    `/api/conversations?projectId=${projectId}`,
+  ).then((r) => r.conversations);
+
+export const getMessages = (conversationId: string) =>
+  api<{ messages: TutorMessage[] }>(`/api/conversations/${conversationId}/messages`).then((r) => r.messages);

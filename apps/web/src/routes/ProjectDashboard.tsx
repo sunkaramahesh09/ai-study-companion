@@ -45,6 +45,7 @@ export function ProjectDashboard() {
           <h2>{project.name}</h2>
           {project.goal && <p className="muted">Goal: {project.goal}</p>}
         </div>
+        <Link to={`/projects/${project.id}/tutor`} className="cta">Ask the Tutor</Link>
       </div>
 
       <div className="stats">

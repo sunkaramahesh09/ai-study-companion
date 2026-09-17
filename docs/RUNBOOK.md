@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 00:50 (end of Wed night session) · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-17 08:35 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -87,10 +87,23 @@ test asserting each chunk's text actually appears on the page it cites).
 
 **Session ended 2026-09-17 ~00:50.** Tasks 1-9 are complete, pushed, and live.
 
-**NEXT ACTION: task 10 — the grounded Tutor.**
+**Task 10 complete.** The grounded Tutor answers with citations and refuses
+when it has no evidence.
 
-> **Confirmed by the user on 2026-09-17: start at task 10.** No need to ask
-> again — begin building immediately.
+**NEXT ACTION: task 11 — unsupported-question handling (harden + test), then
+task 12 — the prompt-injection boundary.**
+
+Much of task 11 already exists as a by-product of task 10: `retrieve()`
+distinguishes `no_materials` / `not_indexed` / `no_relevant_evidence`, the
+refusal is a deterministic template (no tokens spent), `grounded` is persisted
+per message, and `tutor_unsupported` is its own event type. Task 11 is now
+mostly about building the curated case set and proving the behaviour holds —
+which feeds directly into task 22.
+
+Task 12's boundary is already implemented in `tutorPrompt.ts`
+(`renderSources` neutralises delimiters, system prompt states data-not-
+instructions) and unit-tested. What is missing is the adversarial fixture PDF
+and the end-to-end proof.
 
 ### What task 10 needs (everything is in place for it)
 - `retrieve(db, projectId, query)` in `apps/api/src/lib/retrieval.ts` returns
@@ -157,7 +170,7 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 - [x] **7. `packages/ai` provider layer** — Groq + Gemini impls, backoff+jitter, TPM-aware token-bucket limiters, primary→fallback failover, `ai_requests` row per call. *Done:* 56 unit tests incl. mocked-429 failover; live smoke verified both providers + 3 ai_requests rows.
 - [x] **8. PDF upload + background processing** — Storage upload, `material.process` pg-boss job, queued→processing→ready/failed in UI, retries + idempotency so a retry can't double-insert chunks. *Done:* live end-to-end, reprocess produced zero duplicate chunks.
 - [x] **9. Page-aware chunking + embedding** — per-page extract, ~800-token chunks with overlap, never crossing a page boundary (D-005). Gemini batched ~20 @ ~700ms. *Done when:* 40-page PDF indexes with no 429; page attribution spot-checked.
-- [ ] **10. Retrieval + Tutor with grounded citations** — project-scoped vector search, compact context (TPM), primary model, `Source: <doc> — Page N` linking back to material. *Done when:* cited page actually contains the claim.
+- [x] **10. Retrieval + Tutor with grounded citations** — project-scoped vector search, compact context (TPM), primary model, `Source: <doc> — Page N` linking back to material. *Done:* live — citations resolved to pages 19 and 9, both correct against the source.
 - [ ] **11. Unsupported-question handling** — deterministic evidence-sufficiency gate before generation. *Done when:* question absent from material yields a refusal, not a fabrication. **Explicit PRD evaluation criterion — protect this.**
 - [ ] **12. Prompt-injection boundary** — retrieved chunks + user messages wrapped as delimited data with an explicit never-instructions contract. *Done when:* adversarial fixture PDF containing "ignore previous instructions" fails to hijack the Tutor. **Protect this.**
 

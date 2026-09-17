@@ -42,14 +42,26 @@ async function recordUsage(record: AiRequestRecord): Promise<void> {
  *
  * The API and the worker are separate Railway services with separate memories,
  * so their in-process limiters cannot see each other. Splitting the documented
- * quota between them keeps the SUM under the real ceiling. See D-022.
+ * quota between them keeps the SUM under the real ceiling (D-022).
  *
- * The worker does the bulk work (indexing, quiz workflows), so it gets the
- * larger share of generation; the API only serves interactive Tutor traffic.
+ * Split PER TIER, because the tiers are separate quota pools upstream and the
+ * two services use them asymmetrically:
+ *
+ *   primary  — the Tutor's grounded answers, served by the API. A single
+ *              grounded request costs ~3700 tokens once retrieved evidence and
+ *              the reasoning allowance are counted, so the API needs most of
+ *              this pool or interactive answers fail outright.
+ *   fallback — grading and question wording, run by the worker in background
+ *              workflows. High volume, small prompts, latency-tolerant.
+ *
+ * Gemini is embeddings only, which is almost entirely the worker's indexing
+ * job; the API needs a sliver for query-side embedding during retrieval.
  */
-function quotaShare(): { groq: number; gemini: number } {
+function quotaShare(): { groq: { primary: number; fallback: number }; gemini: number } {
   const isWorker = process.env.ASC_ROLE === 'worker';
-  return isWorker ? { groq: 0.6, gemini: 0.9 } : { groq: 0.4, gemini: 0.1 };
+  return isWorker
+    ? { groq: { primary: 0.25, fallback: 0.75 }, gemini: 0.85 }
+    : { groq: { primary: 0.75, fallback: 0.25 }, gemini: 0.15 };
 }
 
 let groq: GroqProvider | undefined;

@@ -218,3 +218,62 @@ textarea {
 .pill-ready { color: var(--ok); border-color: rgba(74, 222, 128, 0.4); background: rgba(74, 222, 128, 0.1); }
 .pill-failed { color: var(--error); border-color: rgba(248, 113, 113, 0.4); background: rgba(248, 113, 113, 0.1); }
 .pill-processing, .pill-queued { color: var(--accent); border-color: rgba(109, 140, 255, 0.4); background: rgba(109, 140, 255, 0.1); }
+
+/* --- tutor --------------------------------------------------------------- */
+.tutor { display: flex; flex-direction: column; gap: 12px; }
+
+.cta {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #0b0d13;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 320px;
+  max-height: 58vh;
+  overflow-y: auto;
+}
+
+.turn { display: flex; flex-direction: column; gap: 8px; max-width: 88%; }
+.turn-user { align-self: flex-end; align-items: flex-end; }
+.turn-assistant { align-self: flex-start; }
+
+.turn-body {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+.turn-user .turn-body { background: rgba(109, 140, 255, 0.12); border-color: rgba(109, 140, 255, 0.35); }
+.turn-assistant .turn-body { background: var(--bg); }
+
+.citations { display: flex; flex-direction: column; gap: 6px; }
+.citation {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  background: var(--bg);
+}
+.citation summary { cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.citation p { margin: 8px 0 2px; }
+
+.cite-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(109, 140, 255, 0.18);
+  color: var(--accent);
+}
+
+.ask { display: flex; gap: 8px; }
+.ask input { flex: 1; }
