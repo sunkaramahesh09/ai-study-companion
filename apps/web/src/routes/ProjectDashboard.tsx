@@ -45,7 +45,11 @@ export function ProjectDashboard() {
           <h2>{project.name}</h2>
           {project.goal && <p className="muted">Goal: {project.goal}</p>}
         </div>
-        <Link to={`/projects/${project.id}/tutor`} className="cta">Ask the Tutor</Link>
+        <div className="cta-row">
+          <Link to={`/projects/${project.id}/growth`} className="cta-ghost">Growth</Link>
+          <Link to={`/projects/${project.id}/quiz`} className="cta-ghost">Take a quiz</Link>
+          <Link to={`/projects/${project.id}/tutor`} className="cta">Ask the Tutor</Link>
+        </div>
       </div>
 
       <div className="stats">
@@ -70,7 +74,12 @@ export function ProjectDashboard() {
         <MaterialUpload projectId={project.id} initial={materials} />
 
         <div className="card">
-          <h3>Concept mastery</h3>
+          <div className="card-head">
+            <h3>Concept mastery</h3>
+            {mastery.length > 0 && (
+              <Link to={`/projects/${project.id}/growth`} className="card-link">View growth →</Link>
+            )}
+          </div>
           {mastery.length === 0 ? (
             <EmptyState
               title="No mastery data yet"

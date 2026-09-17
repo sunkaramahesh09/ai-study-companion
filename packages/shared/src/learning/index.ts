@@ -15,3 +15,4 @@ export * from './mastery.ts';
 export * from './selection.ts';
 export * from './mistakes.ts';
 export * from './recommend.ts';
+export * from './growth.ts';

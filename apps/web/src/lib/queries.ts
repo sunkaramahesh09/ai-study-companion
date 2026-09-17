@@ -164,3 +164,99 @@ export const listConversations = (projectId: string) =>
 
 export const getMessages = (conversationId: string) =>
   api<{ messages: TutorMessage[] }>(`/api/conversations/${conversationId}/messages`).then((r) => r.messages);
+
+// --- quiz -----------------------------------------------------------------
+
+export type QuizQuestion = {
+  id: string;
+  position: number;
+  question_type: 'mcq' | 'open';
+  difficulty: number;
+  prompt: string;
+  options: string[] | null;
+  concept_id: string;
+  conceptName?: string;
+};
+
+export type QuizAttempt = {
+  id: string;
+  target_length: number;
+  questions_answered: number;
+  correct_count: number;
+  status: string;
+};
+
+export type AnswerResult = {
+  isCorrect: boolean;
+  score: number;
+  questionType: 'mcq' | 'open';
+  correctIndex?: number;
+  explanation?: string | null;
+  grade?: { score: number; understood: string[]; missing: string[]; feedback: string };
+  mastery: { conceptId: string; before: number; after: number; delta: number } | null;
+  progress: { answered: number; correct: number; target: number };
+  finished: boolean;
+  question: QuizQuestion | null;
+  endedEarly?: boolean;
+};
+
+export const startQuiz = (projectId: string, targetLength = 5) =>
+  api<{ attempt: QuizAttempt; question: QuizQuestion }>('/api/quizzes', {
+    method: 'POST',
+    body: JSON.stringify({ projectId, targetLength }),
+  });
+
+export const answerQuiz = (
+  attemptId: string,
+  body: { questionId: string; selectedIndex?: number; text?: string },
+) => api<AnswerResult>(`/api/quizzes/${attemptId}/answer`, { method: 'POST', body: JSON.stringify(body) });
+
+export const abandonQuiz = (attemptId: string) =>
+  api<{ ok: boolean }>(`/api/quizzes/${attemptId}/abandon`, { method: 'POST' });
+
+// --- growth ----------------------------------------------------------------
+
+export type GrowthTrend = 'new' | 'improving' | 'stable' | 'needs_attention';
+
+export type ConceptGrowth = {
+  conceptId: string;
+  name: string;
+  description: string | null;
+  score: number;
+  evidenceCount: number;
+  confidence: number;
+  band: 'unassessed' | 'needs_work' | 'developing' | 'secure';
+  growth: { trend: GrowthTrend; delta: number; from: number; to: number; points: number; summary: string };
+  history: { score: number; at: string }[];
+};
+
+export type GrowthResponse = {
+  project: { id: string; name: string };
+  concepts: ConceptGrowth[];
+  summary: {
+    total: number;
+    assessed: number;
+    improving: number;
+    stable: number;
+    needsAttention: number;
+    averageMastery: number | null;
+  };
+};
+
+export const getGrowth = (projectId: string) => api<GrowthResponse>(`/api/projects/${projectId}/growth`);
+
+export type Recommendation = {
+  id: string;
+  title: string;
+  body: string;
+  action_type: 'review_material' | 'take_quiz' | 'ask_tutor' | 'upload_material';
+  trigger_reason: string;
+  concept_id: string | null;
+  created_at: string;
+};
+
+export const getRecommendations = (projectId: string) =>
+  api<{ recommendations: Recommendation[] }>(`/api/projects/${projectId}/recommendations`).then((r) => r.recommendations);
+
+export const resolveRecommendation = (id: string, status: 'dismissed' | 'completed') =>
+  api<{ ok: boolean }>(`/api/recommendations/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });

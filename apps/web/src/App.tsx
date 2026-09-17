@@ -5,6 +5,8 @@ import { Spaces } from './routes/Spaces.tsx';
 import { SpaceDetail } from './routes/SpaceDetail.tsx';
 import { ProjectDashboard } from './routes/ProjectDashboard.tsx';
 import { Tutor } from './routes/Tutor.tsx';
+import { Quiz } from './routes/Quiz.tsx';
+import { Growth } from './routes/Growth.tsx';
 import { Shell } from './components/Shell.tsx';
 import './styles.css';
 
@@ -30,6 +32,8 @@ function Gate() {
         <Route path="/spaces/:spaceId" element={<SpaceDetail />} />
         <Route path="/projects/:projectId" element={<ProjectDashboard />} />
         <Route path="/projects/:projectId/tutor" element={<Tutor />} />
+        <Route path="/projects/:projectId/quiz" element={<Quiz />} />
+        <Route path="/projects/:projectId/growth" element={<Growth />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Shell>
