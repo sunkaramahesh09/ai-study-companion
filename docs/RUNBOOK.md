@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 09:15 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-17 10:05 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -91,9 +91,14 @@ test asserting each chunk's text actually appears on the page it cites).
 handling, and the prompt-injection boundary — the three highest-risk items on
 the whole plan.
 
-**NEXT ACTION: task 13 — concept extraction** (LLM over a sampled, token-capped
-subset of chunks, zod-validated before persisting), then task 14, the
-deterministic learning core.
+**Task 13 complete.** Concept extraction: even-spaced sampling inside a token
+budget, fallback model, zod-validated before persisting, no-op on re-run.
+
+**NEXT ACTION: task 14 — the deterministic learning core.** Pure functions in
+`@asc/shared`, no AI: mastery update, adaptive concept+difficulty selection,
+repeated-mistake detection, recommendation triggers. The unit tests ARE the
+deliverable — this is the stated PRD criterion that the system should not reach
+for an LLM by default. Everything on Friday sits on top of it.
 
 Much of task 11 already exists as a by-product of task 10: `retrieve()`
 distinguishes `no_materials` / `not_indexed` / `no_relevant_evidence`, the
@@ -177,7 +182,7 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 - [x] **12. Prompt-injection boundary** — retrieved chunks + user messages wrapped as delimited data with an explicit never-instructions contract. *Done:* 3-layer defence (structural, instructional, output-side). Adversarial PDF fixture in-repo. 5/5 repeat runs clean (D-035).
 
 ### Fri — assessment, mastery, growth, recommendations
-- [ ] **13. Concept extraction** — LLM over a sampled, token-capped subset of chunks (not the whole doc), zod-validated before persisting.
+- [x] **13. Concept extraction** — LLM over a sampled, token-capped subset of chunks (not the whole doc), zod-validated before persisting.
 - [ ] **14. Deterministic learning core** — pure functions in `packages/shared`, no AI: mastery update (evidence-weighted, difficulty-aware, recency-decayed), adaptive concept+difficulty selection, repeated-mistake detection, recommendation trigger rules. *Done when:* unit tests cover each. **The unit tests ARE the deliverable — stated evaluation criterion. Protect this.**
 - [ ] **15. Quiz — MCQ generation + flow** — selection deterministic (task 14), only wording generated, on the fallback model; JSON mode + schema in prompt + zod validation before persist; reusable questions cached in `question_bank` by (concept, difficulty, type). *Done when:* next question tracks the selection function, not a coin flip.
 - [ ] **16. Open-ended assessment + grading** — fallback model, one answer at a time; feedback explains what was understood and what's missing, not just a score; validated before it touches mastery.

@@ -7,6 +7,7 @@ import { loadEnv } from '../env.ts';
  */
 export const QUEUES = {
   materialProcess: 'material.process',
+  materialConcepts: 'material.concepts',
 } as const;
 
 export type MaterialProcessJob = {
@@ -23,6 +24,19 @@ export type MaterialProcessJob = {
 
 let boss: PgBoss | undefined;
 let starting: Promise<PgBoss> | undefined;
+
+/**
+ * Lets the worker donate its own already-started pg-boss instance.
+ *
+ * Without this, a job handler that enqueues follow-up work (material.process
+ * chaining material.concepts) would spin up a SECOND pg-boss inside the worker
+ * process — a second connection pool against the same Supabase pooler, and a
+ * set of handles that keeps the process alive after the work is done.
+ */
+export function setQueueInstance(instance: PgBoss): void {
+  boss = instance;
+  starting = Promise.resolve(instance);
+}
 
 /**
  * pg-boss client for the API side, used only to SEND jobs. The worker owns its
@@ -45,7 +59,9 @@ export async function queue(): Promise<PgBoss> {
     await instance.start();
     // pg-boss 12 requires a queue to exist before a job can be sent to it.
     // Idempotent, so both the API and the worker can safely call it on boot.
-    await instance.createQueue(QUEUES.materialProcess).catch(() => {});
+    for (const name of Object.values(QUEUES)) {
+      await instance.createQueue(name).catch(() => {});
+    }
     boss = instance;
     return instance;
   })();
@@ -68,6 +84,22 @@ export async function stopQueue(): Promise<void> {
  * (material_id, chunk_index) constraint, a re-run can neither duplicate a job
  * nor duplicate chunks.
  */
+/**
+ * Enqueues concept extraction. Separate from processing so a rate-limited LLM
+ * call cannot mark an indexed document failed — see jobs/materialConcepts.ts.
+ */
+export async function enqueueMaterialConcepts(job: MaterialProcessJob): Promise<string | null> {
+  const b = await queue();
+  return b.send(QUEUES.materialConcepts, job, {
+    singletonKey: job.materialId,
+    retryLimit: 3,
+    retryBackoff: true,
+    // Longer than processing: a 429 from Groq may need a full minute to clear.
+    retryDelay: 60,
+    expireInSeconds: 900,
+  });
+}
+
 export async function enqueueMaterialProcess(job: MaterialProcessJob): Promise<string | null> {
   const b = await queue();
   return b.send(QUEUES.materialProcess, job, {

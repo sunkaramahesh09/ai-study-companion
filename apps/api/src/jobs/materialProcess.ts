@@ -1,4 +1,4 @@
-import type { MaterialProcessJob } from '../lib/queue.ts';
+import { enqueueMaterialConcepts, type MaterialProcessJob } from '../lib/queue.ts';
 import { chunkPages, extractPdf, type Chunk } from '../lib/pdf.ts';
 import { recordEvent } from '../lib/events.ts';
 import { serviceClient } from '../lib/supabase.ts';
@@ -157,6 +157,14 @@ export async function processMaterial(job: MaterialProcessJob): Promise<void> {
       },
       idempotencyKey: `material_ready:${materialId}`,
     });
+
+    // Chained, not inlined: the document is already searchable, so a failure
+    // in concept extraction must not undo that.
+    try {
+      await enqueueMaterialConcepts(job);
+    } catch (err) {
+      console.error('[material.process] could not enqueue concept extraction', err);
+    }
 
     console.log(
       `[material.process] ready ${materialId}: ${extracted.pageCount} pages, ` +

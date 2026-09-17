@@ -5,8 +5,9 @@ process.env.ASC_ROLE = 'worker';
 
 import { PgBoss } from 'pg-boss';
 import { loadEnv } from './env.ts';
-import { QUEUES, type MaterialProcessJob } from './lib/queue.ts';
+import { QUEUES, setQueueInstance, type MaterialProcessJob } from './lib/queue.ts';
 import { processMaterial } from './jobs/materialProcess.ts';
+import { extractMaterialConcepts } from './jobs/materialConcepts.ts';
 
 /**
  * Background worker entrypoint (D-002).
@@ -41,7 +42,13 @@ async function main() {
   await boss.start();
   console.log('[worker] started');
 
-  await boss.createQueue(QUEUES.materialProcess).catch(() => {});
+  // Handlers that chain follow-up jobs publish through lib/queue.ts; point it
+  // at this instance so the worker does not open a second pg-boss.
+  setQueueInstance(boss);
+
+  for (const name of Object.values(QUEUES)) {
+    await boss.createQueue(name).catch(() => {});
+  }
 
   // Concurrency of 2: document processing is IO-bound (download, extract) but
   // task 9 adds embedding calls, which are rate-limited per process (D-022).
@@ -56,6 +63,17 @@ async function main() {
     },
   );
   console.log('[worker] handler registered: ' + QUEUES.materialProcess);
+
+  await boss.work<MaterialProcessJob>(
+    QUEUES.materialConcepts,
+    { batchSize: 1 },
+    async ([job]) => {
+      if (!job) return;
+      console.log('[worker] material.concepts', job.data.materialId);
+      await extractMaterialConcepts(job.data);
+    },
+  );
+  console.log('[worker] handler registered: ' + QUEUES.materialConcepts);
 
   // Further handlers land with their tasks:
   //   task 17 — quiz.completed  (evaluate → mastery → weakness → recommend)
