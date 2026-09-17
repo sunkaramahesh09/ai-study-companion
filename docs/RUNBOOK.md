@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 11:30 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-17 13:30 · **Day:** Thu · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -85,7 +85,8 @@ test asserting each chunk's text actually appears on the page it cites).
 
 ## >>> RESUME HERE <<<
 
-**Session ended 2026-09-17 ~00:50.** Tasks 1-9 are complete, pushed, and live.
+**Session 2026-09-17 13:30.** Tasks 1-19 complete, committed and pushed.
+**348 tests passing**, typecheck clean, web build clean.
 
 **Tasks 10, 11 and 12 complete.** Grounded Tutor, unsupported-question
 handling, and the prompt-injection boundary — the three highest-risk items on
@@ -131,58 +132,48 @@ budget, fallback model, zod-validated before persisting, no-op on re-run.
 triggers → generate the recommendation sentence. Only the last step calls a
 model. Idempotent across three consecutive runs of the same attempt.
 
-**NEXT ACTION: task 18 — Mastery + Growth UI.** Per-concept bars with
-improving/stable/needs-attention classification derived from `mastery_history`.
-The data is already being written on every answer; this is presentation plus a
-growth endpoint. Then task 19 (recommendations surfaced in the UI + learner
-facts feeding the Tutor) is largely done server-side already.
+**Task 18 complete.** Mastery + Growth UI.
 
-Much of task 11 already exists as a by-product of task 10: `retrieve()`
-distinguishes `no_materials` / `not_indexed` / `no_relevant_evidence`, the
-refusal is a deterministic template (no tokens spent), `grounded` is persisted
-per message, and `tutor_unsupported` is its own event type. Task 11 is now
-mostly about building the curated case set and proving the behaviour holds —
-which feeds directly into task 22.
+- `analyseGrowth` in `packages/shared/src/learning/growth.ts` — deterministic,
+  no AI. Absolute standing outranks direction (D-049).
+- `GET /api/projects/:id/growth`, trends derived on read from
+  `mastery_history`, never stored as a flag.
+- **Bug caught and fixed:** the history query was ordered ascending with
+  `limit(500)`, capping the window at the OLDEST rows. Past 500 assessments a
+  project's trend would have frozen while its score kept moving.
+- `averageMastery` covers assessed concepts only; untested show "—", not 50%.
+- Quiz and Growth are now reachable from the project dashboard. Both routes
+  existed with nothing linking to them.
 
-Task 12's boundary is already implemented in `tutorPrompt.ts`
-(`renderSources` neutralises delimiters, system prompt states data-not-
-instructions) and unit-tested. What is missing is the adversarial fixture PDF
-and the end-to-end proof.
+**Task 19 complete.** Persistent learning context + recommendations in the UI.
 
-### What task 10 needs (everything is in place for it)
-- `retrieve(db, projectId, query)` in `apps/api/src/lib/retrieval.ts` returns
-  ranked chunks with `filename` + `pageNumber` already attached for citations.
-- `generationProvider()` in `apps/api/src/lib/ai.ts` — use the **primary** tier
-  for Tutor answers, default reasoning effort.
-- Tables ready: `conversations`, `messages` (with `citations` jsonb and a
-  `grounded` boolean that records a refusal as a first-class outcome).
-- Keep the prompt inside ~2200 tokens of context; `retrieve()` already caps it.
-- **Never cache a Tutor answer** (CLAUDE.md) — it is a correctness bug.
+- `selectFacts()` in `@asc/shared` — deterministic narrowing of
+  `learner_facts` to what applies to this question (D-050). Lexical, not
+  embedded; salience decayed on read with a 10-day half-life.
+- Matched against the TOP-RANKED chunk, not the whole retrieval set. The
+  integration test caught the difference — on a small document retrieval
+  returns nearly everything, so every fact looked relevant and the gate was
+  vacuous while appearing to work.
+- `factsUsed` on the tutor diagnostics and the `tutor_answer` event.
+- Recommendation cards link to the action they suggest and can be dismissed.
 
-### Then, in order
-- **Task 11** — unsupported-question handling. The retrieval gate exists
-  (`reason: no_relevant_evidence`); task 11 adds the second, independent defence
-  at the prompt level. See D-029 for why one is not enough.
-- **Task 12** — prompt-injection boundary. Build the adversarial fixture PDF.
-- Tasks 13-19 (Friday), 20-25 (Saturday).
+**NEXT ACTION: task 20 — Learning events + Project/Global analytics.** Events
+have been emitted throughout tasks 6-19; analytics read from them, no new
+writes needed. Then 21 (Admin Dashboard) and 22 (eval suite — protect this).
 
----
+### Schedule reality check
 
-## Schedule reality check — read this before planning the day
+It is **Thursday afternoon**. The real deadline is **Saturday night**, with
+Sunday morning as buffer for deployment checks and documentation only.
 
-It is now **Thursday ~00:50**. The real deadline is **Saturday night**.
-Tasks 1-9 done; **16 tasks remain** (10-25) plus Sunday's documentation.
+Tasks 1-19 are done. **Six build tasks remain (20-25)** plus Sunday's docs and
+video. Friday's plan was to reach 19 and it landed a day early, so Friday is
+now available for 20-22 with Saturday for 23-25 — the first genuine slack in
+this build.
 
-Thursday must land 10, 11, 12 and ideally 13. If Thursday ends without the
-Tutor answering with citations and refusing unsupported questions, the plan
-needs re-cutting, not more hours. The cut list below is the first thing to
-revisit, not the last.
-
-**Protect at any cost:** 11 (unsupported-question), 12 (injection boundary),
-14 (deterministic core), 22 (evaluation). That is where the PRD's stated
-criteria concentrate.
-
----
+**Protect at any cost:** 22 (evaluation) is the only unprotected item still
+outstanding. 11, 12 and 14 are done and tested. If Friday runs long, cut from
+the list below rather than from 22.
 
 ---
 
@@ -224,8 +215,8 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 - [x] **15. Quiz — MCQ generation + flow** — selection deterministic (task 14), only wording generated, on the fallback model; JSON mode + schema in prompt + zod validation before persist; reusable questions cached in `question_bank` by (concept, difficulty, type). *Done:* live 4-question quiz across 4 concepts, mastery updated per answer, answer never sent to client, learner cannot forge mastery.
 - [x] **16. Open-ended assessment + grading** — fallback model, one answer at a time; feedback explains what was understood and what's missing, not just a score; validated before it touches mastery.
 - [x] **17. Quiz-completion workflow** — pg-boss chain: evaluate → update mastery → detect weakness → generate recommendation. Idempotent by attempt id. *Done when:* close the browser mid-flight, mastery + recommendation still land (PRD §13).
-- [ ] **18. Mastery + Growth UI** — per-concept bars, improving/stable/needs-attention from mastery history.
-- [ ] **19. Recommendations + persistent learning context** — deterministic trigger, generated sentence; `learner_facts` retrieved *selectively* into Tutor context. *Done when:* Tutor references a known weakness unprompted in that message.
+- [x] **18. Mastery + Growth UI** — per-concept bars, improving/stable/needs-attention from mastery history. *Done:* trends derived on read; 8 route tests + 12 pure-function tests; ascending-window bug fixed (D-049).
+- [x] **19. Recommendations + persistent learning context** — deterministic trigger, generated sentence; `learner_facts` retrieved *selectively* into Tutor context. *Done:* live integration test proves a weakness written two days earlier reaches a relevant answer and stays out of an unrelated one (D-050).
 
 ### Sat — analytics, admin, observability, eval, tests, ship
 - [ ] **20. Learning events + Project/Global analytics** — events emitted throughout earlier tasks; analytics read from them.
@@ -262,14 +253,14 @@ basic tracing come free with task 7, since two providers require them anyway.
 
 | # | Deliverable | Status |
 |---|-------------|--------|
-| 1 | Working deployed application | **LIVE** — frontend, API, worker all verified |
-| 2 | Demo video (§20.2 shot list) | not started |
-| 3 | Public GitHub repo w/ README, setup, config examples | repo exists, empty |
-| 4 | Architecture documentation + diagram | `DECISIONS.md` accumulating |
+| 1 | Working deployed application | **LIVE** — but production is running the code as of task 17. Tasks 18-19 are committed, NOT yet deployed. |
+| 2 | Demo video (§20.2 shot list) | not started (Sunday) |
+| 3 | Public GitHub repo w/ README, setup, config examples | repo live and pushed; README still to write |
+| 4 | Architecture documentation + diagram | `DECISIONS.md` at D-050; diagram not drawn |
 | 5 | AI usage doc — AI used to *build* vs AI used *by* the product | not started |
 | 6 | Development prompts, organized by area | **user is tracking this, not Claude** |
 | 7 | Evaluation approach | not started (task 22) |
-| 8 | Known limitations | `DECISIONS.md` accumulating |
+| 8 | Known limitations | `DECISIONS.md` accumulating (D-049 records one for growth) |
 | 9 | Future improvements (optional) | `DECISIONS.md` accumulating |
 
 ---
@@ -320,9 +311,9 @@ It caught D-011 within a minute of the schema landing.
 
 ---
 
-## State as of 2026-09-17 00:50 — full snapshot
+## State as of 2026-09-17 13:30 — full snapshot
 
-### Built and verified (tasks 1-9)
+### Built and verified (tasks 1-19)
 
 | # | Task | Evidence it actually works |
 |---|---|---|
@@ -335,8 +326,19 @@ It caught D-011 within a minute of the schema landing.
 | 7 | AI provider layer | 56 tests; live: generate, JSON-validated, embeddings |
 | 8 | PDF upload + background job | live: 25 pages, 25 chunks, idempotent reprocess |
 | 9 | Embeddings + retrieval | live: 25/25 embedded, 5/5 on-topic, 4/4 off-topic |
+| 10 | Tutor with citations | live: citations resolved to pages 19 and 9, both correct |
+| 11 | Unsupported questions | refuses on empty project and on off-topic question |
+| 12 | Injection boundary | adversarial PDF fixture, 5/5 repeat runs clean |
+| 13 | Concept extraction | sampled + token-capped, zod-validated, no-op on re-run |
+| 14 | Deterministic learning core | 84 pure-function tests, zero AI in the chain |
+| 15 | MCQ quiz flow | live 4-question quiz, answer never sent to client |
+| 16 | Open-ended grading | rubric stored with question; grade sanitised before mastery |
+| 17 | Quiz-completion workflow | idempotent across three runs of the same attempt |
+| 18 | Mastery + Growth UI | 8 route tests; oldest-window bug caught and fixed (D-049) |
+| 19 | Persistent learning context | live: 2-day-old weakness reaches a relevant answer only |
 
-**123 tests passing.** `npx vitest run` from the repo root.
+**348 tests passing.** `npx vitest run` from the repo root.
+Live-AI tests need the real keys: `node --env-file=.env ./node_modules/.bin/vitest run`.
 
 ### Production (all verified live, not localhost)
 - Frontend https://ai-study-companion-ruby.vercel.app
@@ -346,12 +348,12 @@ It caught D-011 within a minute of the schema landing.
 - Supabase `maeifbzqpehidwuprypv` · `ap-south-1` · PG17 · pgvector 0.8.2
 
 ### Repo
-`sunkaramahesh09/ai-study-companion`, branch `main`, 15 commits, all pushed.
+`sunkaramahesh09/ai-study-companion`, branch `main`, all pushed.
 Working tree clean except `.env` and `.env.railway` (both gitignored).
 
 ---
 
-## Landmines — things that already cost time tonight
+## Landmines — things that have already cost time
 
 1. **`PGBOSS_SCHEMA=pgboss_dev` must be in `.env`** (D-031). Dev shares
    `DATABASE_URL` with production, so without it a local worker competes with
@@ -378,6 +380,18 @@ Working tree clean except `.env` and `.env.railway` (both gitignored).
 6. The clipboard-image paste path did not work in this session; ask the user to
    save screenshots to a file if an image is needed.
 
+7. **Live-AI tests are run against real models and occasionally flake on
+   content assertions.** `tutorBehaviour.test.ts` has one case matching an
+   answer against `/light|temperature/`; it failed once in a full run and
+   passed on re-run with no code change. Re-run a single failing live test
+   before believing it. Deterministic assertions (what the server *chose* to
+   send) are preferred over assertions on model wording — see
+   `learnerContext.test.ts`, which asserts on `factsUsed`, not on phrasing.
+
+8. **`npx vitest run` skips every live test silently** — they are guarded on
+   env vars being present. Use `node --env-file=.env ./node_modules/.bin/vitest run`
+   or a green run means much less than it looks like.
+
 ---
 
 ## Local dev commands
@@ -400,19 +414,3 @@ Test accounts: create via the service role
 (`admin.auth.admin.createUser({email, password, email_confirm: true})`),
 then sign in with the anon key to get a real JWT. Always delete the user at the
 end — `auth.users` cascades to everything.
-
----
-
-## Deliverables status (PRD §20)
-
-| # | Deliverable | Status |
-|---|---|---|
-| 1 | Working deployed application | **LIVE**, core loop still incomplete (Tutor onwards) |
-| 2 | Demo video | not started (Sunday) |
-| 3 | Public repo + README | repo live; README still to write |
-| 4 | Architecture doc + diagram | `DECISIONS.md` at D-031; diagram not drawn |
-| 5 | AI usage doc | not started |
-| 6 | Development prompts | **user is tracking this, not Claude** |
-| 7 | Evaluation approach | task 22 |
-| 8 | Known limitations | accumulating: D-022, D-027, D-028, D-029, D-031 |
-| 9 | Future improvements | accumulating in the same entries |
