@@ -32,6 +32,7 @@ const snapshot = (over: Partial<ProjectSnapshot> = {}): ProjectSnapshot => ({
   concepts: [],
   patterns: [],
   lastQuizAt: daysAgo(1),
+  lastQuizScore: 0.8,
   lastActivityAt: daysAgo(1),
   activeRecommendations: [],
   ...over,
@@ -121,9 +122,29 @@ describe('evaluateTriggers', () => {
     expect(triggers.map((t) => t.trigger)).not.toContain('stale_project');
   });
 
+  it('tells a learner who just scored badly to REVIEW, not to take another quiz', () => {
+    // Found in testing: selection spreads a quiz across concepts, so a 0% score
+    // can mean one wrong answer per concept — which is neither a repeated
+    // mistake nor a weak concept. The system was recommending another quiz to
+    // someone who had just scored zero (D-046).
+    const t = evaluateTriggers(snapshot({ lastQuizScore: 0, concepts: [] }), T0);
+    expect(t).toMatchObject({ trigger: 'quiz_completed', action: 'review_material' });
+    expect(t!.evidence.lastQuizScore).toBe(0);
+  });
+
+  it('does not fire the poor-score rule after a decent quiz', () => {
+    const triggers = allTriggers(snapshot({ lastQuizScore: 0.8 }), T0);
+    expect(triggers.find((t) => t.evidence.outcome === 'below_half')).toBeUndefined();
+  });
+
+  it('still prioritises a repeated mistake over a poor overall score', () => {
+    const t = evaluateTriggers(snapshot({ lastQuizScore: 0, patterns: [pattern()] }), T0);
+    expect(t!.trigger).toBe('repeated_mistake');
+  });
+
   it('suggests continuing when everything looks healthy', () => {
     const t = evaluateTriggers(
-      snapshot({ concepts: [{ conceptId: 'c1', name: 'Fine', mastery: mastery(0.85, 8) }] }),
+      snapshot({ concepts: [{ conceptId: 'c1', name: 'Fine', mastery: mastery(0.85, 8) }], lastQuizScore: 0.9 }),
       T0,
     );
     expect(t).toMatchObject({ trigger: 'quiz_completed', action: 'take_quiz' });

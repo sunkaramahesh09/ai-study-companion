@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 11:15 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-17 11:30 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -125,12 +125,17 @@ budget, fallback model, zod-validated before persisting, no-op on re-run.
   write a forged grade straight into mastery.
 - `sanitiseGrade()` checks coherence, not just schema shape.
 
-**NEXT ACTION: task 17 — the quiz-completion background workflow.** pg-boss
-chain: evaluate → update mastery → detect weakness → generate recommendation,
-idempotent by attempt id. The PRD requires this to complete without the browser
-open (§13). Mastery already updates per answer, so this workflow handles the
-post-quiz analysis: repeated-mistake detection (task 14), learner_facts, and the
-recommendation sentence.
+**Task 17 complete.** The quiz-completion workflow runs in the worker.
+
+`quiz.completed` job: detect weakness → write `learner_facts` → evaluate
+triggers → generate the recommendation sentence. Only the last step calls a
+model. Idempotent across three consecutive runs of the same attempt.
+
+**NEXT ACTION: task 18 — Mastery + Growth UI.** Per-concept bars with
+improving/stable/needs-attention classification derived from `mastery_history`.
+The data is already being written on every answer; this is presentation plus a
+growth endpoint. Then task 19 (recommendations surfaced in the UI + learner
+facts feeding the Tutor) is largely done server-side already.
 
 Much of task 11 already exists as a by-product of task 10: `retrieve()`
 distinguishes `no_materials` / `not_indexed` / `no_relevant_evidence`, the
@@ -218,7 +223,7 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 - [x] **14. Deterministic learning core** — pure functions in `packages/shared`, no AI: mastery update (evidence-weighted, difficulty-aware, recency-decayed), adaptive concept+difficulty selection, repeated-mistake detection, recommendation trigger rules. *Done:* 84 pure-function tests, no AI anywhere in the chain. Two design bugs caught by tests (D-039).
 - [x] **15. Quiz — MCQ generation + flow** — selection deterministic (task 14), only wording generated, on the fallback model; JSON mode + schema in prompt + zod validation before persist; reusable questions cached in `question_bank` by (concept, difficulty, type). *Done:* live 4-question quiz across 4 concepts, mastery updated per answer, answer never sent to client, learner cannot forge mastery.
 - [x] **16. Open-ended assessment + grading** — fallback model, one answer at a time; feedback explains what was understood and what's missing, not just a score; validated before it touches mastery.
-- [ ] **17. Quiz-completion workflow** — pg-boss chain: evaluate → update mastery → detect weakness → generate recommendation. Idempotent by attempt id. *Done when:* close the browser mid-flight, mastery + recommendation still land (PRD §13).
+- [x] **17. Quiz-completion workflow** — pg-boss chain: evaluate → update mastery → detect weakness → generate recommendation. Idempotent by attempt id. *Done when:* close the browser mid-flight, mastery + recommendation still land (PRD §13).
 - [ ] **18. Mastery + Growth UI** — per-concept bars, improving/stable/needs-attention from mastery history.
 - [ ] **19. Recommendations + persistent learning context** — deterministic trigger, generated sentence; `learner_facts` retrieved *selectively* into Tutor context. *Done when:* Tutor references a known weakness unprompted in that message.
 

@@ -1269,3 +1269,93 @@ live: a deliberately partial answer scored 0.30, listed one point understood and
 one missing, and moved mastery 0.500 → 0.319.
 
 ---
+
+## D-046 — Aggregate quiz performance is evidence in its own right
+**Date:** 2026-09-17 · **Area:** Recommendations
+
+**Found by:** the task 17 integration test. A learner answered every question
+wrong, scored 0%, and the system recommended **"take another quiz"**.
+
+**Why that happened, and why both causes were correct:**
+- Selection deliberately spreads a quiz across concepts for coverage (task 14),
+  so a 0% score can mean exactly ONE wrong answer per concept.
+- `repeated_mistake` needs two wrong answers on the same concept — otherwise a
+  slip becomes a pattern and every quiz fires a recommendation.
+- `weak_concept` needs two pieces of evidence — otherwise one unlucky answer
+  brands a concept a weakness.
+
+Both guards are right individually. Together they left the worst possible quiz
+result producing the blandest possible advice.
+
+**Fix:** a rule on the quiz score itself. Below 50%, recommend **reviewing**,
+not re-testing — re-testing someone who just scored badly measures the same gap
+again instead of closing it. Priority 65, so a genuine repeated mistake (90) and
+a measured weak concept (70) still outrank it.
+
+**The general lesson:** guards designed to prevent false positives can combine
+into a blind spot. Each was tested in isolation and passed; only an end-to-end
+run with a realistic bad outcome exposed the gap between them.
+
+**Also learned:** repeated-mistake patterns form ACROSS sessions, not within
+one, because coverage spreads concepts inside a single quiz. That is correct —
+"repeated" should mean the learner came back and missed it again — but it means
+the strongest trigger fires on a returning learner rather than a struggling
+first-timer. The score rule covers that first session.
+
+---
+
+## D-047 — Exactly one active recommendation, and idempotency keyed on the attempt
+**Date:** 2026-09-17 · **Area:** Recommendations
+
+**Two bugs, found by re-running the workflow:**
+
+1. **The supersede query never matched.** It filtered with
+   `.is('concept_id', trigger.conceptId ?? null)` — but PostgREST's `.is()` is
+   for null comparisons only. With a real UUID it silently matched nothing, so
+   concept-specific recommendations were never superseded and simply
+   accumulated.
+
+2. **Re-running produced a SECOND recommendation of a different type.** The
+   12-hour cooldown correctly suppressed the same trigger, so the rules fell
+   through to the next one and created that instead — technically correct
+   behaviour, wrong outcome.
+
+**Fixes:** creating a recommendation now supersedes *every* active one for the
+project, and the job returns early if a recommendation already exists dated at
+or after the attempt's completion. Verified idempotent across three consecutive
+runs of the same attempt.
+
+**Why one at a time:** the PRD's question is "what should I do next?", singular
+(§10). A learner facing five competing next actions has effectively been given
+none.
+
+---
+
+## D-048 — Deterministic cleanup beats another prompt instruction
+**Date:** 2026-09-17 · **Area:** Recommendations / Quality
+
+**Problem:** generated recommendations kept opening with "The evidence shows
+that…", parroting the structured evidence they were given. An explicit prompt
+rule not to do this reduced it but did not stop it — two of three live samples
+still contained the phrase, mid-sentence where an "opener" rule reads as
+inapplicable.
+
+**Fix:** keep the prompt instruction, and add a deterministic `polish()` strip
+for the known phrasings, re-capitalising whatever sentence the removal leaves.
+
+**Why not a retry:** this is cosmetic. Spending a second generation on phrasing,
+against a budget where a Tutor answer already costs ~3000 tokens, is a bad
+trade. Deterministic cleanup is free, reliable and testable — including a test
+that the word "evidence" survives in ordinary prose.
+
+**Same shape as D-035 and D-032:** where model compliance is probabilistic,
+pair the instruction with a mechanism that does not depend on compliance. The
+instruction reduces how often the mechanism fires; the mechanism is what makes
+the behaviour reliable.
+
+**Earlier in the same pass**, a live recommendation read "indicating a high error
+rate and a blocked severity level" — internal field names reaching a learner.
+Fixed by instructing the model to translate evidence into plain language, and
+covered by a test asserting the fallback text never contains those terms.
+
+---

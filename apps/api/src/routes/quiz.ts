@@ -6,6 +6,7 @@ import { recordEvent } from '../lib/events.ts';
 import { generateOpenQuestion, gradeOpenAnswer } from '../lib/grading.ts';
 import { generateQuestion, markBankUsed, saveToBank } from '../lib/questions.ts';
 import { applyMastery, chooseNext } from '../lib/quiz.ts';
+import { enqueueQuizCompleted } from '../lib/queue.ts';
 import { serviceClient } from '../lib/supabase.ts';
 
 const startSchema = z.object({
@@ -319,6 +320,20 @@ export const quizRoutes: FastifyPluginAsync = async (app) => {
         payload: { attemptId: attempt.id, score: correct / answered, answered },
         idempotencyKey: `quiz_completed:${attempt.id}`,
       });
+
+      // Hand the analysis to the worker. The learner sees their result
+      // immediately; weakness detection and the recommendation complete whether
+      // or not they keep the page open (PRD §13).
+      try {
+        await enqueueQuizCompleted({
+          attemptId: attempt.id,
+          userId: req.user!.id,
+          projectId: attempt.project_id,
+        });
+      } catch (err) {
+        req.log.error({ err }, 'could not enqueue quiz.completed');
+      }
+
       return { ...result, finished: true, question: null, score: correct / answered };
     }
 

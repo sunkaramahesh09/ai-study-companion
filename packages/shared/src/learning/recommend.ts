@@ -32,6 +32,8 @@ export type ProjectSnapshot = {
   concepts: ConceptSnapshot[];
   patterns: MistakePattern[];
   lastQuizAt: Date | null;
+  /** Score of the most recent completed quiz, 0..1. */
+  lastQuizScore: number | null;
   lastActivityAt: Date | null;
   /** Active recommendations already shown, to avoid repeating ourselves. */
   activeRecommendations: { trigger: TriggerReason; conceptId: string | null; createdAt: Date }[];
@@ -128,7 +130,30 @@ export function allTriggers(snapshot: ProjectSnapshot, now: Date = new Date()): 
     });
   }
 
-  // 4. Material is indexed but never tested. Without a quiz there is no
+  // 4. The last quiz went badly overall.
+  //
+  //    This rule exists because of a real gap found in testing. Selection
+  //    deliberately spreads a quiz across concepts for coverage, so a learner
+  //    can score 0% with only ONE wrong answer per concept — which is neither a
+  //    repeated mistake (needs two on the same concept) nor a weak concept
+  //    (needs two pieces of evidence). Both of those guards are correct, and
+  //    together they left the system recommending "take another quiz" to
+  //    someone who had just scored zero. Aggregate quiz performance is evidence
+  //    in its own right. See D-046.
+  if (snapshot.lastQuizScore !== null && snapshot.lastQuizScore < 0.5) {
+    out.push({
+      trigger: 'quiz_completed',
+      conceptId: null,
+      conceptName: null,
+      // Review, not another quiz. Re-testing someone who just scored badly
+      // measures the same gap again instead of closing it.
+      action: 'review_material',
+      priority: 65,
+      evidence: { lastQuizScore: snapshot.lastQuizScore, outcome: 'below_half' },
+    });
+  }
+
+  // 5. Material is indexed but never tested. Without a quiz there is no
   //    evidence, so the whole mastery system has nothing to work with.
   if (snapshot.readyMaterials > 0 && !snapshot.lastQuizAt) {
     out.push({
@@ -141,7 +166,7 @@ export function allTriggers(snapshot: ProjectSnapshot, now: Date = new Date()): 
     });
   }
 
-  // 5. Quizzed before, and everything currently looks fine — keep going.
+  // 6. Quizzed before, and everything currently looks fine — keep going.
   if (snapshot.lastQuizAt && snapshot.concepts.some((c) => c.mastery.evidenceCount > 0)) {
     out.push({
       trigger: 'quiz_completed',
@@ -153,7 +178,7 @@ export function allTriggers(snapshot: ProjectSnapshot, now: Date = new Date()): 
     });
   }
 
-  // 6. Dormant project with material sitting in it.
+  // 7. Dormant project with material sitting in it.
   const idleDays = snapshot.lastActivityAt
     ? (now.getTime() - snapshot.lastActivityAt.getTime()) / 86_400_000
     : Infinity;

@@ -8,6 +8,7 @@ import { loadEnv } from '../env.ts';
 export const QUEUES = {
   materialProcess: 'material.process',
   materialConcepts: 'material.concepts',
+  quizCompleted: 'quiz.completed',
 } as const;
 
 export type MaterialProcessJob = {
@@ -97,6 +98,30 @@ export async function enqueueMaterialConcepts(job: MaterialProcessJob): Promise<
     // Longer than processing: a 429 from Groq may need a full minute to clear.
     retryDelay: 60,
     expireInSeconds: 900,
+  });
+}
+
+export type QuizCompletedJobPayload = {
+  attemptId: string;
+  userId: string;
+  projectId: string;
+};
+
+/**
+ * Enqueues post-quiz analysis.
+ *
+ * `singletonKey` is the attempt id, so a completed quiz is analysed once even if
+ * the completing request is retried. The PRD requires this work to finish
+ * whether or not the learner keeps the browser open (§13).
+ */
+export async function enqueueQuizCompleted(job: QuizCompletedJobPayload): Promise<string | null> {
+  const b = await queue();
+  return b.send(QUEUES.quizCompleted, job, {
+    singletonKey: job.attemptId,
+    retryLimit: 3,
+    retryBackoff: true,
+    retryDelay: 45,
+    expireInSeconds: 600,
   });
 }
 

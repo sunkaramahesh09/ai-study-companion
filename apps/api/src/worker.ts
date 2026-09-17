@@ -8,6 +8,7 @@ import { loadEnv } from './env.ts';
 import { QUEUES, setQueueInstance, type MaterialProcessJob } from './lib/queue.ts';
 import { processMaterial } from './jobs/materialProcess.ts';
 import { extractMaterialConcepts } from './jobs/materialConcepts.ts';
+import { handleQuizCompleted, type QuizCompletedJob } from './jobs/quizCompleted.ts';
 
 /**
  * Background worker entrypoint (D-002).
@@ -75,9 +76,18 @@ async function main() {
   );
   console.log('[worker] handler registered: ' + QUEUES.materialConcepts);
 
-  // Further handlers land with their tasks:
-  //   task 17 — quiz.completed  (evaluate → mastery → weakness → recommend)
-  //   task 19 — recommendation.generate
+  await boss.work<QuizCompletedJob>(
+    QUEUES.quizCompleted,
+    { batchSize: 1 },
+    async ([job]) => {
+      if (!job) return;
+      console.log('[worker] quiz.completed', job.data.attemptId);
+      await handleQuizCompleted(job.data);
+    },
+  );
+  console.log('[worker] handler registered: ' + QUEUES.quizCompleted);
+
+  // Further handlers land with their tasks.
 
   const shutdown = async (signal: string) => {
     console.log(`[worker] ${signal} received, draining jobs`);
