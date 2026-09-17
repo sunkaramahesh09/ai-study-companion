@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 13:30 · **Day:** Thu · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-17 13:45 · **Day:** Thu · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -85,8 +85,9 @@ test asserting each chunk's text actually appears on the page it cites).
 
 ## >>> RESUME HERE <<<
 
-**Session 2026-09-17 13:30.** Tasks 1-19 complete, committed and pushed.
-**348 tests passing**, typecheck clean, web build clean.
+**Session 2026-09-17 13:45.** Tasks 1-20 complete, committed and pushed.
+**387 tests passing**, typecheck clean, web build verified to actually contain
+the app (which it previously did not — D-052).
 
 **Tasks 10, 11 and 12 complete.** Grounded Tutor, unsupported-question
 handling, and the prompt-injection boundary — the three highest-risk items on
@@ -157,18 +158,44 @@ model. Idempotent across three consecutive runs of the same attempt.
 - `factsUsed` on the tutor diagnostics and the `tutor_answer` event.
 - Recommendation cards link to the action they suggest and can be dismissed.
 
-**NEXT ACTION: task 20 — Learning events + Project/Global analytics.** Events
-have been emitted throughout tasks 6-19; analytics read from them, no new
-writes needed. Then 21 (Admin Dashboard) and 22 (eval suite — protect this).
+**Task 20 complete.** Project + Global analytics.
+
+- `packages/shared/src/analytics/` — bucketing, streaks, assessment summary,
+  AI usage as pure functions (27 tests).
+- `GET /api/projects/:id/analytics` · `GET /api/analytics`, both through the
+  caller's JWT so RLS enforces isolation.
+- Charts single-series by construction: `--ok` vs `--error` measures at deutan
+  ΔE 7.9, under the ΔE 8 target (D-051).
+
+**The important find of this session (D-052): the web build had been emitting a
+bundle with no application code in it since task 1**, and "web build OK" was
+recorded as evidence the whole time. Vite reads `.env` from `apps/web/`; this
+repo keeps one at the root. `supabase.ts` throws at module scope without it, the
+minifier proved the throw unconditional, and eliminated the whole app as dead
+code — exit 0, plausible size, no warning. Production was never affected
+(Vercel has the vars set; the live bundle is 503 kB with the app present).
+
+Now fixed three ways: `envDir: '../../'`, a Vite plugin that fails a production
+build on a missing `VITE_*`, and `apps/web/scripts/verify-bundle.mjs` as a
+postbuild step that greps the OUTPUT for markers from four app files. The
+postbuild check was verified by truncating a real bundle and confirming a
+non-zero exit.
+
+**NEXT ACTION: task 21 — Admin Dashboard.** Role-gated server-side (`profiles.role`,
+never a token claim — the check already exists and is tested). Needs: users,
+spaces, projects, filterable activity, AI usage + cost, job health, eval results.
+Most of the aggregation already exists in `@asc/shared/analytics`; the admin
+version is the same arithmetic without the per-user filter, plus `pgboss` job
+state. Then 22 (eval suite — **protect this**).
 
 ### Schedule reality check
 
 It is **Thursday afternoon**. The real deadline is **Saturday night**, with
 Sunday morning as buffer for deployment checks and documentation only.
 
-Tasks 1-19 are done. **Six build tasks remain (20-25)** plus Sunday's docs and
+Tasks 1-20 are done. **Five build tasks remain (21-25)** plus Sunday's docs and
 video. Friday's plan was to reach 19 and it landed a day early, so Friday is
-now available for 20-22 with Saturday for 23-25 — the first genuine slack in
+now available for 21-22 with Saturday for 23-25 — the first genuine slack in
 this build.
 
 **Protect at any cost:** 22 (evaluation) is the only unprotected item still
@@ -219,7 +246,7 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 - [x] **19. Recommendations + persistent learning context** — deterministic trigger, generated sentence; `learner_facts` retrieved *selectively* into Tutor context. *Done:* live integration test proves a weakness written two days earlier reaches a relevant answer and stays out of an unrelated one (D-050).
 
 ### Sat — analytics, admin, observability, eval, tests, ship
-- [ ] **20. Learning events + Project/Global analytics** — events emitted throughout earlier tasks; analytics read from them.
+- [x] **20. Learning events + Project/Global analytics** — events emitted throughout earlier tasks; analytics read from them. *Done:* 27 pure-function tests + 12 route tests; caught D-052 (the web build was shipping no app code).
 - [ ] **21. Admin Dashboard** — users, spaces, projects, filterable activity, AI usage + cost, job health, eval results; role-gated server-side. *Done when:* non-admin gets 403.
 - [ ] **22. AI evaluation suite** — curated cases: Tutor groundedness + citation correctness, retrieval relevance, unsupported-question handling, structured-output reliability, grading quality. `npm run eval`, results persisted + shown in admin. **Protect this.**
 - [ ] **23. Test pass** — fill gaps: auth/isolation/validation, mastery/adaptive/recommendation, job retry + failure.
@@ -311,9 +338,9 @@ It caught D-011 within a minute of the schema landing.
 
 ---
 
-## State as of 2026-09-17 13:30 — full snapshot
+## State as of 2026-09-17 13:45 — full snapshot
 
-### Built and verified (tasks 1-19)
+### Built and verified (tasks 1-20)
 
 | # | Task | Evidence it actually works |
 |---|---|---|
@@ -336,8 +363,9 @@ It caught D-011 within a minute of the schema landing.
 | 17 | Quiz-completion workflow | idempotent across three runs of the same attempt |
 | 18 | Mastery + Growth UI | 8 route tests; oldest-window bug caught and fixed (D-049) |
 | 19 | Persistent learning context | live: 2-day-old weakness reaches a relevant answer only |
+| 20 | Project + Global analytics | 39 tests; cross-user isolation on both endpoints |
 
-**348 tests passing.** `npx vitest run` from the repo root.
+**387 tests passing.** `npx vitest run` from the repo root.
 Live-AI tests need the real keys: `node --env-file=.env ./node_modules/.bin/vitest run`.
 
 ### Production (all verified live, not localhost)
@@ -375,7 +403,11 @@ Working tree clean except `.env` and `.env.railway` (both gitignored).
    not. The real numbers put every off-topic query inside that gate. See D-029.
 
 5. **Vite bakes `VITE_*` at build time** — changing one in Vercel needs a
-   redeploy, not just a save.
+   redeploy, not just a save. **This landmine was real and it went off (D-052):**
+   a build without those vars emits a bundle containing NO APP CODE, exits 0,
+   and prints a normal-looking size. Now guarded three ways, incl.
+   `apps/web/scripts/verify-bundle.mjs` as a postbuild step. Never take "the
+   build passed" as evidence the app was built.
 
 6. The clipboard-image paste path did not work in this session; ask the user to
    save screenshots to a file if an image is needed.
@@ -391,6 +423,13 @@ Working tree clean except `.env` and `.env.railway` (both gitignored).
 8. **`npx vitest run` skips every live test silently** — they are guarded on
    env vars being present. Use `node --env-file=.env ./node_modules/.bin/vitest run`
    or a green run means much less than it looks like.
+
+9. **A PostgREST multi-row insert unions the column keys across rows** and
+   sends an explicit NULL for the ones a given row omits. A NOT NULL column
+   with a default therefore fails — and fails the whole batch. Cost ~15 minutes
+   in the analytics test seeding, where `.insert([...])` returned an error
+   nobody was checking. **Always check `.error` on seeding inserts**; a silent
+   seed failure surfaces later as a wrong assertion about the code under test.
 
 ---
 
