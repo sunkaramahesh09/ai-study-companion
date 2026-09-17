@@ -10,7 +10,7 @@ import {
   type AnswerResult,
   type QuizQuestion,
 } from '../lib/queries.ts';
-import { ErrorNote, Spinner } from '../components/Ui.tsx';
+import { ErrorNote, Spinner, ProgressRing, PageHeader } from '../components/Ui.tsx';
 
 export function Quiz() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -172,34 +172,49 @@ export function Quiz() {
 
   if (error && !question) {
     return (
-      <section>
+      <section className="fade-in">
         <Link to={`/projects/${projectId}`} className="back">← Back to Project</Link>
-        <div className="card">
+        <div className="card" style={{ textAlign: 'center', padding: 'var(--space-8)' }}>
+          <span style={{ fontSize: 48, marginBottom: 'var(--space-3)', display: 'block' }}>📝</span>
           <h2>Can't start a quiz yet</h2>
           <ErrorNote error={error} />
-          <p className="muted">
+          <p className="muted" style={{ marginTop: 'var(--space-3)', maxWidth: 420, margin: 'var(--space-3) auto' }}>
             A quiz needs concepts, which come from processed material. Upload a PDF and wait for it to
             finish processing.
           </p>
+          <Link to={`/projects/${projectId}`} className="cta" style={{ marginTop: 'var(--space-3)' }}>
+            Go to Project
+          </Link>
         </div>
       </section>
     );
   }
 
   if (finished) {
+    const scorePct = Math.round(finished.score * 100);
     return (
-      <section>
-        <Link to={`/projects/${projectId}`} className="back">← Back to Project</Link>
-        <div className="card">
-          <h2>Quiz complete</h2>
-          <p className="stat-n">{Math.round(finished.score * 100)}%</p>
+      <section className="fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-5)', paddingTop: 'var(--space-8)' }}>
+        <div className="card" style={{ textAlign: 'center', maxWidth: 480, width: '100%', padding: 'var(--space-8)' }}>
+          <span style={{ fontSize: 56, display: 'block', marginBottom: 'var(--space-3)' }}>
+            {scorePct >= 80 ? '🏆' : scorePct >= 60 ? '👏' : '📚'}
+          </span>
+          <h2>Quiz Complete!</h2>
+          <div style={{ display: 'flex', justifyContent: 'center', margin: 'var(--space-5) 0' }}>
+            <ProgressRing
+              value={finished.score}
+              size={140}
+              label="Score"
+              color={scorePct >= 80 ? 'var(--ok)' : scorePct >= 60 ? 'var(--warning-500)' : 'var(--error)'}
+            />
+          </div>
           <p className="muted">{finished.answered} questions answered.</p>
-          <p className="muted small">
+          <p className="muted small" style={{ marginTop: 'var(--space-2)' }}>
             Your mastery estimates are updating now, and a recommendation is being prepared in the
             background — you don't need to wait here.
           </p>
-          <div className="row-end" style={{ marginTop: 12 }}>
-            <Link to={`/projects/${projectId}/growth`} className="cta">See your growth</Link>
+          <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center', marginTop: 'var(--space-5)' }}>
+            <Link to={`/projects/${projectId}/growth`} className="cta">📈 See your growth</Link>
+            <Link to={`/projects/${projectId}`} className="cta-ghost">Back to project</Link>
           </div>
         </div>
       </section>
@@ -210,29 +225,44 @@ export function Quiz() {
     question?.question_type === 'mcq' ? selected !== null : text.trim().length >= 10;
 
   return (
-    <section>
+    <section className="fade-in">
       <Link to={`/projects/${projectId}`} className="back">← Back to Project</Link>
 
+      <PageHeader
+        icon="✅"
+        title="Quiz"
+        description="Test your understanding and track your mastery."
+      />
+
       {question && (
-        <div className="card stack">
+        <div className="card" style={{ marginTop: 'var(--space-3)' }}>
           {resumed && (
-            <p className="muted small">
+            <p className="muted small" style={{ marginBottom: 'var(--space-3)' }}>
               Continuing your quiz already in progress.{' '}
               <button type="button" className="link" onClick={startOver} disabled={restarting}>
                 {restarting ? 'Starting over…' : 'Start a new quiz instead'}
               </button>
             </p>
           )}
-          <div className="section-head" style={{ margin: 0 }}>
-            <div>
-              <span className="muted small">
-                {question.conceptName ?? 'Concept'} · difficulty {question.difficulty}/5 ·{' '}
-                {question.question_type === 'open' ? 'written answer' : 'multiple choice'}
-              </span>
-              <h2 style={{ marginTop: 6 }}>{question.prompt}</h2>
-            </div>
+
+          {/* Question Header */}
+          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
+            <span className="pill" style={{ background: 'var(--lavender-50)', color: 'var(--primary-600)', borderColor: 'var(--lavender-200)' }}>
+              🧠 {question.conceptName ?? 'Concept'}
+            </span>
+            <span className="pill">
+              {'⭐'.repeat(question.difficulty)} Difficulty {question.difficulty}/5
+            </span>
+            <span className="pill">
+              {question.question_type === 'open' ? '✍️ Written Answer' : '🔘 Multiple Choice'}
+            </span>
           </div>
 
+          <h2 style={{ fontSize: 'var(--text-xl)', lineHeight: 1.4, marginBottom: 'var(--space-5)' }}>
+            {question.prompt}
+          </h2>
+
+          {/* Answer Form */}
           {!result && (
             <form onSubmit={submit} className="stack">
               {question.question_type === 'mcq' ? (
@@ -264,37 +294,45 @@ export function Quiz() {
                 </>
               )}
               <button type="submit" disabled={!canSubmit || busy}>
-                {busy ? 'Checking…' : 'Submit answer'}
+                {busy ? '⏳ Checking…' : '✈️ Submit Answer'}
               </button>
             </form>
           )}
 
           {error ? <ErrorNote error={error} /> : null}
 
+          {/* Result */}
           {result && (
-            <div className="stack">
+            <div className="stack" style={{ marginTop: 'var(--space-4)' }}>
               <div className={result.isCorrect ? 'verdict verdict-ok' : 'verdict verdict-no'}>
                 {result.questionType === 'open'
-                  ? `Scored ${Math.round(result.score * 100)}%`
+                  ? `📊 Scored ${Math.round(result.score * 100)}%`
                   : result.isCorrect
-                    ? 'Correct'
-                    : 'Not quite'}
+                    ? '✅ Correct!'
+                    : '❌ Not quite'}
               </div>
 
               {result.questionType === 'mcq' && result.correctIndex !== undefined && (
-                <p>
-                  <strong>Answer:</strong> {(question.options ?? [])[result.correctIndex]}
-                  {result.explanation ? <><br /><span className="muted">{result.explanation}</span></> : null}
-                </p>
+                <div style={{
+                  padding: 'var(--space-4)',
+                  background: 'var(--success-50)',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--success-100)',
+                }}>
+                  <p>
+                    <strong>✅ Correct answer:</strong> {(question.options ?? [])[result.correctIndex]}
+                    {result.explanation ? <><br /><span className="muted">{result.explanation}</span></> : null}
+                  </p>
+                </div>
               )}
 
               {/* The PRD asks for feedback that explains rather than scoring (§9). */}
               {result.grade && (
-                <div className="stack">
-                  <p>{result.grade.feedback}</p>
+                <div className="card" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-light)' }}>
+                  <p style={{ marginBottom: 'var(--space-3)' }}>{result.grade.feedback}</p>
                   {result.grade.understood.length > 0 && (
-                    <div>
-                      <strong className="ok">You covered</strong>
+                    <div style={{ marginBottom: 'var(--space-3)' }}>
+                      <strong className="ok">✅ You covered</strong>
                       <ul className="bullets">
                         {result.grade.understood.map((u, i) => <li key={i}>{u}</li>)}
                       </ul>
@@ -302,7 +340,7 @@ export function Quiz() {
                   )}
                   {result.grade.missing.length > 0 && (
                     <div>
-                      <strong className="warn">Missing</strong>
+                      <strong className="warn">⚠️ Missing</strong>
                       <ul className="bullets">
                         {result.grade.missing.map((m, i) => <li key={i}>{m}</li>)}
                       </ul>
@@ -312,19 +350,27 @@ export function Quiz() {
               )}
 
               {result.mastery && (
-                <p className="muted small">
-                  Mastery for this concept: {Math.round(result.mastery.before * 100)}% →{' '}
-                  {Math.round(result.mastery.after * 100)}%
+                <div style={{
+                  padding: 'var(--space-3)',
+                  background: 'var(--lavender-50)',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: 'var(--text-sm)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--space-2)',
+                }}>
+                  📊 Mastery for this concept: {Math.round(result.mastery.before * 100)}% →{' '}
+                  <strong>{Math.round(result.mastery.after * 100)}%</strong>
                   {result.mastery.delta >= 0 ? ' ▲' : ' ▼'}
-                </p>
+                </div>
               )}
 
               <button onClick={next} disabled={!nextQuestion}>
                 {loadingNext
-                  ? 'Preparing the next question…'
+                  ? '⏳ Preparing the next question…'
                   : nextQuestion
-                  ? `Next question (${result.progress.answered + 1} of ${result.progress.target})`
-                  : 'Finishing…'}
+                    ? `→ Next question (${result.progress.answered + 1} of ${result.progress.target})`
+                    : '⏳ Finishing…'}
               </button>
             </div>
           )}

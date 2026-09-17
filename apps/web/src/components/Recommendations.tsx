@@ -50,39 +50,44 @@ export function Recommendations({
   }
 
   return (
-    <div className="card accent">
-      <h3>What to do next</h3>
-      {error && <p className="error small">{error}</p>}
-      <ul className="list rec-list">
+    <div style={{ marginTop: 'var(--space-4)' }}>
+      <h3 style={{ marginBottom: 'var(--space-3)' }}>What to do next</h3>
+      {error && <p className="error small" style={{ marginBottom: 'var(--space-2)' }}>{error}</p>}
+      <div className="grid">
         {items.map((r) => {
           const action = ACTIONS[r.action_type] ?? ACTIONS['review_material']!;
           return (
-            <li key={r.id} className="rec">
-              <div className="rec-body">
-                <strong>{r.title}</strong>
-                <p className="muted">{r.body}</p>
-              </div>
-              <div className="rec-actions">
+            <div key={r.id} className="topic-rec-card fade-in">
+              <span className="topic-rec-priority priority-medium">⚡ Recommended</span>
+              <strong style={{ display: 'block', fontSize: 'var(--text-md)', marginBottom: 'var(--space-2)' }}>
+                {r.title}
+              </strong>
+              <p className="muted small clamp" style={{ marginBottom: 'var(--space-3)' }}>
+                {r.body}
+              </p>
+              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
                 <Link
                   to={action.path(projectId)}
-                  className="cta small-cta"
+                  className="btn-secondary"
+                  style={{ padding: '6px 12px', fontSize: 'var(--text-sm)' }}
                   onClick={() => void resolve(r.id, 'completed')}
                 >
                   {action.label}
                 </Link>
                 <button
                   type="button"
-                  className="linkish"
+                  className="btn-ghost"
+                  style={{ padding: '6px 12px', fontSize: 'var(--text-sm)' }}
                   disabled={busy === r.id}
                   onClick={() => void resolve(r.id, 'dismissed')}
                 >
                   Dismiss
                 </button>
               </div>
-            </li>
+            </div>
           );
         })}
-      </ul>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getProjectAnalytics, type ProjectAnalytics } from '../lib/queries.ts';
-import { ErrorNote, Spinner } from '../components/Ui.tsx';
+import { ErrorNote, Spinner, PageHeader } from '../components/Ui.tsx';
 import { Stat, pct } from '../components/Charts.tsx';
 import {
   ActivityPanel,
@@ -20,8 +20,6 @@ export function Analytics() {
   useEffect(() => {
     if (!projectId) return;
     let cancelled = false;
-    // Keeping the previous data on screen while the new window loads avoids a
-    // full-page spinner every time someone toggles 7d/30d/90d.
     getProjectAnalytics(projectId, days).then(
       (d) => !cancelled && setData(d),
       (e) => !cancelled && setError(e),
@@ -35,18 +33,17 @@ export function Analytics() {
   if (!data) return <Spinner />;
 
   return (
-    <section>
+    <section className="fade-in">
       <Link to={`/projects/${projectId}`} className="back">← Back to Project</Link>
 
-      <div className="section-head">
-        <div>
-          <h2>Analytics</h2>
-          <p className="muted">{data.project.name}</p>
-        </div>
-        <WindowPicker days={days} onChange={setDays} />
-      </div>
+      <PageHeader
+        icon="📊"
+        title="Analytics"
+        description={data.project.name}
+        action={<WindowPicker days={days} onChange={setDays} />}
+      />
 
-      <div className="stats">
+      <div className="stats stagger">
         <Stat value={data.mastery.concepts} label="concepts" />
         <Stat value={data.mastery.assessed} label="assessed" />
         <Stat
@@ -67,14 +64,14 @@ export function Analytics() {
       <div className="two-col">
         <TutorPanel tutor={data.tutor} />
         <div className="card">
-          <h3>Quiz attempts</h3>
+          <h3>Quiz Attempts</h3>
           <div className="stats">
             <Stat value={data.assessment.attempts.total} label="started" />
             <Stat value={data.assessment.attempts.completed} label="completed" />
             <Stat value={data.assessment.attempts.abandoned} label="abandoned" />
             <Stat value={data.assessment.attempts.inProgress} label="in progress" />
           </div>
-          <p className="muted small">
+          <p className="muted small" style={{ marginTop: 'var(--space-3)' }}>
             An abandoned attempt keeps the answers already given — mastery earned before you stopped is
             not discarded.
           </p>
