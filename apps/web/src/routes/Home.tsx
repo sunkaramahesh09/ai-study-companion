@@ -33,18 +33,50 @@ export function Home() {
   const quizzesCompleted = analytics?.activity.byType['quiz_completed'] ?? 0;
 
   return (
-    <section className="fade-in">
+    <section className="fade-in home-page">
+      {/* Decorative only — fixed, behind everything, aria-hidden. Adds depth
+          to the page without competing with the white card surfaces. */}
+      <div className="home-page-decor" aria-hidden="true" />
+
       <div className="content-with-sidebar">
         <div className="stack" style={{ gap: 'var(--space-6)' }}>
           {/* Welcome Hero */}
           <div className="home-hero">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div className="home-hero-decor" aria-hidden="true">
+              <span className="login-blob login-blob-1" />
+              <span className="login-blob login-blob-2" />
+              <span className="home-hero-sparkle home-hero-sparkle-1">✦</span>
+              <span className="home-hero-sparkle home-hero-sparkle-2">✦</span>
+            </div>
+
+            <div className="home-hero-body">
               <div>
                 <p style={{ fontSize: 'var(--text-lg)', opacity: 0.9, marginBottom: 'var(--space-1)' }}>👋 {greeting},</p>
                 <h2>Let's keep learning!</h2>
                 <p style={{ marginTop: 'var(--space-2)' }}>
                   Your AI-powered study companion is here to help you understand, practice and excel.
                 </p>
+              </div>
+
+              <div className="home-hero-illustration">
+                <span className="home-hero-illustration-glow" aria-hidden="true" />
+                <img
+                  src="/ai-brain.jpg"
+                  alt="AI Study Companion"
+                  style={{
+                    width: 96,
+                    height: 96,
+                    objectFit: 'cover',
+                    borderRadius: '50%',
+                    boxShadow: '0 16px 32px rgba(108, 71, 236, 0.2)',
+                    border: '3px solid white',
+                    mixBlendMode: 'multiply',
+                    position: 'relative',
+                  }}
+                />
+                <div className="home-hero-callout" aria-hidden="true">
+                  💡 Small steps every day lead to big results!
+                </div>
               </div>
             </div>
           </div>
@@ -150,8 +182,13 @@ export function Home() {
 
         {/* Right Sidebar */}
         <div className="content-sidebar">
-          {/* Quote Card */}
+          {/* Quote Card — the gradient, glow and mountain silhouette are one
+              layered background composition, not an image placed on a card. */}
           <div className="quote-card">
+            <div className="quote-card-mountains" aria-hidden="true">
+              <span />
+              <span />
+            </div>
             <blockquote>"{quote.text}"</blockquote>
             <cite>— {quote.author}</cite>
           </div>
