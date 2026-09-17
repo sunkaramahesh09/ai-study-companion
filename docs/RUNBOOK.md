@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 14:15 · **Day:** Thu · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-17 14:30 · **Day:** Thu · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -85,8 +85,9 @@ test asserting each chunk's text actually appears on the page it cites).
 
 ## >>> RESUME HERE <<<
 
-**Session 2026-09-17 14:15.** Tasks 1-23 complete, committed and pushed.
-**443 tests passing** + **17/17 evaluation cases**, typecheck clean, web build
+**Session 2026-09-17 14:30.** **All 25 build tasks complete**, committed and
+pushed. **465 tests passing** + **17/17 evaluation cases** + a green
+end-to-end production rehearsal. Typecheck clean, web build
 verified to actually contain the app (which it previously did not — D-052).
 
 Production is current: API and frontend both redeployed and checked by fetching
@@ -223,29 +224,62 @@ non-zero exit.
   while reporting success (D-055). No product impact — every upload takes a
   fresh UUID path — but it invalidated two tests.
 
-**NEXT ACTION: task 24 — error handling + resilience sweep.** Timeouts,
-provider failure fallback, invalid AI output paths, failed-job recovery, and
-user-facing error states. Much is already in place (D-023 invalid_output,
-primary→fallback failover, the 503 the Tutor returns with the question saved);
-this task is about finding what is NOT, especially in the frontend where a
-failed request currently has fewer tested paths than the backend.
+**Task 24 complete.** Resilience sweep — the layer ABOVE the provider.
 
-Then 25 (production loop rehearsal on the live URL with a fresh account).
-Sunday is docs + video only.
+- Browser request timeouts: 30s ordinary, 150s behind a model (the TPM limiter
+  WAITS, so a queued Tutor answer legitimately takes most of a minute).
+- A 401 returns to sign-in once, instead of "Unauthorized" on every panel.
+  **403 deliberately does not** — authenticated but not permitted.
+- `ErrorBoundary` keyed on the ROUTER's pathname (`window.location` would stay
+  latched all session).
+- Network failure says "Could not reach the server", not "Failed to fetch".
+- 11 API-client cases + 4 provider-failure integration cases (D-056).
+
+**Task 25 complete.** `npm run rehearse` — the full loop against PRODUCTION.
+
+Fresh account → space → project → PDF upload → **deployed worker** indexes it →
+grounded answer → refusal → injection attempt → adaptive quiz → mastery →
+growth → analytics → cross-account isolation → account deleted.
+
+**Every check passed.** Grounded answer citing page 1 in 1152ms · refusal on an
+off-topic question · injection not obeyed · mastery Δ −0.2862 on a wrong answer
+· 3804 tokens / $0.00078 tracked · second account 404 on everything.
+
+This is not redundant with the tests: every integration test builds the API
+**in-process**, which proves the code and says nothing about the deployment.
+The rehearsal is the only thing that proves the Railway worker is alive and the
+Vercel bundle contains the app.
+
+It caught one thing no test had: the model returned `【S1】` (fullwidth). The
+extractor handles that on purpose (D-034) so nothing failed — but the learner
+reads the raw text, and mixed bracket styles look like a product bug. Markers
+are now normalised before persisting (D-057).
+
+**NEXT ACTION: all 25 build tasks are done.** What remains is Sunday's list,
+and it can start early:
+- **26. Docs** — architecture doc + diagram, README + setup, AI usage doc
+  (build-time vs product-time), evaluation approach, known limitations, future
+  improvements. `DECISIONS.md` is at **D-057** and is the source material.
+- **27. Demo video** — PRD §20.2 shot list, recorded against production.
+- **28. Final deploy verification + submit** — re-run `npm run rehearse` and
+  `npm run eval` immediately before submitting.
+
+**The README does not exist yet and is a named deliverable (§20.3).** That is
+the largest remaining gap.
 
 ### Schedule reality check
 
 It is **Thursday afternoon**. The real deadline is **Saturday night**, with
 Sunday morning as buffer for deployment checks and documentation only.
 
-Tasks 1-23 are done. **Two build tasks remain (24, 25)** plus Sunday's docs and
+**All 25 build tasks are done, two days early.** plus Sunday's docs and
 video. Friday's plan was to reach 19 and it landed a day early, so Friday is
-spent on 20-23; Saturday has 24-25, which is ample — the first genuine slack in
+spent on 20-25; Friday and Saturday are now free for docs, the video, and any polish — the first genuine slack in
 this build.
 
-**Every "protect at any cost" item is now built and tested** — 11, 12, 14 and
-22. What remains (24 resilience sweep, 25 live rehearsal) is
-hardening, and the cut list below applies to it normally.
+**Every "protect at any cost" item is built and tested** — 11, 12, 14 and 22.
+The cut list below was never needed. What remains is documentation, the demo
+video, and final verification.
 
 ---
 
@@ -295,8 +329,8 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 - [x] **21. Admin Dashboard** — users, spaces, projects, filterable activity, AI usage + cost, job health, eval results; role-gated server-side. *Done:* 18 tests; non-admin 403 on every route; admin reach proven to come from the DB, not the token (D-053).
 - [x] **22. AI evaluation suite** — curated cases: Tutor groundedness + citation correctness, retrieval relevance, unsupported-question handling, structured-output reliability, grading quality. `npm run eval`, results persisted + shown in admin. *Done:* 17/17 across 5 suites (D-054). **Was the protected item; it is now built.**
 - [x] **23. Test pass** — fill gaps: auth/isolation/validation, mastery/adaptive/recommendation, job retry + failure. *Done:* 28 new cases (8 job resilience, 20 validation); found D-055.
-- [ ] **24. Error handling + resilience sweep** — timeouts, provider failure fallback, invalid AI output paths, failed-job recovery, user-facing error states.
-- [ ] **25. Production deploy + full loop rehearsal** on the live URL with a fresh account.
+- [x] **24. Error handling + resilience sweep** — timeouts, provider failure fallback, invalid AI output paths, failed-job recovery, user-facing error states. *Done:* 15 new cases; browser timeouts, 401-vs-403, error boundary (D-056).
+- [x] **25. Production deploy + full loop rehearsal** on the live URL with a fresh account. *Done:* `npm run rehearse`, every check green against production; caught the citation-marker inconsistency (D-057).
 
 ### Sun AM — buffer only, no new features
 - [ ] **26. Docs** — architecture doc + diagram, README + setup, AI usage doc (build-time vs product-time), evaluation approach, known limitations, future improvements. Assembled from `DECISIONS.md`.
@@ -325,14 +359,14 @@ basic tracing come free with task 7, since two providers require them anyway.
 
 | # | Deliverable | Status |
 |---|-------------|--------|
-| 1 | Working deployed application | **LIVE** — but production is running the code as of task 17. Tasks 18-19 are committed, NOT yet deployed. |
+| 1 | Working deployed application | **LIVE and current.** Verified by `npm run rehearse` against the deployed URLs, not by a green deploy log. |
 | 2 | Demo video (§20.2 shot list) | not started (Sunday) |
 | 3 | Public GitHub repo w/ README, setup, config examples | repo live and pushed; README still to write |
-| 4 | Architecture documentation + diagram | `DECISIONS.md` at D-050; diagram not drawn |
+| 4 | Architecture documentation + diagram | `DECISIONS.md` at D-057; doc + diagram not written |
 | 5 | AI usage doc — AI used to *build* vs AI used *by* the product | not started |
 | 6 | Development prompts, organized by area | **user is tracking this, not Claude** |
-| 7 | Evaluation approach | not started (task 22) |
-| 8 | Known limitations | `DECISIONS.md` accumulating (D-049 records one for growth) |
+| 7 | Evaluation approach | **built** (`npm run eval`, 17 cases, D-054); still to be written up |
+| 8 | Known limitations | `DECISIONS.md` accumulating; explicit entries in D-049, D-051, D-054 |
 | 9 | Future improvements (optional) | `DECISIONS.md` accumulating |
 
 ---
@@ -349,6 +383,8 @@ npm run dev:web             # Vite on :5173
 npm run eval                # all 17 evaluation cases (~4 min, spends real quota)
 npm run eval tutor          # one suite: tutor|retrieval|assessment|recommendation|security
 npm run eval -- --list      # list every case and what it protects
+npm run rehearse            # full loop against PRODUCTION with a fresh account
+npm run rehearse -- --keep  # same, but leave the account for manual poking
 
 # read the PRD (no poppler on this machine)
 python3 -c "import pymupdf; d=pymupdf.open('/Users/mahesh/Project_Requirements.pdf'); print('\n'.join(p.get_text() for p in d))"
@@ -385,9 +421,9 @@ It caught D-011 within a minute of the schema landing.
 
 ---
 
-## State as of 2026-09-17 14:15 — full snapshot
+## State as of 2026-09-17 14:30 — full snapshot
 
-### Built and verified (tasks 1-23)
+### Built and verified (tasks 1-25)
 
 | # | Task | Evidence it actually works |
 |---|---|---|
@@ -414,8 +450,11 @@ It caught D-011 within a minute of the schema landing.
 | 21 | Admin dashboard | 18 tests; promotion mid-session proves reach is not in the token |
 | 22 | AI evaluation suite | `npm run eval` → 17/17 across 5 suites, persisted with git sha |
 | 23 | Job + validation test pass | 8 job resilience cases, 20 validation cases |
+| 24 | Resilience sweep | 15 cases; timeouts, 401-vs-403, error boundary |
+| 25 | Production rehearsal | `npm run rehearse` green end to end against the live stack |
 
-**443 tests passing**, plus 17 evaluation cases run separately via `npm run eval`. `npx vitest run` from the repo root.
+**465 tests passing**, plus 17 evaluation cases (`npm run eval`) and the
+production rehearsal (`npm run rehearse`). `npx vitest run` from the repo root.
 Live-AI tests need the real keys: `node --env-file=.env ./node_modules/.bin/vitest run`.
 
 ### Production (all verified live, not localhost)
