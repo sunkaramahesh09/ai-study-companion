@@ -13,8 +13,15 @@
 
 .sidebar {
   width: var(--sidebar-width);
-  background: var(--bg-sidebar);
-  border-right: 1px solid var(--border-light);
+  /* A tinted vertical wash rather than a flat fill, so the panel reads as part
+     of the same environment as the page instead of a white rectangle set beside
+     it. The tint deepens toward the bottom, which is where the mountain
+     silhouette sits. */
+  background:
+    radial-gradient(ellipse 120% 40% at 50% 100%, rgba(167, 139, 250, 0.16) 0%, transparent 70%),
+    linear-gradient(180deg, #fdfcff 0%, var(--lavender-50) 55%, #efeaff 100%);
+  /* Hairline, not a rule: enough to separate, not enough to read as an edge. */
+  border-right: 1px solid rgba(124, 92, 246, 0.10);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -42,6 +49,33 @@
   transition: opacity var(--duration-fast) var(--ease-out);
 }
 .sidebar-logo:hover { opacity: 0.85; }
+
+/* Pale range at the foot of the sidebar, continuing the page's own mountains
+   across the divider so the two surfaces read as one landscape. Sticky rather
+   than absolute: the sidebar scrolls, and a silhouette that slides up past the
+   nav would look like a stray shape. */
+.sidebar-decor {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  height: 120px;
+  flex-shrink: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.sidebar-decor i {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+.sidebar-decor i:nth-child(1) {
+  clip-path: polygon(0% 100%, 0% 62%, 22% 34%, 41% 58%, 58% 28%, 76% 52%, 100% 30%, 100% 100%);
+  background: linear-gradient(180deg, rgba(167, 139, 250, 0.16) 0%, rgba(167, 139, 250, 0.05) 100%);
+}
+.sidebar-decor i:nth-child(2) {
+  clip-path: polygon(0% 100%, 0% 80%, 18% 56%, 36% 76%, 54% 50%, 72% 72%, 100% 58%, 100% 100%);
+  background: linear-gradient(180deg, rgba(139, 108, 240, 0.20) 0%, rgba(139, 108, 240, 0.07) 100%);
+}
 .sidebar-logo-icon {
   width: 36px;
   height: 36px;
@@ -77,7 +111,8 @@
 }
 
 .sidebar-section {
-  margin-top: var(--space-4);
+  /* Groups are separated by space, not by a rule. */
+  margin-top: var(--space-6);
 }
 .sidebar-section-title {
   padding: var(--space-2) var(--space-3);
@@ -129,19 +164,33 @@
   color: var(--primary-600);
 }
 .sidebar-link.active {
-  background: var(--lavender-100);
-  color: var(--primary-600);
+  /* A soft pill that sits in the surface rather than an outlined box on top of
+     it — the gradient keeps it from reading as a flat swatch. */
+  background: linear-gradient(90deg, rgba(124, 92, 246, 0.16) 0%, rgba(124, 92, 246, 0.07) 100%);
+  color: var(--primary-700);
   font-weight: var(--weight-semibold);
+  box-shadow: 0 1px 2px rgba(76, 46, 172, 0.06);
+}
+
+/* Nav links carry their own rounded focus ring. The global focus style is a
+   hard rectangle, which on a pill-shaped link reads as the heavy purple box
+   that made the active item look boxy. Keyboard users keep a clearly visible
+   ring; it just follows the shape. */
+.sidebar-link:focus-visible,
+.sidebar-space-link:focus-visible,
+.sidebar-logo:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg-sidebar), 0 0 0 4px rgba(124, 92, 246, 0.45);
 }
 .sidebar-link.active::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 6px;
-  bottom: 6px;
+  top: 8px;
+  bottom: 8px;
   width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--primary-500);
+  border-radius: var(--radius-full);
+  background: linear-gradient(180deg, var(--primary-400), var(--primary-600));
 }
 
 .sidebar-link-icon {

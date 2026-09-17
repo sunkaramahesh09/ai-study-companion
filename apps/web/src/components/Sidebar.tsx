@@ -93,6 +93,14 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           </div>
         </nav>
 
+        {/* Pale range at the foot of the sidebar, continuing the page's own
+            mountains across the divider so the two surfaces read as one
+            landscape. Decorative only. */}
+        <div className="sidebar-decor" aria-hidden="true">
+          <i />
+          <i />
+        </div>
+
         {/* Bottom */}
         <div className="sidebar-bottom">
           <Link

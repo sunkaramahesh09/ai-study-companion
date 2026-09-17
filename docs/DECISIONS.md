@@ -2086,3 +2086,37 @@ that differs from where the card is rendered. A link to the current page is
 indistinguishable from a broken button.
 
 ---
+
+## D-064 — Page atmosphere lives at the background layer, not inside cards
+**Date:** 2026-09-17 · **Area:** UI
+
+**Chosen:** the Home dashboard's mountains, glows, clouds and sparkles render in
+one fixed, `pointer-events: none`, `z-index: -1` layer behind the whole grid.
+Cards are slightly translucent (`rgba(255,255,255,0.82)` + `backdrop-filter`)
+so that layer tints them instead of being clipped at their edges.
+
+**Why not a gradient per card:** putting the decoration inside each card is what
+makes a dashboard read as a row of boxes with pictures in them. Decoration at
+the page level is continuous — a ridge can pass behind three cards and the eye
+reads one environment. The sidebar carries the same ridge at its foot so the
+landscape crosses the divider rather than stopping at it.
+
+**Built from `clip-path`, not images:** the silhouettes scale to any viewport,
+add nothing to the bundle, and tint from the same palette variables as the rest
+of the UI. Depth comes from layering — far ridges paler and blurred, near ridges
+darker and sharp.
+
+**Boxiness:** borders dropped to a ~7% hairline and separation carried by shadow
+and surface contrast instead. Nav links got their own rounded focus ring: the
+global focus style is a hard rectangle, which on a pill-shaped link was drawing
+the heavy purple box around the active item. Keyboard focus stays clearly
+visible, it just follows the shape.
+
+**Responsive:** ranges shrink rather than disappear below 768px — they are what
+makes the page feel like an environment. Clouds and the mid-page glow are hidden
+there, where they only muddy text.
+
+**Unchanged:** no route, query, API call, state or piece of real data was
+touched. Every element added is `aria-hidden` and non-interactive.
+
+---

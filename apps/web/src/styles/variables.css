@@ -37,7 +37,9 @@
   --navy-50:  #f8fafc;
 
   /* Backgrounds */
-  --bg-page:    #f8f9fc;
+  /* Faintly lavender rather than neutral grey: the decorative layer reads as
+     atmosphere only if the surface beneath it is already slightly warm. */
+  --bg-page:    #faf9ff;
   --bg-white:   #ffffff;
   --bg-sidebar: #ffffff;
   --bg-card:    #ffffff;

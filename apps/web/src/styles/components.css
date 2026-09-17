@@ -207,11 +207,17 @@ textarea:focus {
 /* ─── Cards ───────────────────────────────────────────────────────────── */
 
 .card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
+  /* Very slightly translucent, so the page's glows and mountains tint the card
+     instead of being cut off at its edge. This is what stops a grid of white
+     rectangles from reading as boxes pasted over a background. */
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(8px);
+  /* Border is a hairline hint; separation comes from the shadow and the
+     surface contrast, not from an outline. */
+  border: 1px solid rgba(124, 92, 246, 0.07);
   border-radius: var(--radius-xl);
   padding: var(--space-6);
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 1px 2px rgba(76, 46, 172, 0.04), 0 10px 26px -18px rgba(76, 46, 172, 0.20);
   transition: box-shadow var(--duration-normal) var(--ease-out),
               border-color var(--duration-normal) var(--ease-out);
 }
