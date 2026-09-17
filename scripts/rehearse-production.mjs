@@ -19,6 +19,7 @@
  */
 import { createClient } from '@supabase/supabase-js';
 import { makePdf } from '../apps/api/src/__tests__/fixtures/makePdf.ts';
+import { containsNormalised } from '../packages/shared/src/text.ts';
 
 const API = process.env.REHEARSAL_API_URL ?? 'https://ai-study-companion-production-a07f.up.railway.app';
 const WEB = process.env.REHEARSAL_WEB_URL ?? 'https://ai-study-companion-ruby.vercel.app';
@@ -206,10 +207,18 @@ async function main() {
     check('Grounded in the material', grounded.body?.grounded === true);
     check('Carries a citation', (grounded.body?.message?.citations ?? []).length > 0,
       JSON.stringify(grounded.body?.message?.citations?.[0] ?? null));
+    // Normalised: the model writes "thirty‑two" with a non-breaking hyphen,
+    // and a literal match fails a completely correct answer (D-057).
+    const answerText = grounded.body?.message?.content ?? '';
     check(
       'States the fact from page 1',
-      /32|thirty-two/i.test(grounded.body?.message?.content ?? ''),
-      (grounded.body?.message?.content ?? '').slice(0, 110),
+      containsNormalised(answerText, '32') || containsNormalised(answerText, 'thirty-two'),
+      answerText.slice(0, 110),
+    );
+    check(
+      'Citation markers use the documented [S1] form',
+      !/[\u3010\u3011]/.test(answerText),
+      answerText.match(/\[S\d+\]|[\u3010][^\u3011]*[\u3011]/)?.[0] ?? 'no marker found',
     );
 
     step('Ask the Tutor something the material does NOT answer');
@@ -220,7 +229,7 @@ async function main() {
     check('Declined rather than fabricating', refused.body?.grounded === false, refused.body?.reason);
     check(
       'Did not answer from general knowledge',
-      !/france|brazil/i.test(refused.body?.message?.content ?? ''),
+      !['france', 'brazil'].some((n) => containsNormalised(refused.body?.message?.content ?? '', n)),
       (refused.body?.message?.content ?? '').slice(0, 90),
     );
 

@@ -1771,4 +1771,33 @@ failure this whole mechanism exists to surface.
 This is the class of thing only a real run finds: nothing was broken, every test
 was green, and the product still looked wrong.
 
+### And a second, more dangerous one on the very next run
+
+With the marker fixed, the rehearsal failed a different check: *"States the fact
+from page 1"*, against the answer
+
+> One glucose molecule yields a net of about thirty‑two ATP under aerobic
+> conditions [S1].
+
+That answer is perfect. The assertion was `thirty-two` with an ASCII hyphen;
+the model wrote U+2011, a **non-breaking hyphen**. Same family as the bracket
+issue — models emit typographic Unicode where a developer types ASCII.
+
+**This one matters more than the cosmetic one**, because the code doing the
+comparing is the *evaluation suite* and the *production rehearsal*. A brittle
+literal match there does not produce a glitch; it produces a **red result for
+correct behaviour**, in the one place whose entire job is to be believed. The
+same latent bug sat in `tutor.cites-the-page-the-fact-is-on`, whose ground
+truth also contains `thirty-two` — it had passed only because the model
+happened to write "32" that run.
+
+`normaliseForComparison()` in `@asc/shared` now folds dashes, curly quotes,
+non-breaking spaces and ellipses before comparing, and both the eval suite and
+the rehearsal use it. It deliberately does **not** loosen matching beyond
+typography — "two ATP" still fails against "thirty-two", and that is tested,
+because a normaliser that matches everything is worse than a brittle one.
+
+**Two consecutive green rehearsals afterwards**, with the citation-format check
+confirming `[S1]` live in production.
+
 ---

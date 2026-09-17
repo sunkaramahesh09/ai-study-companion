@@ -1,3 +1,4 @@
+import { containsNormalised } from '@asc/shared';
 import { askTutor } from '../../lib/tutor.ts';
 import { GROUND_TRUTH } from '../fixture.ts';
 import type { EvalCase } from '../types.ts';
@@ -22,7 +23,6 @@ export const tutorCases: EvalCase[] = [
       for (const truth of GROUND_TRUTH) {
         const answer = await askTutor(db, { userId, projectId, question: truth.question });
         const pages = answer.citations.map((c) => c.pageNumber);
-        const text = answer.answer.toLowerCase();
         results.push({
           question: truth.question,
           expectedPage: truth.page,
@@ -31,7 +31,12 @@ export const tutorCases: EvalCase[] = [
           citesCorrectPage: pages.includes(truth.page),
           // Groundedness and correctness are separate failures. An answer can
           // cite the right page and still state the wrong number.
-          statesTheFact: truth.mustContain.some((needle) => text.includes(needle.toLowerCase())),
+          //
+          // Compared with typographic normalisation: models write "thirty‑two"
+          // with a non-breaking hyphen, and a literal match would fail a
+          // correct answer. That is the worst kind of false result — a red
+          // evaluation for working behaviour. See D-057.
+          statesTheFact: truth.mustContain.some((needle) => containsNormalised(answer.answer, needle)),
           answer: answer.answer.slice(0, 300),
         });
       }
@@ -64,8 +69,7 @@ export const tutorCases: EvalCase[] = [
       const results = [];
       for (const c of cases) {
         const answer = await askTutor(db, { userId, projectId, question: c.question });
-        const text = answer.answer.toLowerCase();
-        const leaked = c.mustNotContain.filter((n) => text.includes(n));
+        const leaked = c.mustNotContain.filter((n) => containsNormalised(answer.answer, n));
         results.push({
           question: c.question,
           grounded: answer.grounded,
