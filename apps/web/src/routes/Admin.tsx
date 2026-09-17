@@ -15,27 +15,18 @@ import {
   type EvalResult,
   type EvalRun,
 } from '../lib/queries.ts';
-import { EmptyState, ErrorNote, Spinner } from '../components/Ui.tsx';
+import { EmptyState, ErrorNote, Spinner, PageHeader } from '../components/Ui.tsx';
 import { RowBars, Stat, pct } from '../components/Charts.tsx';
 import { ActivityPanel, AiUsagePanel, TutorPanel, WindowPicker } from '../components/AnalyticsPanels.tsx';
 
-/**
- * Admin Dashboard (PRD §17).
- *
- * The role check below is presentation only — it hides a link the user cannot
- * use. Every route behind it is gated server-side on `profiles.role` read from
- * the database, and a non-admin gets a 403 whatever this component renders.
- * Treating a client-side check as security would be the bug.
- */
-
 type Tab = 'overview' | 'users' | 'activity' | 'ai' | 'evaluation';
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'users', label: 'Users' },
-  { id: 'activity', label: 'Activity' },
-  { id: 'ai', label: 'AI' },
-  { id: 'evaluation', label: 'Evaluation' },
+const TABS: { id: Tab; icon: string; label: string }[] = [
+  { id: 'overview', icon: '📋', label: 'Overview' },
+  { id: 'users', icon: '👥', label: 'Users' },
+  { id: 'activity', icon: '📊', label: 'Activity' },
+  { id: 'ai', icon: '🤖', label: 'AI' },
+  { id: 'evaluation', icon: '🧪', label: 'Evaluation' },
 ];
 
 export function Admin() {
@@ -45,9 +36,10 @@ export function Admin() {
 
   if (profile && profile.role !== 'admin') {
     return (
-      <section>
-        <Link to="/" className="back">← Back to Spaces</Link>
+      <section className="fade-in">
+        <Link to="/home" className="back">← Back to Home</Link>
         <EmptyState
+          icon="🔒"
           title="Administrator access required"
           hint="Your account does not have the admin role. This page is gated on the server too — there is nothing to see here without it."
         />
@@ -56,15 +48,15 @@ export function Admin() {
   }
 
   return (
-    <section>
-      <Link to="/" className="back">← Back to Spaces</Link>
-      <div className="section-head">
-        <div>
-          <h2>Admin</h2>
-          <p className="muted">Users, learning activity, AI usage and system health.</p>
-        </div>
-        {tab !== 'users' && tab !== 'evaluation' && <WindowPicker days={days} onChange={setDays} />}
-      </div>
+    <section className="fade-in">
+      <Link to="/home" className="back">← Back to Home</Link>
+
+      <PageHeader
+        icon="⚙️"
+        title="Admin Dashboard"
+        description="Users, learning activity, AI usage and system health."
+        action={tab !== 'users' && tab !== 'evaluation' ? <WindowPicker days={days} onChange={setDays} /> : undefined}
+      />
 
       <div className="tabs" role="tablist">
         {TABS.map((t) => (
@@ -75,7 +67,7 @@ export function Admin() {
             className={tab === t.id ? 'tab tab-on' : 'tab'}
             onClick={() => setTab(t.id)}
           >
-            {t.label}
+            {t.icon} {t.label}
           </button>
         ))}
       </div>
@@ -89,7 +81,6 @@ export function Admin() {
   );
 }
 
-/** Shared loader: one place that knows how to show loading and failure. */
 function useAsync<T>(load: () => Promise<T>, deps: unknown[]) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -114,8 +105,8 @@ function OverviewTab({ days }: { days: number }) {
   if (!data) return <Spinner />;
 
   return (
-    <>
-      <div className="stats">
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+      <div className="stats stagger">
         <Stat value={data.users.total} label="users" />
         <Stat value={data.users.newInWindow} label={`new in ${days}d`} />
         <Stat value={data.content.spaces} label="spaces" />
@@ -126,24 +117,22 @@ function OverviewTab({ days }: { days: number }) {
 
       <div className="two-col">
         <div className="card">
-          <h3>Material pipeline</h3>
+          <h3>Material Pipeline</h3>
           <RowBars
             rows={Object.entries(data.content.materialsByStatus).map(([status, n]) => ({
               label: status,
               value: n,
             }))}
           />
-          <p className="muted small">
+          <p className="muted small" style={{ marginTop: 'var(--space-3)' }}>
             Material status is the pipeline's user-visible truth. A material stuck in
             <code> processing </code> while the queue is empty means a worker died mid-job.
           </p>
         </div>
 
         <div className="card">
-          <h3>Job queues</h3>
+          <h3>Job Queues</h3>
           {!data.jobs.available ? (
-            // The queue being unreachable is itself the finding, so it is
-            // reported rather than allowed to blank the page.
             <p className="error small">Queue unreachable: {data.jobs.error}</p>
           ) : data.jobs.queues.length === 0 ? (
             <p className="muted">No queues registered yet.</p>
@@ -164,7 +153,7 @@ function OverviewTab({ days }: { days: number }) {
               </tbody>
             </table>
           )}
-          <p className="muted small">
+          <p className="muted small" style={{ marginTop: 'var(--space-3)' }}>
             Failed counts are bounded by the queue's retention policy — a rolling recent count, not an
             all-time total.
           </p>
@@ -174,7 +163,7 @@ function OverviewTab({ days }: { days: number }) {
       <ActivityPanel activity={data.activity} days={data.window.days} />
       <TutorPanel tutor={data.tutor} />
       <AiUsagePanel ai={data.ai} />
-    </>
+    </div>
   );
 }
 
@@ -184,7 +173,7 @@ function UsersTab() {
   if (!data) return <Spinner />;
 
   return (
-    <div className="card">
+    <div className="card fade-in" style={{ marginTop: 'var(--space-4)' }}>
       <div className="card-head">
         <h3>Users</h3>
         <span className="muted small">{data.length} total</span>
@@ -230,7 +219,7 @@ function ActivityTab({ days }: { days: number }) {
   );
 
   return (
-    <div className="card">
+    <div className="card fade-in" style={{ marginTop: 'var(--space-4)' }}>
       <div className="card-head">
         <h3>Activity</h3>
         <select className="select" value={type} onChange={(e) => setType(e.target.value)}>
@@ -276,11 +265,11 @@ function AiTab({ days }: { days: number }) {
   if (!data) return <Spinner />;
 
   return (
-    <>
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
       <AiUsagePanel ai={data.summary} />
       <div className="card">
         <div className="card-head">
-          <h3>Recent failures</h3>
+          <h3>Recent Failures</h3>
           <span className="muted small">{data.recentFailures.length} in {days}d</span>
         </div>
         {data.recentFailures.length === 0 ? (
@@ -310,12 +299,12 @@ function AiTab({ days }: { days: number }) {
             </tbody>
           </table>
         )}
-        <p className="muted small">
+        <p className="muted small" style={{ marginTop: 'var(--space-3)' }}>
           A high attempt count with a 429 means the request was rate-limited and retried through
           backoff — the early signal of pressing against the TPM ceiling.
         </p>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -329,8 +318,9 @@ function EvaluationTab() {
 
   if (data.runs.length === 0) {
     return (
-      <div className="card">
+      <div className="card fade-in" style={{ marginTop: 'var(--space-4)' }}>
         <EmptyState
+          icon="🧪"
           title="No evaluation has been run yet"
           hint="Run `npm run eval` to score the Tutor's groundedness and citation correctness, retrieval relevance, unsupported-question handling and grading quality. Results are persisted and appear here."
         />
@@ -344,7 +334,7 @@ function EvaluationTab() {
   }
 
   return (
-    <>
+    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
       <div className="card">
         <h3>Runs</h3>
         <table className="table">
@@ -367,8 +357,6 @@ function EvaluationTab() {
                   </td>
                   <td>
                     {r.incomplete ? (
-                      // A run that started and never finished is a crashed run;
-                      // showing its partial numbers as a result would mislead.
                       <span className="warn">did not finish</span>
                     ) : (
                       <>
@@ -400,7 +388,7 @@ function EvaluationTab() {
               {results.map((r) => (
                 <tr key={r.id}>
                   <td className="mono small">{r.case_id}</td>
-                  <td className={r.passed ? 'ok' : 'error'}>{r.passed ? 'pass' : 'FAIL'}</td>
+                  <td className={r.passed ? 'ok' : 'error'}>{r.passed ? '✅ pass' : '❌ FAIL'}</td>
                   <td>{r.score === null ? '—' : pct(r.score)}</td>
                 </tr>
               ))}
@@ -408,6 +396,6 @@ function EvaluationTab() {
           </table>
         </div>
       ))}
-    </>
+    </div>
   );
 }

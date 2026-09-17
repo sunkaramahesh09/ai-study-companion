@@ -1,21 +1,17 @@
-import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../auth/AuthProvider.tsx';
+import { useState, type ReactNode } from 'react';
+import { Sidebar } from './Sidebar.tsx';
+import { Topbar } from './Topbar.tsx';
 
 export function Shell({ children }: { children: ReactNode }) {
-  const { profile, signOut } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
-    <div className="page">
-      <header className="topbar">
-        <Link to="/" className="brand">AI Study Companion</Link>
-        <div className="topbar-right">
-          <Link to="/analytics" className="nav-link">Analytics</Link>
-          <span className="muted small">{profile?.email}</span>
-          {profile?.role === 'admin' && <Link to="/admin" className="badge badge-link">admin</Link>}
-          <button className="link" onClick={() => void signOut()}>Sign out</button>
-        </div>
-      </header>
-      <main>{children}</main>
+    <div className="app-shell">
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="main-content">
+        <Topbar onMenuClick={() => setSidebarOpen((v) => !v)} />
+        <main>{children}</main>
+      </div>
     </div>
   );
 }

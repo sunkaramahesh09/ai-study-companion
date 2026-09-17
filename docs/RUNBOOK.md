@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 15:30 · **Day:** Thu · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-17 21:10 · **Day:** Thu · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -285,8 +285,29 @@ extractor handles that on purpose (D-034) so nothing failed — but the learner
 reads the raw text, and mixed bracket styles look like a product bug. Markers
 are now normalised before persisting (D-057).
 
-**NEXT ACTION: all 25 build tasks are done.** What remains is Sunday's list,
-and it can start early:
+**Session 2026-09-17 21:10.** Frontend visual redesign merged. The user had a
+separate AI tool ("Antigravity") build a full redesign of `apps/web` from an
+earlier snapshot of this repo. Audited file-by-file, then merged onto branch
+`antigravity-ui-merge` (not yet on `main`) — the new design layer (CSS system,
+Sidebar/Topbar shell, Home route, restyled pages) with every piece of
+same-day business logic re-ported on top: D-061's 409 quiz-resume, material
+retry/poll/progress, `@asc/shared` types, the D-052 build guard (`envDir` +
+`verify-bundle.mjs`), and the D-051 colorblind-safe chart palette. Two fake
+always-empty nav pages and several inert decorative controls (fake search,
+notification badge, RAG toggle, unconfigured Google OAuth) were dropped
+rather than shipped. Full detail and rationale in **D-062**.
+
+**Verified:** `tsc -b` clean, 491/491 tests, `npm run build --workspace=@asc/web`
+green incl. `verify-bundle.mjs`, and a full logged-in browser walkthrough
+(sign-up → space → project → PDF upload → live poll to ready → grounded Tutor
+citation → quiz incl. a live-triggered 409-resume → Growth → Analytics →
+non-admin 403 on `/admin`) against local `worker`+`api`+`web`.
+
+**NEXT ACTION:** decide whether to merge `antigravity-ui-merge` into `main`
+and redeploy (Vercel builds `main`), or keep reviewing first. Not pushed or
+merged yet — working tree on the branch is clean and ready.
+
+Sunday's list, which can still start early once the above is resolved:
 - **26. Docs** — architecture doc + diagram, README + setup, AI usage doc
   (build-time vs product-time), evaluation approach, known limitations, future
   improvements. `DECISIONS.md` is at **D-057** and is the source material.

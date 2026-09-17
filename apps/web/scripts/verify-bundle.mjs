@@ -23,7 +23,7 @@ const ASSETS = new URL('../dist/assets/', import.meta.url).pathname;
  */
 const MARKERS = [
   'Ask the Tutor',       // ProjectDashboard
-  'Concept mastery',     // ProjectDashboard
+  'Concept Mastery',     // ProjectDashboard
   'Learning activity',   // AnalyticsPanels
   'Needs attention',     // Growth
 ];

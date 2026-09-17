@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { askTutor, getMessages, type TutorMessage } from '../lib/queries.ts';
-import { ErrorNote } from '../components/Ui.tsx';
+import { ErrorNote, PageHeader } from '../components/Ui.tsx';
 
 export function Tutor() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -10,6 +10,7 @@ export function Tutor() {
   const [question, setQuestion] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,67 +56,141 @@ export function Tutor() {
     }
   }
 
-  return (
-    <section className="tutor">
-      <Link to={`/projects/${projectId}`} className="back">← Back to Project</Link>
-      <div className="section-head">
-        <div>
-          <h2>Tutor</h2>
-          <p className="muted">Answers come from your uploaded material, with the page they came from.</p>
-        </div>
-      </div>
+  async function onCopy(id: string, content: string) {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((cur) => (cur === id ? null : cur)), 1500);
+    } catch {
+      // Clipboard permission denied — nothing to recover, just no feedback.
+    }
+  }
 
-      <div className="chat card">
+  const quickActions = [
+    { icon: '💡', label: 'Explain simply' },
+    { icon: '📝', label: 'Give an example' },
+    { icon: '✅', label: 'Quiz me on this' },
+    { icon: '📖', label: 'Help me revise' },
+  ];
+
+  return (
+    <section className="tutor-page fade-in">
+      <Link to={`/projects/${projectId}`} className="back">← Back to Project</Link>
+
+      <PageHeader
+        icon="💬"
+        title="AI Tutor"
+        description="Answers come from your uploaded material, with the page they came from."
+      />
+
+      {/* Chat Area */}
+      <div className="chat">
         {messages.length === 0 && !busy && (
-          <p className="muted">
-            Ask anything about your material. If it isn't covered, I'll say so rather than guess.
-          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 'var(--space-4)', padding: 'var(--space-8)' }}>
+            <div style={{ fontSize: 48, marginBottom: 'var(--space-2)' }}>🎓</div>
+            <h3 style={{ textAlign: 'center' }}>Ask Your AI Tutor</h3>
+            <p className="muted" style={{ textAlign: 'center', maxWidth: 420 }}>
+              Ask anything about your material. If it isn't covered, I'll say so rather than guess.
+            </p>
+            <div className="quick-actions" style={{ justifyContent: 'center' }}>
+              {quickActions.map((qa) => (
+                <button
+                  key={qa.label}
+                  className="quick-action"
+                  onClick={() => setQuestion(qa.label)}
+                >
+                  {qa.icon} {qa.label}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
 
         {messages.map((m) => (
           <div key={m.id} className={`turn turn-${m.role}`}>
-            <div className="turn-body">{m.content}</div>
+            <div className={`turn-avatar ${m.role === 'assistant' ? 'turn-avatar-ai' : 'turn-avatar-user'}`}>
+              {m.role === 'assistant' ? '🎓' : '👤'}
+            </div>
+            <div className="turn-content">
+              {m.role === 'assistant' && m.citations.length > 0 && (
+                <div className="turn-grounded-badge">
+                  📚 Based on your materials
+                </div>
+              )}
+              <div className="turn-body">{m.content}</div>
 
-            {m.role === 'assistant' && m.citations.length > 0 && (
-              <div className="citations">
-                {m.citations.map((c) => (
-                  <details key={c.chunkId} className="citation">
-                    <summary>
-                      <span className="cite-tag">S{c.sourceId}</span>
-                      {c.filename} — Page {c.pageNumber}
-                    </summary>
-                    <p className="muted small">{c.snippet}</p>
-                  </details>
-                ))}
-              </div>
-            )}
+              {m.role === 'assistant' && m.citations.length > 0 && (
+                <div className="citations">
+                  {m.citations.map((c) => (
+                    <details key={c.chunkId} className="citation">
+                      <summary>
+                        <span className="cite-tag">S{c.sourceId}</span>
+                        <span style={{ fontSize: 14 }}>📄</span>
+                        <span>{c.filename} — Page {c.pageNumber}</span>
+                      </summary>
+                      <p className="muted small">{c.snippet}</p>
+                    </details>
+                  ))}
+                </div>
+              )}
 
-            {/* A refusal is a correct outcome, so it is labelled as such rather
-                than styled like an error. */}
-            {m.role === 'assistant' && m.grounded === false && (
-              <span className="pill pill-queued">no supporting evidence found</span>
-            )}
+              {/* A refusal is a correct outcome, so it is labelled as such
+                  rather than styled like an error. */}
+              {m.role === 'assistant' && m.grounded === false && (
+                <span className="pill pill-queued">⚠️ No supporting evidence found</span>
+              )}
+
+              {m.role === 'assistant' && (
+                <div className="turn-actions">
+                  <button
+                    className="turn-action-btn"
+                    title="Copy"
+                    aria-label="Copy response"
+                    onClick={() => void onCopy(m.id, m.content)}
+                  >
+                    {copiedId === m.id ? '✅' : '📋'}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         ))}
 
-        {busy && <div className="turn turn-assistant"><span className="muted">Reading your material…</span></div>}
+        {busy && (
+          <div className="turn turn-assistant">
+            <div className="turn-avatar turn-avatar-ai">🎓</div>
+            <div className="turn-content">
+              <div className="turn-body" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                <span className="typing-dot" />
+                <span className="typing-dot" />
+                <span className="typing-dot" />
+                <span className="muted" style={{ marginLeft: 'var(--space-2)' }}>Reading your material…</span>
+              </div>
+            </div>
+          </div>
+        )}
         <div ref={endRef} />
       </div>
 
       {error ? <ErrorNote error={error} /> : null}
 
-      <form className="ask" onSubmit={onAsk}>
-        <input
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Ask about your material…"
-          maxLength={2000}
-          disabled={busy}
-        />
-        <button type="submit" disabled={busy || question.trim().length < 3}>
-          {busy ? 'Thinking…' : 'Ask'}
-        </button>
-      </form>
+      {/* Composer */}
+      <div className="ask">
+        <form onSubmit={onAsk}>
+          <div className="ask-input-row">
+            <input
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder="Ask about your material…"
+              maxLength={2000}
+              disabled={busy}
+            />
+            <button type="submit" className="ask-send" disabled={busy || question.trim().length < 3}>
+              {busy ? '⏳' : '✈️'} {busy ? 'Thinking…' : 'Send'}
+            </button>
+          </div>
+        </form>
+      </div>
     </section>
   );
 }

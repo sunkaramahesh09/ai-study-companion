@@ -6,7 +6,7 @@ import {
   uploadMaterial,
   type MaterialSummary,
 } from '../lib/queries.ts';
-import { EmptyState, ErrorNote, StatusPill } from './Ui.tsx';
+import { EmptyState, ErrorNote, FileTypeIcon, StatusPill } from './Ui.tsx';
 
 const MAX_MB = 25;
 const isPending = (m: MaterialSummary) => m.status === 'queued' || m.status === 'processing';
@@ -15,6 +15,7 @@ export function MaterialUpload({ projectId, initial }: { projectId: string; init
   const [materials, setMaterials] = useState<MaterialSummary[]>(initial);
   const [error, setError] = useState<unknown>(null);
   const [progress, setProgress] = useState<number | null>(null);
+  const [drag, setDrag] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   /**
@@ -57,6 +58,7 @@ export function MaterialUpload({ projectId, initial }: { projectId: string; init
       setError(err);
     } finally {
       setProgress(null);
+      setDrag(false);
       if (inputRef.current) inputRef.current.value = '';
     }
   }
@@ -72,6 +74,7 @@ export function MaterialUpload({ projectId, initial }: { projectId: string; init
   }
 
   async function onDelete(id: string) {
+    if (!window.confirm('Delete this material?')) return;
     setError(null);
     try {
       await deleteMaterial(id);
@@ -83,57 +86,86 @@ export function MaterialUpload({ projectId, initial }: { projectId: string; init
 
   return (
     <div className="card">
-      <div className="section-head">
+      <div className="card-head">
         <h3>Materials</h3>
-        <button onClick={() => inputRef.current?.click()} disabled={progress !== null}>
-          {progress !== null ? `Uploading ${progress}%` : 'Upload PDF'}
-        </button>
+        <span className="muted small">{materials.length} uploaded</span>
       </div>
 
-      <input
-        ref={inputRef}
-        type="file"
-        accept="application/pdf,.pdf"
-        hidden
-        onChange={(e) => void onPick(e.target.files?.[0])}
-      />
+      <div
+        className={`upload-zone ${drag ? 'dragging' : ''}`}
+        onDragOver={(e) => { e.preventDefault(); if (progress === null) setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (progress !== null) return;
+          void onPick(e.dataTransfer.files?.[0]);
+        }}
+        onClick={() => progress === null && inputRef.current?.click()}
+      >
+        <div className="upload-icon">📄</div>
+        <strong style={{ display: 'block', fontSize: 'var(--text-md)' }}>
+          {progress !== null ? `Uploading… ${progress}%` : 'Drop a PDF here or click to browse'}
+        </strong>
+        <p className="muted small" style={{ marginTop: 'var(--space-1)' }}>PDF only, up to {MAX_MB} MB</p>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="application/pdf,.pdf"
+          hidden
+          onChange={(e) => void onPick(e.target.files?.[0])}
+        />
+      </div>
 
       {progress !== null && (
-        <div className="bar" aria-label={`Uploading ${progress}%`}>
+        <div className="bar" aria-label={`Uploading ${progress}%`} style={{ marginTop: 'var(--space-3)' }}>
           <div className="bar-fill bar-ok" style={{ width: `${progress}%` }} />
         </div>
       )}
 
-      {error ? <ErrorNote error={error} /> : null}
+      {error ? <div style={{ marginTop: 'var(--space-3)' }}><ErrorNote error={error} /></div> : null}
 
       {materials.length === 0 ? (
-        <EmptyState
-          title="No materials yet"
-          hint={`Upload a PDF (up to ${MAX_MB} MB). Processing runs in the background — you can close this page.`}
-        />
+        <div style={{ marginTop: 'var(--space-3)' }}>
+          <EmptyState
+            icon="📂"
+            title="No materials yet"
+            hint={`Upload a PDF (up to ${MAX_MB} MB). Processing runs in the background — you can close this page.`}
+          />
+        </div>
       ) : (
-        <ul className="list">
+        <div style={{ marginTop: 'var(--space-4)' }}>
           {materials.map((m) => (
-            <li key={m.id}>
-              <span className="clamp" title={m.filename}>{m.filename}</span>
-              <span className="row-end">
-                {m.status === 'ready' && m.page_count != null && (
-                  <span className="muted small">{m.page_count}p · {m.chunk_count} chunks</span>
-                )}
-                {m.status === 'failed' && m.error_message && (
-                  <span className="error small clamp" title={m.error_message}>{m.error_message}</span>
-                )}
-                <StatusPill status={m.status} />
-                {m.status === 'failed' && (
-                  <button className="link" onClick={() => void onRetry(m.id)}>Retry</button>
-                )}
-                <button className="link" onClick={() => void onDelete(m.id)} aria-label={`Delete ${m.filename}`}>
-                  Remove
+            <div key={m.id} className="material-row fade-in">
+              <FileTypeIcon filename={m.filename} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="clamp" style={{ fontWeight: 500, fontSize: 'var(--text-sm)' }} title={m.filename}>
+                  {m.filename}
+                </div>
+                <div className="muted small">
+                  {m.status === 'ready' && m.page_count != null
+                    ? `${m.page_count}p · ${m.chunk_count} chunks`
+                    : m.status === 'failed' && m.error_message
+                      ? <span className="error" title={m.error_message}>{m.error_message}</span>
+                      : null}
+                </div>
+              </div>
+              <StatusPill status={m.status} />
+              {m.status === 'failed' && (
+                <button className="btn-icon" onClick={() => void onRetry(m.id)} title="Retry" aria-label={`Retry ${m.filename}`}>
+                  🔄
                 </button>
-              </span>
-            </li>
+              )}
+              <button
+                className="btn-icon"
+                onClick={() => void onDelete(m.id)}
+                title="Delete"
+                aria-label={`Delete ${m.filename}`}
+              >
+                🗑️
+              </button>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );
