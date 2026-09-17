@@ -1637,3 +1637,37 @@ boundaries to matter (the fixture is four pages, so it exercises attribution but
 not scale).
 
 ---
+
+## D-055 — Supabase Storage does not show you an in-place overwrite
+**Date:** 2026-09-17 · **Area:** Storage / Testing
+
+**Found while writing the job-resilience tests.** Uploading different bytes to
+an existing path with `upsert: true` returns success, and a subsequent
+`download()` of that path returns the **old** object. Measured directly:
+
+```
+upload1: ok        download1: 590 bytes   (correct)
+upload2: ok        download2: 590 bytes   (expected 861 — stale)
+```
+
+**No product impact, and that is not luck.** Every upload in the application
+takes a fresh path, `<user_id>/<project_id>/<uuid>.pdf` (D-026), so the app
+never overwrites an object. "Retry" reprocesses the same bytes; replacing a
+document is a new material with a new id. The only thing overwriting was the
+test.
+
+**Two tests were rewritten to model the real flow**, which also made them
+better tests:
+- Recovery is now "the stored object is missing, then it appears" — the
+  transient-infrastructure case the retry button actually exists for, and it
+  recovers without the user re-uploading.
+- The shrinking-document case now points the row at a **new** path, which is
+  what the product does, and additionally asserts that no chunk still cites a
+  page past the end of the new document.
+
+**Worth knowing before it costs an hour:** an `upload` that reports success is
+not evidence that a later read returns those bytes. The bucket also enforces
+`application/pdf` and rejects anything else at the storage layer — a second
+control behind the route's magic-byte check, found the same way.
+
+---
