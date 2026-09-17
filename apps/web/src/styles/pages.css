@@ -11,7 +11,10 @@
 
 .login-left {
   flex: 1.1;
-  background: linear-gradient(135deg, var(--lavender-50) 0%, var(--bg-page) 50%, #f0eeff 100%);
+  background:
+    radial-gradient(ellipse 60% 50% at 15% 10%, var(--lavender-100) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 45% at 85% 15%, var(--primary-100) 0%, transparent 60%),
+    linear-gradient(135deg, var(--lavender-50) 0%, var(--bg-page) 50%, #f0eeff 100%);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -19,16 +22,63 @@
   position: relative;
   overflow: hidden;
 }
-.login-left::before {
-  content: '';
+
+/* Layered, dimensional decoration behind the branding column — a flat single
+   blob read as "plain" against the AI.Prof reference design, which composes
+   several soft blurred shapes plus a landscape silhouette. Purely visual:
+   absolutely positioned, aria-hidden, pointer-events none, zero effect on
+   the form/auth logic in front of it. */
+.login-bg-decor {
   position: absolute;
-  bottom: -40px;
-  left: -40px;
-  width: 200px;
-  height: 200px;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.login-blob {
+  position: absolute;
   border-radius: var(--radius-full);
-  background: linear-gradient(135deg, #ffd6a5 0%, #f9a66c 100%);
+  filter: blur(50px);
+  display: block;
+}
+.login-blob-1 {
+  width: 420px;
+  height: 420px;
+  top: -140px;
+  right: -120px;
+  background: radial-gradient(circle, var(--lavender-300) 0%, transparent 70%);
+  opacity: 0.55;
+}
+.login-blob-2 {
+  width: 320px;
+  height: 320px;
+  bottom: 8%;
+  left: -100px;
+  background: radial-gradient(circle, var(--primary-300) 0%, transparent 70%);
   opacity: 0.3;
+}
+.login-blob-3 {
+  width: 260px;
+  height: 260px;
+  top: 38%;
+  left: 34%;
+  background: radial-gradient(circle, #ffd6a5 0%, transparent 70%);
+  opacity: 0.35;
+  filter: blur(65px);
+}
+/* Soft mountain/landscape silhouette along the bottom-left edge. */
+.login-landscape {
+  position: absolute;
+  left: -5%;
+  bottom: -4%;
+  width: 65%;
+  height: 240px;
+  background: linear-gradient(180deg, transparent 0%, var(--lavender-200) 75%);
+  clip-path: polygon(
+    0% 100%, 0% 62%, 12% 40%, 22% 58%, 34% 22%, 48% 52%,
+    58% 34%, 72% 55%, 84% 30%, 100% 58%, 100% 100%
+  );
+  opacity: 0.5;
 }
 
 .login-badge {
@@ -102,17 +152,115 @@
   color: var(--text-muted);
 }
 
+/* Decoration around the illustration: radial glow, sparkles, floating
+   callout. All absolutely positioned within this wrapper so they move with
+   the image and never affect the surrounding flex layout. */
+.login-illustration {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.login-illustration-glow {
+  content: '';
+  position: absolute;
+  inset: -34px;
+  border-radius: var(--radius-full);
+  background: radial-gradient(circle, rgba(108, 71, 236, 0.28) 0%, transparent 72%);
+  filter: blur(8px);
+  z-index: 0;
+  pointer-events: none;
+}
+.login-sparkle {
+  position: absolute;
+  color: var(--primary-300);
+  pointer-events: none;
+  z-index: 2;
+}
+.login-sparkle-1 {
+  bottom: 4px;
+  right: -16px;
+  font-size: 16px;
+  color: var(--primary-400);
+}
+.login-sparkle-2 {
+  bottom: 6px;
+  left: -20px;
+  font-size: 11px;
+  color: var(--lavender-400);
+}
+.login-callout {
+  position: absolute;
+  top: -30px;
+  right: -56px;
+  z-index: 2;
+  max-width: 148px;
+  background: var(--bg-white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+  pointer-events: none;
+}
+@media (max-width: 1240px) {
+  .login-callout { display: none; }
+}
+
 .login-right {
   flex: 0.9;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-8);
-  background: var(--bg-white);
+  background: radial-gradient(ellipse 55% 50% at 75% 15%, var(--lavender-50) 0%, transparent 60%),
+    var(--bg-white);
+  position: relative;
+  overflow: hidden;
+}
+/* Subtle lavender glow near the card, echoing the left panel's atmosphere
+   without competing with the form for attention. */
+.login-right::before {
+  content: '';
+  position: absolute;
+  top: -12%;
+  right: -8%;
+  width: 360px;
+  height: 360px;
+  border-radius: var(--radius-full);
+  background: radial-gradient(circle, var(--lavender-200) 0%, transparent 70%);
+  filter: blur(55px);
+  opacity: 0.6;
+  pointer-events: none;
+}
+.login-right::after {
+  content: '';
+  position: absolute;
+  bottom: -14%;
+  left: -10%;
+  width: 300px;
+  height: 300px;
+  border-radius: var(--radius-full);
+  background: radial-gradient(circle, var(--primary-100) 0%, transparent 70%);
+  filter: blur(55px);
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .login-form-container {
   width: min(400px, 100%);
+  position: relative;
+  z-index: 1;
+  background: var(--bg-white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-xl);
+  padding: var(--space-8);
+}
+@media (max-width: 640px) {
+  .login-form-container { box-shadow: var(--shadow-lg); padding: var(--space-6); }
 }
 
 .login-tabs {

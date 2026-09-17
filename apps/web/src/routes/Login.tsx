@@ -38,6 +38,15 @@ export function Login() {
     <div className="login-page">
       {/* Left Panel — Branding */}
       <div className="login-left">
+        {/* Decorative only — no content, no interaction. Sits behind the
+            branding column via z-index so it never affects layout or a11y. */}
+        <div className="login-bg-decor" aria-hidden="true">
+          <span className="login-blob login-blob-1" />
+          <span className="login-blob login-blob-2" />
+          <span className="login-blob login-blob-3" />
+          <span className="login-landscape" />
+        </div>
+
         <div style={{ position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-8)' }}>
             <div className="sidebar-logo-icon" style={{ width: 40, height: 40, fontSize: 20 }}>🎓</div>
@@ -55,19 +64,28 @@ export function Login() {
                 <span className="gradient">Master faster.</span>
               </h1>
             </div>
-            <img
-              src="/ai-brain.jpg"
-              alt="AI Brain Illustration"
-              style={{
-                width: 140,
-                height: 140,
-                objectFit: 'cover',
-                borderRadius: '50%',
-                boxShadow: '0 20px 40px rgba(108, 71, 236, 0.2)',
-                border: '4px solid white',
-                mixBlendMode: 'multiply',
-              }}
-            />
+            <div className="login-illustration">
+              <span className="login-illustration-glow" aria-hidden="true" />
+              <img
+                src="/ai-brain.jpg"
+                alt="AI Brain Illustration"
+                style={{
+                  width: 140,
+                  height: 140,
+                  objectFit: 'cover',
+                  borderRadius: '50%',
+                  boxShadow: '0 20px 40px rgba(108, 71, 236, 0.2)',
+                  border: '4px solid white',
+                  mixBlendMode: 'multiply',
+                  position: 'relative',
+                }}
+              />
+              <span className="login-sparkle login-sparkle-1" aria-hidden="true">✦</span>
+              <span className="login-sparkle login-sparkle-2" aria-hidden="true">✦</span>
+              <div className="login-callout" aria-hidden="true">
+                💡 Small steps every day lead to big results!
+              </div>
+            </div>
           </div>
 
           <p className="login-subtitle">
