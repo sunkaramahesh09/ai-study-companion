@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { askTutor, getMessages, type TutorMessage } from '../lib/queries.ts';
 import { ErrorNote, PageHeader } from '../components/Ui.tsx';
 
 export function Tutor() {
   const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams] = useSearchParams();
   const [messages, setMessages] = useState<TutorMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | undefined>();
-  const [question, setQuestion] = useState('');
+  // Prefilled from ?q= when the learner arrives from a recommendation, so the
+  // card's action lands on a question ready to send rather than an empty box.
+  // Deliberately not auto-sent: navigating should never spend quota on the
+  // learner's behalf, and they may want to reword it first.
+  const [question, setQuestion] = useState(() => searchParams.get('q') ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);

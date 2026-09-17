@@ -150,12 +150,10 @@
   /* ─── Layout ────────────────────────────────────────────────────────── */
   --sidebar-width: 240px;
   --sidebar-collapsed: 64px;
-  --topbar-height: 64px;
   --content-max-width: 1200px;
 
   /* ─── Z-Index Scale ─────────────────────────────────────────────────── */
   --z-sidebar: 40;
-  --z-topbar: 50;
   --z-dropdown: 60;
   --z-modal: 70;
   --z-toast: 80;

@@ -31,19 +31,17 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  /* Height is pinned to the topbar, not derived from the content, so the
-     sidebar's bottom border and the topbar's bottom border land on the same
-     pixel and read as one continuous line across the viewport. Both elements
-     are position:fixed at top:0 with box-sizing:border-box, so equal heights
-     put both 1px borders in the same place. Left as intrinsic height, the
-     logo block came out ~84px against the topbar's 64px. */
-  height: var(--topbar-height);
-  padding: 0 var(--space-5);
+  /* No bottom border. With the topbar gone there is nothing on the right for a
+     rule here to line up with, and a divider that stops at the sidebar edge
+     reads as a broken line rather than a deliberate one. Separation comes from
+     spacing instead. */
+  padding: var(--space-5) var(--space-5) var(--space-4);
   text-decoration: none;
   color: var(--text-primary);
-  border-bottom: 1px solid var(--border-light);
   flex-shrink: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
 }
+.sidebar-logo:hover { opacity: 0.85; }
 .sidebar-logo-icon {
   width: 36px;
   height: 36px;
@@ -281,128 +279,13 @@
   box-shadow: none;
 }
 
-/* ─── Topbar ──────────────────────────────────────────────────────────── */
-
-.topbar {
-  position: fixed;
-  top: 0;
-  left: var(--sidebar-width);
-  right: 0;
-  height: var(--topbar-height);
-  background: var(--bg-white);
-  border-bottom: 1px solid var(--border-light);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 var(--space-6);
-  z-index: var(--z-topbar);
-  gap: var(--space-4);
-}
-
-.topbar-search {
-  flex: 1;
-  max-width: 480px;
-  position: relative;
-}
-.topbar-search input {
-  width: 100%;
-  padding: 9px 14px 9px 40px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-light);
-  background: var(--bg-page);
-  font-size: var(--text-sm);
-  color: var(--text-primary);
-}
-.topbar-search input:focus {
-  border-color: var(--primary-400);
-  box-shadow: var(--shadow-focus);
-  background: var(--bg-white);
-}
-.topbar-search-icon {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-muted);
-  font-size: 15px;
-  pointer-events: none;
-}
-
-.topbar-right {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.topbar-notification {
-  position: relative;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-full);
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  box-shadow: none;
-  padding: 0;
-}
-.topbar-notification:hover {
-  background: var(--bg-hover);
-  color: var(--primary-600);
-  transform: none;
-  box-shadow: none;
-}
-.topbar-notification-badge {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full);
-  background: var(--error-500);
-  border: 2px solid var(--bg-white);
-}
-
-.topbar-user {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  cursor: pointer;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-md);
-  transition: background var(--duration-fast) var(--ease-out);
-}
-.topbar-user:hover {
-  background: var(--bg-hover);
-}
-.topbar-avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-full);
-  background: var(--primary-400);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: var(--weight-semibold);
-  font-size: var(--text-sm);
-  flex-shrink: 0;
-}
-.topbar-username {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  color: var(--text-primary);
-}
 
 /* ─── Main Content Area ───────────────────────────────────────────────── */
 
 .main-content {
   margin-left: var(--sidebar-width);
-  padding-top: var(--topbar-height);
+  /* Was padding-top: var(--topbar-height). The topbar is gone, so every page
+     gets those 64px back. */
   min-height: 100dvh;
   width: calc(100% - var(--sidebar-width));
 }
@@ -454,7 +337,8 @@
   flex-direction: column;
   gap: var(--space-5);
   position: sticky;
-  top: calc(var(--topbar-height) + var(--space-6));
+  /* No fixed topbar to clear any more — just the page's own top padding. */
+  top: var(--space-6);
 }
 
 /* ─── Responsive ──────────────────────────────────────────────────────── */
@@ -474,7 +358,6 @@
   .sidebar-user { justify-content: center; }
   .sidebar-bottom { padding: var(--space-2); }
 
-  .topbar { left: var(--sidebar-collapsed); }
   .main-content {
     margin-left: var(--sidebar-collapsed);
     width: calc(100% - var(--sidebar-collapsed));
@@ -492,7 +375,6 @@
     transform: translateX(0);
   }
 
-  .topbar { left: 0; }
   .main-content {
     margin-left: 0;
     width: 100%;
@@ -507,23 +389,34 @@
 }
 
 /* Mobile menu button */
+/* Mobile only. Below 768px the sidebar is off-canvas, so this is the only way
+   back to navigation; above it, the sidebar is always visible and this would be
+   a control with nothing to do. Floating rather than docked, since removing the
+   topbar removed the bar it used to live in. */
 .mobile-menu-btn {
   display: none;
-  width: 36px;
-  height: 36px;
+  position: fixed;
+  top: var(--space-4);
+  left: var(--space-4);
+  z-index: calc(var(--z-sidebar) + 1);
+  width: 40px;
+  height: 40px;
   padding: 0;
-  border: none;
-  background: none;
+  border: 1px solid var(--border-light);
+  background: var(--bg-white);
   color: var(--text-secondary);
-  font-size: 20px;
+  font-size: 18px;
   cursor: pointer;
   border-radius: var(--radius-md);
-  box-shadow: none;
+  box-shadow: var(--shadow-sm);
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 .mobile-menu-btn:hover {
   background: var(--bg-hover);
   transform: none;
-  box-shadow: none;
+  box-shadow: var(--shadow-md);
 }
 @media (max-width: 768px) {
   .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }

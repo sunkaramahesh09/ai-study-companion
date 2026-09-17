@@ -59,9 +59,22 @@ async function recordUsage(record: AiRequestRecord): Promise<void> {
  */
 function quotaShare(): { groq: { primary: number; fallback: number }; gemini: number } {
   const isWorker = process.env.ASC_ROLE === 'worker';
+
+  // The share splits a quota between the two PROCESSES that compete for it.
+  // It must not also split between the two model tiers: Groq meters 8000 TPM
+  // per model, so gpt-oss-120b and gpt-oss-20b have independent pools and a
+  // token spent on one costs nothing on the other.
+  //
+  // The earlier values gave the API fallback: 0.25, capping question
+  // generation at 2000 TPM against a model that actually allows 8000. At
+  // ~1,150 estimated tokens per question that is under two questions a minute,
+  // so the second question in any minute waited for the window to roll.
+  // Measured in production: p50 1,017ms, p95 57,224ms, max 59,702ms, with
+  // attempt_count 1 throughout — the wait was ours, not the provider's and not
+  // a retry. See D-062.
   return isWorker
-    ? { groq: { primary: 0.25, fallback: 0.75 }, gemini: 0.85 }
-    : { groq: { primary: 0.75, fallback: 0.25 }, gemini: 0.15 };
+    ? { groq: { primary: 0.25, fallback: 0.25 }, gemini: 0.85 }
+    : { groq: { primary: 0.75, fallback: 0.75 }, gemini: 0.15 };
 }
 
 let groq: GroqProvider | undefined;

@@ -134,3 +134,37 @@
 .stagger > *:nth-child(6) { animation-delay: 250ms; }
 .stagger > *:nth-child(7) { animation-delay: 300ms; }
 .stagger > *:nth-child(8) { animation-delay: 350ms; }
+
+/* ─── Page transition ─────────────────────────────────────────────────── */
+
+/* <main> is keyed on the route in Shell.tsx, so React remounts it on every
+   navigation and this replays. Short and small on purpose: a page that slides a
+   long way feels slow, however smooth the curve. */
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.main-content > main {
+  animation: pageEnter var(--duration-normal, 200ms) var(--ease-out) both;
+}
+
+/* ─── Reduced motion ──────────────────────────────────────────────────── */
+
+/* Respect the OS setting. Animation is turned down rather than off: keeping a
+   1ms duration means animation/transition end events still fire, so anything
+   that waits on one cannot hang. Skeleton shimmer is held at a steady fill
+   instead of pulsing, which is the part that actually bothers people. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+  .skeleton {
+    animation: none !important;
+    background: var(--navy-100);
+  }
+}

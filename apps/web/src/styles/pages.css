@@ -414,7 +414,8 @@
 }
 .home-page-decor {
   position: fixed;
-  top: var(--topbar-height);
+  /* Starts at the viewport top now that no bar sits above the content. */
+  top: 0;
   left: var(--sidebar-width);
   right: 0;
   bottom: 0;

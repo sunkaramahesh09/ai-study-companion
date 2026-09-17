@@ -2013,3 +2013,76 @@ backend endpoints were added to support the dropped global pages — if a
 later, that is new scope, not a frontend fix.
 
 ---
+
+## D-062 — Quota share splits processes, not model tiers
+**Date:** 2026-09-17 · **Area:** AI / Performance
+
+**Symptom:** the quiz sometimes sat on "Preparing the next question…" for
+roughly a minute. Intermittent, so it read like provider flakiness.
+
+**Evidence from `ai_requests` in production**, not from reasoning about it:
+
+| feature | n | p50 | p95 | max | max attempt_count |
+|---|---|---|---|---|---|
+| question_generation (gpt-oss-20b) | 15 | **1,017ms** | **57,224ms** | 59,702ms | **1** |
+
+`attempt_count = 1` throughout rules out retry and backoff, and a p50 of one
+second rules out the model. A p95 of ~57s against a 60-second window is a call
+waiting on our own limiter for the minute to roll.
+
+**Cause:** `quotaShare()` applied a per-process share *and* a per-tier split. The
+API got `fallback: 0.25`, so the fallback limiter was configured for
+0.25 × 8000 = **2000 TPM**. Question generation runs on the fallback model from
+the API, costing ~1,150 estimated tokens, which is under two questions a minute.
+The second question in any minute blocked.
+
+**Why the tier split was wrong:** Groq meters **8000 TPM per model**. The
+primary and fallback have independent pools, so a token spent on gpt-oss-120b
+costs nothing against gpt-oss-20b. Splitting one budget across them models a
+constraint the provider does not impose, and the cost lands entirely on the
+fast, high-volume tier the learner is waiting on.
+
+**Fix:** the share now expresses only the real contention — two *processes*
+(API and worker) drawing on the same per-model quota. API 0.75 of each model,
+worker 0.25 of each. The API's fallback allowance goes 2000 → 6000 TPM, about
+five questions a minute instead of 1.7.
+
+**Not a full fix, and worth being honest about it:** this raises the ceiling, it
+does not remove the wait. A long quiz can still reach 6000 TPM. The real
+remedy is to stop generating at all — `question_bank` already caches by
+(concept, difficulty), but a fresh project starts empty, so every early question
+is a cold generation. Warming the bank in the background after each question is
+the follow-up; see Known Limitations.
+
+**Lesson:** the limiter's own waiting time was invisible because `latency_ms`
+records the whole call. A p50/p95 spread of 1s/57s with no retries is the
+signature of self-inflicted queueing, and it only showed up because every call
+writes an `ai_requests` row.
+
+---
+
+## D-063 — A recommendation must lead somewhere it is not already
+**Date:** 2026-09-17 · **Area:** Product
+
+**Symptom:** clicking "Review material" on the project dashboard made the card
+vanish and nothing else happen.
+
+**Cause:** `review_material` mapped to `/projects/:id` — the dashboard the card
+is displayed on. The click marked the recommendation completed and navigated to
+the current page, so the only visible effect was the card disappearing.
+
+**Fix:** it now opens the Tutor with a question about the concept prefilled.
+Reviewing a concept means reading what the material says about it, and the
+Tutor *is* how this product reads material — grounded in the learner's own PDFs
+with a citation back to the page. `upload_material` points at the materials
+section anchor rather than the bare dashboard.
+
+**Prefilled, not auto-sent.** Navigation should never spend the learner's quota
+on their behalf, and they may want to reword it. The Tutor reads `?q=` into its
+initial input state.
+
+**Lesson:** every action in the deterministic trigger table needs a destination
+that differs from where the card is rendered. A link to the current page is
+indistinguishable from a broken button.
+
+---
