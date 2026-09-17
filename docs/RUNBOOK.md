@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 10:45 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-17 11:10 · **Day:** Wed (night) · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -106,10 +106,20 @@ budget, fallback model, zod-validated before persisting, no-op on re-run.
   difficulty-aware severity.
 - `recommend.ts` — trigger rules with priority ordering and a 12h cooldown.
 
-**NEXT ACTION: task 15 — MCQ quiz generation and flow.** Selection is already
-deterministic (task 14); only the question WORDING is generated, on the fallback
-model, JSON-validated before persisting, with reusable questions cached in
-`question_bank` by (concept, difficulty, type).
+**Task 15 complete.** MCQ generation and the full quiz flow.
+
+- `POST /api/quizzes` start · `POST /api/quizzes/:id/answer` · `GET /api/quizzes/:id`
+  · `POST /api/quizzes/:id/abandon`
+- Concept + difficulty from the deterministic selector; only wording generated
+  (fallback model, zod-validated before persisting).
+- `question_bank` caching, least-used first, re-validated on read.
+- MCQ grading is an integer comparison, not an AI call.
+- Mastery + `mastery_history` written on every answer.
+
+**NEXT ACTION: task 16 — open-ended assessment and grading.** Fallback model,
+one answer at a time, feedback that explains what was understood and what is
+missing (not just a score), validated before it touches mastery. `quiz_questions`
+already supports `question_type='open'` and `expected_points`.
 
 Much of task 11 already exists as a by-product of task 10: `retrieve()`
 distinguishes `no_materials` / `not_indexed` / `no_relevant_evidence`, the
@@ -195,7 +205,7 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 ### Fri — assessment, mastery, growth, recommendations
 - [x] **13. Concept extraction** — LLM over a sampled, token-capped subset of chunks (not the whole doc), zod-validated before persisting.
 - [x] **14. Deterministic learning core** — pure functions in `packages/shared`, no AI: mastery update (evidence-weighted, difficulty-aware, recency-decayed), adaptive concept+difficulty selection, repeated-mistake detection, recommendation trigger rules. *Done:* 84 pure-function tests, no AI anywhere in the chain. Two design bugs caught by tests (D-039).
-- [ ] **15. Quiz — MCQ generation + flow** — selection deterministic (task 14), only wording generated, on the fallback model; JSON mode + schema in prompt + zod validation before persist; reusable questions cached in `question_bank` by (concept, difficulty, type). *Done when:* next question tracks the selection function, not a coin flip.
+- [x] **15. Quiz — MCQ generation + flow** — selection deterministic (task 14), only wording generated, on the fallback model; JSON mode + schema in prompt + zod validation before persist; reusable questions cached in `question_bank` by (concept, difficulty, type). *Done:* live 4-question quiz across 4 concepts, mastery updated per answer, answer never sent to client, learner cannot forge mastery.
 - [ ] **16. Open-ended assessment + grading** — fallback model, one answer at a time; feedback explains what was understood and what's missing, not just a score; validated before it touches mastery.
 - [ ] **17. Quiz-completion workflow** — pg-boss chain: evaluate → update mastery → detect weakness → generate recommendation. Idempotent by attempt id. *Done when:* close the browser mid-flight, mastery + recommendation still land (PRD §13).
 - [ ] **18. Mastery + Growth UI** — per-concept bars, improving/stable/needs-attention from mastery history.

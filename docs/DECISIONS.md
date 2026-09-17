@@ -1141,3 +1141,63 @@ evidence, not proof. The evaluation suite in task 22 is where behaviour gets
 measured across a curated set rather than asserted once.
 
 ---
+
+## D-041 — Privileged writes use the service role; the least-privilege RLS caught the mistake
+**Date:** 2026-09-17 · **Area:** Security / Assessment
+
+**What happened:** the first quiz run failed with
+`new row violates row-level security policy for table "quiz_questions"`. The
+route was writing questions, mastery and the question bank through `req.db`, the
+caller's RLS-scoped client.
+
+**The policy was right and the code was wrong.** Migration 0006 deliberately
+gives `quiz_questions`, `question_bank`, `concept_mastery` and
+`mastery_history` a SELECT policy and no INSERT/UPDATE for `authenticated`
+(D-012, "least privilege by default"). A client able to write those could:
+- author a question whose `correct_index` it already knows,
+- mark its own answers correct,
+- or simply set its own mastery to 1.0 and skip learning entirely.
+
+**Fix:** reads stay on the caller's RLS-scoped client, so isolation is still
+enforced by Postgres. Writes to those four tables go through the service role
+with an explicit `user_id` filter taken from the verified request context —
+never from the request body (D-025).
+
+**Worth stating plainly:** this is the second time the restrictive policies have
+caught an over-permissive code path before it shipped. Writing the policies to
+be deny-by-default cost a few minutes in task 3 and has now paid for itself
+twice. There is a test asserting a learner cannot update `concept_mastery`
+directly.
+
+---
+
+## D-042 — Only the question WORDING is generated
+**Date:** 2026-09-17 · **Area:** Assessment
+
+**The split:** the deterministic core (task 14) chooses the concept and the
+difficulty; the model writes the sentence. Grading an MCQ is an integer
+comparison, not an AI call — the correct index is in the database, and asking a
+model to mark it would be slower, cost tokens and occasionally be wrong.
+
+**Observed in the live run:** four questions across four different concepts, all
+at difficulty 2. That is correct, not a bug — every concept started at the 0.5
+prior with no evidence, and `selectDifficulty` clamps to the middle bands while
+confidence is low (D-038). Opening a first quiz at difficulty 5 would measure
+little and read badly.
+
+**Caching, and its one legitimate case.** A question for a given (concept,
+difficulty, type) does not depend on anything about this moment, so
+`question_bank` reuses it — least-used first, so the bank cycles its stock
+rather than serving the same question until it is memorised. This is the *only*
+generation the system caches; a Tutor answer to a learner's own free-text
+question is never cached, because returning a stored answer to a similar-looking
+question is a correctness bug rather than a performance win (CLAUDE.md).
+
+**Cached questions are re-validated on the way OUT**, not only on the way in. A
+row written by an earlier schema version must not reach a learner unchecked.
+
+**`correct_index` is stored but never serialised to the client.** The response
+shape is an explicit allowlist, so the quiz cannot be solved from the network
+tab.
+
+---

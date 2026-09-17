@@ -6,6 +6,7 @@ import authPlugin from './plugins/auth.ts';
 import { materialRoutes } from './routes/materials.ts';
 import { meRoutes } from './routes/me.ts';
 import { projectRoutes } from './routes/projects.ts';
+import { quizRoutes } from './routes/quiz.ts';
 import { spaceRoutes } from './routes/spaces.ts';
 import { tutorRoutes } from './routes/tutor.ts';
 
@@ -32,6 +33,7 @@ export async function buildServer() {
   await app.register(projectRoutes);
   await app.register(materialRoutes);
   await app.register(tutorRoutes);
+  await app.register(quizRoutes);
 
   // Railway healthcheck. Deliberately does not touch the database: this answers
   // "is the process up", which is what a platform restart decision needs.
