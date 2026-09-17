@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 14:30 · **Day:** Thu · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-17 14:45 · **Day:** Thu · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -264,8 +264,14 @@ and it can start early:
 - **28. Final deploy verification + submit** — re-run `npm run rehearse` and
   `npm run eval` immediately before submitting.
 
-**The README does not exist yet and is a named deliverable (§20.3).** That is
-the largest remaining gap.
+**README written** (§20.3) — quick start, architecture, AI engineering,
+evaluation approach, known limitations, future improvements. Every number in it
+was verified rather than asserted: 478 tests, 17 eval cases, 19 tables, 35
+policies, 57 decisions, and the documented worker command was actually booted
+from the repo root.
+
+Remaining for Sunday: the architecture doc + diagram as a standalone file, the
+AI-usage doc (AI used to BUILD vs AI used BY the product), and the demo video.
 
 ### Schedule reality check
 
@@ -361,13 +367,13 @@ basic tracing come free with task 7, since two providers require them anyway.
 |---|-------------|--------|
 | 1 | Working deployed application | **LIVE and current.** Verified by `npm run rehearse` against the deployed URLs, not by a green deploy log. |
 | 2 | Demo video (§20.2 shot list) | not started (Sunday) |
-| 3 | Public GitHub repo w/ README, setup, config examples | repo live and pushed; README still to write |
+| 3 | Public GitHub repo w/ README, setup, config examples | **done** — README + `.env.example` + `docs/DEPLOYMENT.md` |
 | 4 | Architecture documentation + diagram | `DECISIONS.md` at D-057; doc + diagram not written |
 | 5 | AI usage doc — AI used to *build* vs AI used *by* the product | not started |
 | 6 | Development prompts, organized by area | **user is tracking this, not Claude** |
-| 7 | Evaluation approach | **built** (`npm run eval`, 17 cases, D-054); still to be written up |
-| 8 | Known limitations | `DECISIONS.md` accumulating; explicit entries in D-049, D-051, D-054 |
-| 9 | Future improvements (optional) | `DECISIONS.md` accumulating |
+| 7 | Evaluation approach | **done** — built (`npm run eval`) and written up in the README |
+| 8 | Known limitations | **done** — a section in the README, sourced from D-049, D-051, D-054 |
+| 9 | Future improvements (optional) | **done** — "If there were more time" in the README |
 
 ---
 
