@@ -44,6 +44,31 @@ describe('api()', () => {
     expect(headers.get('authorization')).toBe('Bearer test-token');
   });
 
+  it('does not declare a JSON body on a request that has none', async () => {
+    // Fastify rejects `application/json` with an empty body as a 400 from the
+    // body parser, before the route or auth runs. Declaring it unconditionally
+    // broke every body-less POST: material retry, quiz abandon, the
+    // "continue learning" touch, and the next quiz question. See D-060.
+    const fetchMock = vi.fn(async (_url: string, _init: RequestInit) => json({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await api('/api/quizzes/abc/next', { method: 'POST' });
+    const headers = fetchMock.mock.calls[0]![1].headers as Headers;
+    expect(headers.get('content-type')).toBeNull();
+    // The token still has to be attached — this must not become a way of
+    // sending an unauthenticated request.
+    expect(headers.get('authorization')).toBe('Bearer test-token');
+  });
+
+  it('does declare a JSON body when there is one', async () => {
+    const fetchMock = vi.fn(async (_url: string, _init: RequestInit) => json({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await api('/api/spaces', { method: 'POST', body: JSON.stringify({ name: 'x' }) });
+    const headers = fetchMock.mock.calls[0]![1].headers as Headers;
+    expect(headers.get('content-type')).toBe('application/json');
+  });
+
   it('surfaces the API\'s own message rather than the status line', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => json({ error: 'invalid_request', message: 'Ask a question.' }, 400)));
     await expect(api('/api/tutor/ask')).rejects.toMatchObject({

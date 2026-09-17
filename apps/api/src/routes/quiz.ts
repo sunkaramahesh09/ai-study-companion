@@ -337,22 +337,79 @@ export const quizRoutes: FastifyPluginAsync = async (app) => {
       return { ...result, finished: true, question: null, score: correct / answered };
     }
 
+    // The verdict returns WITHOUT waiting for the next question.
+    //
+    // Grading an MCQ is an integer comparison and takes no time at all, but
+    // generating the next question is a model call behind a token limiter that
+    // WAITS rather than failing (D-033). Returning them together meant a
+    // learner sat for close to a minute before finding out whether the answer
+    // they just gave was right — the two are unrelated, and only one of them
+    // is slow. The client asks for the next question separately. See D-059.
+    return { ...result, finished: false, question: null, nextPending: true };
+  });
+
+  /**
+   * Issues the next question of an in-progress attempt.
+   *
+   * Split out from `/answer` so that feedback is instant. Safe to call more
+   * than once: an unanswered question already issued for this attempt is
+   * returned as-is rather than generating a second one, so a double-click or a
+   * retry after a timeout cannot burn quota or skip a question.
+   */
+  app.post('/api/quizzes/:id/next', { preHandler: app.requireAuth }, async (req, reply) => {
+    const params = parseOrReply(uuidParamSchema, req.params, reply);
+    if (!params) return;
+
+    const { data: attempt, error: attemptError } = await req
+      .db!.from('quiz_attempts')
+      .select('id, project_id, status, target_length, questions_answered, correct_count')
+      .eq('id', params.id)
+      .single();
+    if (attemptError) return replyDbError(reply, attemptError);
+
+    const score = attempt.questions_answered > 0 ? attempt.correct_count / attempt.questions_answered : 0;
+    if (attempt.status !== 'in_progress') {
+      return { finished: true, question: null, score };
+    }
+    if (attempt.questions_answered >= attempt.target_length) {
+      return { finished: true, question: null, score };
+    }
+
+    // Already issued and not yet answered: hand back the same question.
+    const { data: pending } = await req
+      .db!.from('quiz_questions')
+      .select('id, position, concept_id, difficulty, question_type, prompt, options, concepts(name)')
+      .eq('attempt_id', attempt.id)
+      .is('answered_at', null)
+      .order('position', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (pending) {
+      return { finished: false, question: shapeQuestionForClient(pending), reissued: true };
+    }
+
     const asked = await askedConceptIds(req, attempt.id);
     const selection = await chooseNext(req.db!, attempt.project_id, asked);
-    if (!selection) return { ...result, finished: true, question: null, score: correct / answered };
+    if (!selection) return { finished: true, question: null, score };
 
     try {
-      const next = await issueQuestion(req, attempt.id, attempt.project_id, selection, answered);
-      return { ...result, finished: false, question: next, selection: selection.reason };
+      const next = await issueQuestion(
+        req,
+        attempt.id,
+        attempt.project_id,
+        selection,
+        attempt.questions_answered,
+      );
+      return { finished: false, question: next, selection: selection.reason };
     } catch (err) {
       req.log.error({ err }, 'next question generation failed');
-      // The answer is already recorded, so end the attempt cleanly rather than
-      // losing the learner's progress.
+      // Answers already given are recorded, so end the attempt cleanly rather
+      // than losing the learner's progress.
       await req
         .db!.from('quiz_attempts')
-        .update({ status: 'completed', completed_at: new Date().toISOString(), score: correct / answered })
+        .update({ status: 'completed', completed_at: new Date().toISOString(), score })
         .eq('id', attempt.id);
-      return { ...result, finished: true, question: null, score: correct / answered, endedEarly: true };
+      return { finished: true, question: null, score, endedEarly: true };
     }
   });
 
@@ -468,4 +525,26 @@ async function issueQuestion(
 
   if (error) throw new Error(`Could not save question: ${error.message}`);
   return { ...data, conceptName: selection.conceptName };
+}
+
+/**
+ * The client-safe shape of a question.
+ *
+ * `correct_index` and `expected_points` are deliberately absent: sending them
+ * would let a learner read the answer out of the network tab, and mastery is
+ * computed from what they submit.
+ */
+function shapeQuestionForClient(row: Record<string, unknown>) {
+  const concepts = row.concepts as { name?: string } | { name?: string }[] | null;
+  const conceptName = Array.isArray(concepts) ? concepts[0]?.name : concepts?.name;
+  return {
+    id: row.id as string,
+    position: row.position as number,
+    concept_id: row.concept_id as string,
+    difficulty: row.difficulty as number,
+    question_type: row.question_type as 'mcq' | 'open',
+    prompt: row.prompt as string,
+    options: (row.options as string[] | null) ?? null,
+    conceptName: conceptName ?? undefined,
+  };
 }

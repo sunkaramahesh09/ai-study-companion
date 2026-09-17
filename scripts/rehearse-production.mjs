@@ -115,6 +115,38 @@ async function main() {
     cors.headers.get('access-control-allow-origin') ?? 'no header (correct)',
   );
 
+  // CORS is enforced by the BROWSER. This script uses Node's fetch, which
+  // ignores it entirely, so the rest of the rehearsal can pass while every
+  // edit and delete is blocked in the actual app — which is exactly what
+  // happened (D-058). The preflight HEADERS are the contract, so check those.
+  for (const method of ['GET', 'POST', 'PATCH', 'DELETE']) {
+    const pre = await fetch(`${API}/api/recommendations/00000000-0000-0000-0000-000000000000`, {
+      method: 'OPTIONS',
+      headers: {
+        origin: WEB,
+        'access-control-request-method': method,
+        'access-control-request-headers': 'authorization,content-type',
+      },
+    });
+    const allowed = (pre.headers.get('access-control-allow-methods') ?? '').toUpperCase();
+    check(`Browser may send ${method}`, allowed.includes(method), allowed || 'no allow-methods header');
+  }
+
+  const preHeaders = await fetch(`${API}/api/spaces`, {
+    method: 'OPTIONS',
+    headers: {
+      origin: WEB,
+      'access-control-request-method': 'POST',
+      'access-control-request-headers': 'authorization,content-type',
+    },
+  });
+  const allowHeaders = (preHeaders.headers.get('access-control-allow-headers') ?? '').toLowerCase();
+  check(
+    'Browser may send the Authorization header',
+    allowHeaders.includes('authorization'),
+    allowHeaders || 'no allow-headers header',
+  );
+
   // ------------------------------------------------------------------ fresh account
   step('A brand new account, created the way a real user would');
   const email = `rehearsal-${Date.now()}@example.test`;
@@ -265,10 +297,12 @@ async function main() {
         question.question_type === 'open'
           ? { questionId: question.id, text: 'Cellular respiration releases energy from glucose in the mitochondria, producing ATP.' }
           : { questionId: question.id, selectedIndex: 0 };
+      const gradeStart = Date.now();
       const result = await call(`/api/quizzes/${attemptId}/answer`, {
         method: 'POST',
         body: JSON.stringify(payload),
       });
+      const gradeMs = Date.now() - gradeStart;
       if (result.status !== 200) {
         bad('Answer accepted', `status ${result.status} ${JSON.stringify(result.body).slice(0, 140)}`);
         break;
@@ -277,9 +311,23 @@ async function main() {
       if (answered === 1) {
         check('Answer graded and mastery moved', result.body?.mastery !== null,
           `Δ${result.body?.mastery?.delta?.toFixed?.(4) ?? '—'} on ${result.body?.mastery?.conceptId?.slice(0, 8)}`);
+        // The verdict must come back without waiting on the next question,
+        // which is a model call behind a limiter that waits (D-059).
+        check(
+          'Grading returned in under 5s, not blocked on the next question',
+          gradeMs < 5000,
+          `${gradeMs}ms`,
+        );
       }
       if (result.body?.finished) { question = null; break; }
-      question = result.body?.question;
+
+      const next = await call(`/api/quizzes/${attemptId}/next`, { method: 'POST' });
+      if (next.status !== 200) {
+        bad('Next question issued', `status ${next.status}`);
+        break;
+      }
+      if (next.body?.finished) { question = null; break; }
+      question = next.body?.question;
     }
     check('Worked through the quiz', answered >= 1, `${answered} question(s) answered`);
 

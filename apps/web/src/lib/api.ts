@@ -58,7 +58,20 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = data.session?.access_token;
 
   const headers = new Headers(init.headers);
-  headers.set('Content-Type', 'application/json');
+  // Content-Type is set ONLY when there is a body to describe.
+  //
+  // Fastify rejects a request that declares `application/json` and then sends
+  // nothing with FST_ERR_CTP_EMPTY_JSON_BODY — a 400 raised by the body parser
+  // BEFORE any route or auth handler runs, so the server logs a bad request
+  // and the route never sees it. Setting the header unconditionally broke
+  // every body-less POST in the app: retrying a failed material, abandoning a
+  // quiz, the "continue learning" touch, and fetching the next quiz question.
+  //
+  // Two of those were invisible because their callers swallow errors by
+  // design, which is exactly why it survived. See D-060.
+  if (init.body !== undefined && init.body !== null) {
+    headers.set('Content-Type', 'application/json');
+  }
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
   // Caller-supplied signals still win; the timeout is only a backstop.

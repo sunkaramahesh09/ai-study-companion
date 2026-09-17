@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   answerQuiz,
+  nextQuizQuestion,
   startQuiz,
   type AnswerResult,
   type QuizQuestion,
@@ -19,6 +20,10 @@ export function Quiz() {
   const [error, setError] = useState<unknown>(null);
   const [starting, setStarting] = useState(true);
   const [finished, setFinished] = useState<{ score: number; answered: number } | null>(null);
+  // Separate from `busy`: grading is instant, generating the next question is
+  // not, and conflating them is what made the verdict feel slow.
+  const [loadingNext, setLoadingNext] = useState(false);
+  const [nextQuestion, setNextQuestion] = useState<QuizQuestion | null>(null);
 
   useEffect(() => {
     if (!projectId) return;
@@ -43,7 +48,29 @@ export function Quiz() {
           : { questionId: question.id, text: text.trim() };
       const r = await answerQuiz(attemptId, body);
       setResult(r);
-      if (r.finished) setFinished({ score: r.progress.correct / r.progress.answered, answered: r.progress.answered });
+      if (r.finished) {
+        setFinished({ score: r.progress.correct / r.progress.answered, answered: r.progress.answered });
+        return;
+      }
+      // The verdict is already on screen. Fetch the next question in the
+      // background while the learner reads their feedback — by the time they
+      // reach for "Next question" it is usually already here.
+      if (r.nextPending) {
+        setLoadingNext(true);
+        nextQuizQuestion(attemptId)
+          .then((n) => {
+            if (n.finished || !n.question) {
+              setFinished({
+                score: n.score ?? r.progress.correct / r.progress.answered,
+                answered: r.progress.answered,
+              });
+            } else {
+              setNextQuestion(n.question);
+            }
+          })
+          .catch(setError)
+          .finally(() => setLoadingNext(false));
+      }
     } catch (err) {
       setError(err);
     } finally {
@@ -52,8 +79,9 @@ export function Quiz() {
   }
 
   function next() {
-    if (!result?.question) return;
-    setQuestion(result.question);
+    if (!nextQuestion) return;
+    setQuestion(nextQuestion);
+    setNextQuestion(null);
     setResult(null);
     setSelected(null);
     setText('');
@@ -202,8 +230,10 @@ export function Quiz() {
                 </p>
               )}
 
-              <button onClick={next} disabled={!result.question}>
-                {result.question
+              <button onClick={next} disabled={!nextQuestion}>
+                {loadingNext
+                  ? 'Preparing the next question…'
+                  : nextQuestion
                   ? `Next question (${result.progress.answered + 1} of ${result.progress.target})`
                   : 'Finishing…'}
               </button>

@@ -1801,3 +1801,105 @@ because a normaliser that matches everything is worse than a brittle one.
 confirming `[S1]` live in production.
 
 ---
+
+## D-058 — CORS advertised only GET, HEAD and POST
+**Date:** 2026-09-17 · **Area:** Security / Deployment · **Severity: shipped bug**
+
+**Reported from the live app:** dismissing a recommendation showed *"Could not
+reach the server. Check your connection and try again."*
+
+**Cause:** `@fastify/cors` was registered with `origin` and `credentials` but no
+`methods`. Its default advertises only the CORS-safelisted methods:
+
+```
+access-control-allow-methods: GET,HEAD,POST
+```
+
+so the browser rejected every PATCH and DELETE at the preflight. The request
+never left the page. There was no server log, because the server was never
+asked; the frontend saw a bare `fetch` rejection with no status, which the
+task-24 error handling correctly rendered as "could not reach the server" —
+an accurate message for a misleading cause.
+
+**Six routes were dead in the browser:** dismiss/complete a recommendation,
+rename a space, rename a project, remove a material, delete a space, delete a
+project. **Every edit and every delete in the application.**
+
+**Why nothing caught it.** CORS is enforced by the *browser*. Every integration
+test uses `app.inject`, which never touches the network. The production
+rehearsal uses Node's `fetch`, which ignores CORS entirely. And the rehearsal
+*did* check CORS — it asserted that an arbitrary origin is **not** echoed,
+which passed. It never checked that the legitimate origin is permitted the
+methods the app actually uses. **A negative CORS assertion is not a positive
+one**, and only the negative one had been written.
+
+**Fixed** by declaring `methods` and `allowedHeaders` explicitly, with a
+regression test asserting the preflight response headers per method — verified
+by reverting the fix and watching exactly the three relevant cases fail. The
+rehearsal now preflights every method too, since it is the only check that
+speaks to the deployed service.
+
+---
+
+## D-059 — Grading a quiz answer no longer waits for the next question
+**Date:** 2026-09-17 · **Area:** Quiz / Performance · **Reported from use**
+
+**Reported:** *"it is taking almost 1 minute to check whether the entered answer
+is correct or wrong."*
+
+**Cause:** `POST /api/quizzes/:id/answer` returned the verdict **and** the next
+question in one response. Grading an MCQ is an integer comparison and takes no
+measurable time. Generating the next question is a model call behind a token
+limiter that **waits rather than failing** (D-033) — so on a busy quota the
+learner sat for most of a minute before finding out whether the answer they had
+just given was right.
+
+The two are unrelated and only one of them is slow. Bundling them made the fast
+thing as slow as the slow thing.
+
+**Fix:** `/answer` returns the verdict immediately with `nextPending: true`; a
+new `POST /api/quizzes/:id/next` issues the question. The client fetches it in
+the background *while the learner reads their feedback*, so by the time they
+reach for "Next question" it is usually already there — the wait is spent on
+something they were doing anyway.
+
+`/next` is **idempotent**: an unanswered question already issued for the attempt
+is returned unchanged rather than generating a second one, so a double-click or
+a retry after a timeout cannot burn quota or silently skip a question.
+
+**The test asserts a timing property**, which is unusual and deliberate. "Is the
+verdict fast" is the actual requirement; a test checking only the response shape
+would pass for the slow version too.
+
+---
+
+## D-060 — A body-less POST was rejected before it reached the route
+**Date:** 2026-09-17 · **Area:** API client · **Severity: shipped bug**
+
+Found by the new quiz test, which failed with a 400 nobody could explain.
+
+`api()` set `Content-Type: application/json` on **every** request. Fastify
+rejects a request that declares JSON and sends no body with
+`FST_ERR_CTP_EMPTY_JSON_BODY` — raised by the body parser, **before the route
+and before auth**. So every body-less POST in the app 400'd:
+
+| Endpoint | Consequence |
+|---|---|
+| `POST /materials/:id/retry` | **The Retry button on a failed material never worked** |
+| `POST /quizzes/:id/abandon` | Abandoning a quiz failed |
+| `POST /projects/:id/touch` | "Continue Learning" never updated |
+| `POST /quizzes/:id/next` | The new endpoint, dead on arrival |
+
+**Why it survived this long:** two of the four callers swallow errors by design
+— `touchProject` is explicitly fire-and-forget so an analytics write cannot
+break the page the user is looking at. That is the right call for that endpoint,
+and it is also what kept a 400 invisible for days. **Deliberately ignoring an
+error is a decision to be blind to it**, and it should be paired with something
+that is not.
+
+**Fixed in two layers.** The client sets `Content-Type` only when there is a
+body. The server also parses an empty JSON body as `{}`, so any other consumer
+that sets the header out of habit is not punished for it — the route's own zod
+schema remains what decides whether a payload is valid.
+
+---

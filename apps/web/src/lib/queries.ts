@@ -197,6 +197,20 @@ export type AnswerResult = {
   progress: { answered: number; correct: number; target: number };
   finished: boolean;
   question: QuizQuestion | null;
+  /**
+   * True when the attempt continues and the next question has NOT been
+   * generated yet. The verdict is returned without waiting for it, so the
+   * client fetches it separately — see `nextQuizQuestion`.
+   */
+  nextPending?: boolean;
+  endedEarly?: boolean;
+};
+
+export type NextQuestionResult = {
+  finished: boolean;
+  question: QuizQuestion | null;
+  score?: number;
+  reissued?: boolean;
   endedEarly?: boolean;
 };
 
@@ -210,6 +224,14 @@ export const answerQuiz = (
   attemptId: string,
   body: { questionId: string; selectedIndex?: number; text?: string },
 ) => api<AnswerResult>(`/api/quizzes/${attemptId}/answer`, { method: 'POST', body: JSON.stringify(body) });
+
+/**
+ * Asks for the next question. Idempotent: an unanswered question that was
+ * already issued comes back unchanged, so a retry cannot skip a question or
+ * spend quota twice.
+ */
+export const nextQuizQuestion = (attemptId: string) =>
+  api<NextQuestionResult>(`/api/quizzes/${attemptId}/next`, { method: 'POST' });
 
 export const abandonQuiz = (attemptId: string) =>
   api<{ ok: boolean }>(`/api/quizzes/${attemptId}/abandon`, { method: 'POST' });
