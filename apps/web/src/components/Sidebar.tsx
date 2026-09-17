@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.tsx';
 import { listSpaces } from '../lib/queries.ts';
 import type { Space } from '@asc/shared';
+import { Icon, type IconName } from './Icon.tsx';
 
 const SPACE_COLORS = [
   '#6c47ec', '#10b981', '#f59e0b', '#ef4444', '#3b82f6',
@@ -11,11 +12,11 @@ const SPACE_COLORS = [
 
 // Tutor/Quiz are per-project — there is no standalone page for either, so
 // these fall through to Spaces where the learner picks a project first.
-const NAV_ITEMS = [
-  { path: '/home', icon: '🏠', label: 'Home' },
-  { path: '/tutor', icon: '💬', label: 'Ask Tutor' },
-  { path: '/quiz', icon: '✅', label: 'Quizzes' },
-  { path: '/progress', icon: '📊', label: 'Progress' },
+const NAV_ITEMS: { path: string; icon: IconName; label: string }[] = [
+  { path: '/home', icon: 'home', label: 'Home' },
+  { path: '/tutor', icon: 'tutor', label: 'Ask Tutor' },
+  { path: '/quiz', icon: 'quiz', label: 'Quizzes' },
+  { path: '/progress', icon: 'progress', label: 'Progress' },
 ];
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -41,7 +42,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       <aside className={`sidebar${open ? ' open' : ''}`}>
         {/* Logo */}
         <Link to="/home" className="sidebar-logo" onClick={onClose}>
-          <div className="sidebar-logo-icon">🎓</div>
+          <div className="sidebar-logo-icon"><Icon name="cap" size={20} /></div>
           <div className="sidebar-logo-text">
             <h1>AI.Prof</h1>
             <span>Your AI Study Companion</span>
@@ -58,7 +59,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                 className={`sidebar-link${isActive(item.path) ? ' active' : ''}`}
                 onClick={onClose}
               >
-                <span className="sidebar-link-icon">{item.icon}</span>
+                <span className="sidebar-link-icon"><Icon name={item.icon} /></span>
                 <span>{item.label}</span>
               </Link>
             ))}
@@ -69,7 +70,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             <div className="sidebar-section-title">
               <span>Study Spaces</span>
               <Link to="/spaces" onClick={onClose} title="View all spaces">
-                <button type="button" aria-label="Add space">＋</button>
+                <button type="button" aria-label="Add space"><Icon name="plus" size={16} /></button>
               </Link>
             </div>
             {spaces.slice(0, 6).map((space, i) => (
@@ -87,7 +88,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
               </Link>
             ))}
             <Link to="/spaces" className="sidebar-add-link" onClick={onClose}>
-              <span>＋</span>
+              <Icon name="plus" size={16} />
               <span>Add Space</span>
             </Link>
           </div>
@@ -109,7 +110,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             onClick={onClose}
             style={{ display: profile?.role === 'admin' ? 'flex' : 'none' }}
           >
-            <span className="sidebar-link-icon">⚙️</span>
+            <span className="sidebar-link-icon"><Icon name="settings" /></span>
             <span>Admin</span>
           </Link>
 
