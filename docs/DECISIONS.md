@@ -2682,3 +2682,95 @@ unhandled error while its own assertions pass. Fixed here and in
 `providerFailure.test.ts`, which had the same latent form.
 
 ---
+
+## D-076 — The landscape stopped at the Home page, and the site had no icon
+**Date:** 2026-09-18 · **Area:** UI
+
+**Reported:** *"we have colorful ui at home page but what about remaining pages —
+for that also maintain those mountain like background details, and also add a
+favicon."*
+
+Both were real. The mountains, glows and cloud forms lived in `Home.tsx`, so the
+dashboard sat in a lit landscape and the Tutor, Quizzes, Progress, Spaces,
+Space and Project pages sat on flat white. Walking out of Home looked like
+leaving the product. And there was no `<link rel="icon">` at all — every tab
+showed Chrome's default globe.
+
+**Fix:** extracted `components/PageDecor.tsx` and rendered it from the `Shell`,
+so every authenticated page shares one landscape. Placed **outside** the
+`key={location.pathname}` on `<main>`: anything inside that key is torn down and
+rebuilt on every navigation, and the background is the thing the pages move
+across, not part of the transition. The CSS moved from `pages.css` to
+`layout.css` for the same reason — it belongs to the application frame now, not
+to one page.
+
+**Favicon generated, not hand-drawn twice.** `apps/web/scripts/make-favicon.py`
+holds the geometry once, in a 64-unit square, and emits `favicon.svg`,
+`favicon.ico` (16/32/48) and `apple-touch-icon.png` (180, full-bleed — iOS puts
+black behind transparency and rounds the corners itself). An SVG and an ICO
+drawn separately are the same mark in two formats with nothing checking that
+they match; they drift the first time the logo is tweaked, and the drift shows
+as a different icon in one browser than another.
+
+The mark is the sidebar's graduation cap, redrawn with **fills** rather than the
+UI icon's 1.6px strokes — at 16×16 a stroked outline turns to grey mush. Also
+added `theme-color`, a real `<title>` and a description, none of which existed.
+
+---
+
+## D-077 — AI activity belongs on a Project, and on the Admin Dashboard, not in between
+**Date:** 2026-09-18 · **Area:** Analytics / product scope
+
+**Asked:** *"in the PRD maybe they mentioned showing AI activity to the admin,
+but we are showing it to the user and the admin — why would a user want to know
+these AI activity details? Check clearly and then change."*
+
+**Checked, and the answer is in two different sections that say different
+things.**
+
+- **§12 Analytics:** *"Project Analytics should show learning activity,
+  assessment performance, mastery, concept trends, **and AI activity**."*
+  Learner-facing, explicit. **Global Analytics**, in the very next sentence,
+  *"should aggregate **learning activity** across Projects and Spaces"* — no AI.
+- **§16 Admin Dashboard:** platform-level view of users, spaces, projects,
+  activity, engagement, learning analytics, **AI usage**, AI evaluation,
+  background processing, system health.
+
+So the instinct was right, but the correct cut is narrower than removing it from
+the learner entirely. The panel was on **three** surfaces: Project Analytics
+(§12 asks for it), the learner's account-wide Global Analytics (nothing asks for
+it), and Admin (§16 asks for it). The middle one is the one that does not belong
+— an operator's report of token spend, model mix, p95 latency and dollar cost,
+aggregated across a learner's whole account, with no study decision attached to
+any of it.
+
+**Fix:** removed from Global Analytics, kept on Project Analytics and Admin.
+
+**Removed at the API, not just the page.** `GET /api/analytics` no longer queries
+`ai_requests` or returns an `ai` object at all. A panel deleted from a page is
+still one request away, and this project's own rule is that isolation and scope
+are enforced where the data is served (D-073).
+
+**`ai_requests` RLS deliberately left as-is.** The obvious follow-on — restrict
+the SELECT policy to admins — would be wrong: §12 requires a learner to see AI
+activity for their own Project, which reads exactly those rows under their own
+JWT. Tightening it would have broken the thing the PRD asks for. Worth recording
+because it was the first instinct.
+
+**The panel now says what it is.** The same numbers mean different things to the
+two audiences: an operator reads a cost table without explanation, a learner
+needs telling, or it reads as an invoice. Project Analytics passes a caption —
+*"What the AI did for this Project — which models answered, how long they took,
+and what it cost to run."*
+
+**Not removed:** the per-request `diagnostics` on a Tutor answer (model,
+latency, retrieved count, best distance). It is never rendered, and it is §14's
+*"why was this response slow / why did retrieval return poor context"* for the
+learner's own single question — a debugging trace, not an aggregate spend
+report. The line drawn here is between **what the system did for this one
+request** and **what the platform costs to run**.
+
+Two tests now hold the line: the learner's global endpoint must not carry an
+`ai` property, and the Project endpoint still must.
+
+---

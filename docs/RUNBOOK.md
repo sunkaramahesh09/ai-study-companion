@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-18 18:30 · **Day:** Fri · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-18 19:00 · **Day:** Fri · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -184,6 +184,34 @@ for real once on a transient provider error — the answer was complete anyway.
 **Tests: 553 passing** (41 new). Tutor evaluation suite **4/4** with a new case,
 `tutor.answers-a-progress-question-from-the-record`, which also asserts ordinary
 material questions still retrieve and cite.
+
+### Seventh and eighth: the landscape stopped at Home, and AI spend was on the wrong page
+
+**Session 2026-09-18.**
+
+**The background (D-076).** The mountains, glows and clouds lived in `Home.tsx`,
+so every other page was flat white. Extracted to
+`apps/web/src/components/PageDecor.tsx` and rendered by the `Shell`, **outside**
+the `key={location.pathname}` on `<main>` — inside it, the background would be
+rebuilt on every navigation. CSS moved `pages.css` → `layout.css`; it is
+application frame now, not one page.
+
+**Favicon (D-076).** There was no `<link rel="icon">` at all.
+`apps/web/scripts/make-favicon.py` holds the geometry once and emits
+`favicon.svg`, `favicon.ico` (16/32/48) and `apple-touch-icon.png` (180). Run it
+by hand when the mark changes; the outputs are committed. Also added
+`theme-color`, a real `<title>` and a meta description.
+
+**AI activity (D-077).** The AI usage panel was on Project Analytics, the
+learner's Global Analytics, and Admin. The PRD puts it on the first (§12, named
+explicitly) and the third (§16), and says Global Analytics aggregates *learning
+activity* only. Removed from Global — **at the API**, not just the page:
+`GET /api/analytics` no longer queries `ai_requests` or returns an `ai` object.
+`ai_requests` RLS left alone on purpose: a learner must read their own rows for
+the Project view the PRD asks for.
+
+**Verified in a browser** on a throwaway seeded account, every page, then the
+account was deleted. **Tests: 555 passing.**
 
 **Tasks 10, 11 and 12 complete.** Grounded Tutor, unsupported-question
 handling, and the prompt-injection boundary — the three highest-risk items on

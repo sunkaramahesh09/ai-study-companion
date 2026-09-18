@@ -185,10 +185,23 @@ export function TutorPanel({ tutor }: { tutor: TutorSummary }) {
   );
 }
 
-export function AiUsagePanel({ ai }: { ai: AiUsageSummary }) {
+/**
+ * AI activity: model, feature, latency, tokens, cost, success and failure.
+ *
+ * Shown to a learner on PROJECT Analytics, where the PRD asks for it (§12) and
+ * where it is about this Project's own material and answers. Not shown on their
+ * account-wide Global Analytics: aggregate spend and model mix is an operator's
+ * view of the system, and it lives on the Admin Dashboard (§16). See D-076.
+ *
+ * `caption` exists because the same numbers mean different things to the two
+ * audiences. An operator reads a cost table without explanation; a learner
+ * needs to be told what they are looking at, or it reads as an invoice.
+ */
+export function AiUsagePanel({ ai, caption }: { ai: AiUsageSummary; caption?: string }) {
   return (
     <div className="card">
       <h3>AI activity</h3>
+      {caption && <p className="muted small" style={{ marginTop: 'calc(-1 * var(--space-2))' }}>{caption}</p>}
       {ai.requests === 0 ? (
         <p className="muted">No AI requests in this window.</p>
       ) : (

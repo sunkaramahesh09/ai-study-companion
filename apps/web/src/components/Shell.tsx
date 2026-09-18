@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar.tsx';
 import { Icon } from './Icon.tsx';
+import { PageDecor } from './PageDecor.tsx';
 
 export function Shell({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -9,6 +10,10 @@ export function Shell({ children }: { children: ReactNode }) {
 
   return (
     <div className="app-shell">
+      {/* First child and outside the keyed `main`: the landscape is what the
+          pages move across, so it must not be torn down and rebuilt on every
+          navigation. */}
+      <PageDecor />
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="main-content">
         {/*

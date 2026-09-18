@@ -78,7 +78,10 @@ export function Analytics() {
           </p>
         </div>
       </div>
-      <AiUsagePanel ai={data.ai} />
+      <AiUsagePanel
+        ai={data.ai}
+        caption="What the AI did for this Project — which models answered, how long they took, and what it cost to run."
+      />
     </section>
   );
 }

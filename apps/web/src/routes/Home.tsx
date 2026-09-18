@@ -35,35 +35,6 @@ export function Home() {
 
   return (
     <section className="fade-in home-page">
-      {/* Decorative only — fixed, behind everything, aria-hidden. Adds depth
-          to the page without competing with the white card surfaces. */}
-      {/*
-        Page-level atmosphere. Everything here lives BEHIND the cards at the
-        background layer (position:fixed, z-index:-1, pointer-events:none) —
-        the mountains and glows are part of the page, not shapes pasted into
-        boxes. Purely decorative: aria-hidden, no text, no interaction.
-      */}
-      <div className="home-page-decor" aria-hidden="true">
-        <span className="decor-glow decor-glow-1" />
-        <span className="decor-glow decor-glow-2" />
-        <span className="decor-glow decor-glow-3" />
-        <span className="decor-cloud decor-cloud-1" />
-        <span className="decor-cloud decor-cloud-2" />
-        <span className="decor-curve" />
-        <span className="decor-range decor-range-left">
-          <i />
-          <i />
-          <i />
-        </span>
-        <span className="decor-range decor-range-right">
-          <i />
-          <i />
-        </span>
-        <span className="decor-sparkle decor-sparkle-1">✦</span>
-        <span className="decor-sparkle decor-sparkle-2">✦</span>
-        <span className="decor-sparkle decor-sparkle-3">✦</span>
-      </div>
-
       <div className="content-with-sidebar">
         <div className="stack" style={{ gap: 'var(--space-6)' }}>
           {/* Welcome Hero */}

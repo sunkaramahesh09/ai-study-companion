@@ -251,6 +251,27 @@ describeIntegration('analytics API', () => {
     const body = res.json();
     expect(body.totals.projects).toBe(0);
     expect(body.activity.totalEvents).toBe(0);
-    expect(body.ai.requests).toBe(0);
+  });
+
+  /**
+   * Where AI usage is, and is not, a learner-facing figure.
+   *
+   * The PRD asks for AI activity on Project Analytics (§12) and puts
+   * platform-wide AI usage on the Admin Dashboard (§16). The account-wide
+   * learner view sat between the two and had it anyway — an operator's report
+   * of token spend, model mix and dollar cost with no study decision attached
+   * to it. Asserted at the API rather than in the UI: a panel removed from a
+   * page is still one request away. See D-076.
+   */
+  it('does not report account-wide AI spend to the learner', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/analytics?days=30', headers: auth(alice.token) });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).not.toHaveProperty('ai');
+  });
+
+  it('still reports AI activity for a single Project, which the PRD asks for', async () => {
+    const { ai } = (await projectAnalytics(alice.token, 30)).json();
+    expect(ai.requests).toBe(3);
+    expect(ai.byModel.length).toBeGreaterThan(0);
   });
 });

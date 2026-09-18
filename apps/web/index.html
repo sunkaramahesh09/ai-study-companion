@@ -3,7 +3,29 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Study Companion</title>
+
+    <!--
+      SVG first: it is the one browsers with a choice will take, and it stays
+      sharp on a retina tab strip and in a bookmark list at any size. The .ico
+      is the fallback for anything that does not read this file at all and just
+      requests /favicon.ico — which is also why it sits at the site root rather
+      than in a hashed asset folder. Both are generated from one geometry
+      definition by apps/web/scripts/make-favicon.py, so they cannot drift.
+    -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- Tints the browser chrome on Android and on installed desktop PWAs to
+         the same purple as the mark, so the app does not sit in a grey frame. -->
+    <meta name="theme-color" content="#6c47ec" />
+
+    <meta
+      name="description"
+      content="AI.Prof — study from your own material: a Tutor that answers with the page it came from, adaptive quizzes, and mastery tracking that says what to do next."
+    />
+
+    <title>AI.Prof — Your AI Study Companion</title>
   </head>
   <body>
     <div id="root"></div>

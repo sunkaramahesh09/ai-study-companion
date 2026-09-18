@@ -124,15 +124,23 @@ export const analyticsRoutes: FastifyPluginAsync = async (app) => {
   });
 
   /**
-   * Global analytics: the same shape aggregated across every Space and Project
-   * the caller owns, plus a per-project breakdown so the numbers are traceable
-   * back to where they came from.
+   * Global analytics: learning activity aggregated across every Space and
+   * Project the caller owns, plus a per-project breakdown so the numbers are
+   * traceable back to where they came from.
+   *
+   * Deliberately WITHOUT AI usage, unlike the per-project view above. The PRD
+   * asks for AI activity on Project Analytics (§12) — where it is about this
+   * Project's own material and answers — and puts platform-wide AI usage under
+   * the Admin Dashboard (§16). A learner's account-wide token spend, model mix
+   * and dollar cost is an operator's view of the system, not a learner's view
+   * of their learning: there is no study decision that changes because the p95
+   * latency moved. See D-076.
    */
   app.get('/api/analytics', { preHandler: app.requireAuth }, async (req, reply) => {
     const { days } = windowSchema.parse(req.query ?? {});
     const since = windowStart(days);
 
-    const [{ data: spaces }, { data: projects }, { data: events, error: eventsError }, { data: answers }, { data: ai }] =
+    const [{ data: spaces }, { data: projects }, { data: events, error: eventsError }, { data: answers }] =
       await Promise.all([
         // Every one of these filters on user_id. This endpoint has no project
         // in its path to hang ownership off, so RLS was the only thing scoping
@@ -153,13 +161,6 @@ export const analyticsRoutes: FastifyPluginAsync = async (app) => {
           .eq('user_id', req.user!.id)
           .not('answered_at', 'is', null)
           .order('answered_at', { ascending: false })
-          .limit(ROW_LIMIT),
-        req
-          .db!.from('ai_requests')
-          .select('feature, model, status, latency_ms, total_tokens, estimated_cost_usd, used_fallback')
-          .eq('user_id', req.user!.id)
-          .gte('created_at', since.toISOString())
-          .order('created_at', { ascending: false })
           .limit(ROW_LIMIT),
       ]);
     if (eventsError) return replyDbError(reply, eventsError);
@@ -188,8 +189,9 @@ export const analyticsRoutes: FastifyPluginAsync = async (app) => {
         byType: countByType(eventRows),
       },
       assessment: summariseAssessment(toAnswerRows(answers)),
+      // Kept: how often the Tutor could answer from the learner's own material
+      // is a fact about their material, and "upload more" is a real action.
       tutor: groundingRate(eventRows),
-      ai: summariseAiUsage(toAiRows(ai)),
       projects: (projects ?? [])
         .map((p) => ({
           id: p.id as string,

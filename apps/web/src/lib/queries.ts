@@ -371,7 +371,9 @@ export type GlobalAnalytics = {
   activity: ActivitySummary;
   assessment: AssessmentSummary;
   tutor: TutorSummary;
-  ai: AiUsageSummary;
+  // No `ai` here, unlike ProjectAnalytics: the endpoint no longer sends one.
+  // Account-wide AI spend is an Admin view (PRD §16); per-Project AI activity
+  // is a learner view (§12). See D-076.
   projects: { id: string; name: string; spaceId: string; events: number }[];
 };
 

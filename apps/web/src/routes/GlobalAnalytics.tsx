@@ -5,7 +5,6 @@ import { EmptyState, ErrorNote, Spinner, PageHeader } from '../components/Ui.tsx
 import { RowBars, Stat, pct } from '../components/Charts.tsx';
 import {
   ActivityPanel,
-  AiUsagePanel,
   AssessmentPanel,
   TutorPanel,
   WindowPicker,
@@ -81,8 +80,12 @@ export function GlobalAnalytics() {
           </div>
 
           <AssessmentPanel assessment={data.assessment} />
+          {/* No AI usage panel here, on purpose. Token spend, model mix and
+              dollar cost across a whole account is an operational view — it
+              belongs to the Admin Dashboard (PRD §16), and on the per-Project
+              view where the PRD asks for it (§12). Nothing a learner decides
+              changes because of it. See D-076. */}
           <TutorPanel tutor={data.tutor} />
-          <AiUsagePanel ai={data.ai} />
         </>
       )}
     </section>
