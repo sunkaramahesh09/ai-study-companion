@@ -48,10 +48,18 @@ function readSecret(prompt) {
       terminal: process.stdin.isTTY === true,
     });
     let muted = false;
+    let answered = false;
     rl._writeToOutput = (str) => {
       if (!muted) process.stdout.write(str);
     };
+    // Without this, stdin closing before a line is sent leaves `question`'s
+    // callback pending forever and the process exits on an unsettled await
+    // with no explanation. Resolving empty lets the caller say what happened.
+    rl.on('close', () => {
+      if (!answered) resolve('');
+    });
     rl.question(prompt, (answer) => {
+      answered = true;
       rl.close();
       process.stdout.write('\n');
       resolve(answer);
@@ -60,11 +68,40 @@ function readSecret(prompt) {
   });
 }
 
-const password = await readSecret(`Password for ${email} (not echoed, not stored): `);
+const MIN_LENGTH = 12;
 
-// Supabase enforces 6; an admin account on a public deployment deserves more.
-if (password.length < 12) {
-  console.error('Refusing: use at least 12 characters for an account that can read every user\'s activity.');
+// An explicit escape hatch for a shell that cannot give the script a terminal.
+// Not the default: an env var is visible to `ps` on some systems and lands in
+// shell history unless the line is prefixed with a space.
+const password = process.env.ADMIN_PASSWORD
+  ? process.env.ADMIN_PASSWORD
+  : await readSecret(`Password for ${email} (not echoed, not stored): `);
+
+if (password.length === 0) {
+  console.error(
+    '\nNo password received — stdin closed without sending a line.\n' +
+      'This needs a real terminal. If you ran it through a wrapper that does not\n' +
+      'attach one (Claude Code\'s `!` prefix, a CI step, an editor task runner),\n' +
+      'use one of these instead:\n\n' +
+      '  • run it in a normal Terminal window, or\n' +
+      '  • pipe the password in:\n' +
+      "      printf '%s' 'your-password' | node --env-file=.env scripts/create-admin.mjs " +
+      `${email}\n` +
+      '  • or pass it as an env var (note the LEADING SPACE, which keeps the line\n' +
+      '    out of zsh/bash history when HIST_IGNORE_SPACE is on):\n' +
+      `       ADMIN_PASSWORD='your-password' node --env-file=.env scripts/create-admin.mjs ${email}\n`,
+  );
+  process.exit(1);
+}
+
+// Supabase enforces 6; this is our own floor, for an account that can read
+// every user's activity on a public deployment.
+if (password.length < MIN_LENGTH) {
+  console.error(
+    `\nReceived ${password.length} characters; this script wants at least ${MIN_LENGTH}.\n` +
+      'That is our rule, not Supabase\'s — this account can read every user\'s\n' +
+      'activity, and the deployment is public.\n',
+  );
   process.exit(1);
 }
 
