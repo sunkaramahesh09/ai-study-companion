@@ -12,8 +12,27 @@ quizzes, and watch concept mastery move as evidence accumulates.
 | **Providers** | Groq (generation) · Gemini (embeddings) |
 
 ```
-491 automated tests · 17 AI evaluation cases · a full production loop rehearsal
+555 automated tests · 18 AI evaluation cases · a full production loop rehearsal
 ```
+
+---
+
+## Submitting / reviewing this project
+
+| §20 deliverable | Where |
+|---|---|
+| Working application | [ai-study-companion-ruby.vercel.app](https://ai-study-companion-ruby.vercel.app) |
+| Architecture documentation | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| AI usage — build-time vs product | [`docs/AI_USAGE.md`](docs/AI_USAGE.md) |
+| Development prompts | [`docs/PROMPTS.md`](docs/PROMPTS.md) |
+| Evaluation approach | [Evaluation](#evaluation) · [`apps/api/src/eval/`](apps/api/src/eval) |
+| Known limitations | [Known limitations](#known-limitations) |
+| Future improvements | [If there were more time](#if-there-were-more-time) |
+| **Requirement-by-requirement coverage** | [`docs/PRD_COVERAGE.md`](docs/PRD_COVERAGE.md) |
+
+**Reviewing against the PRD?** [`docs/PRD_COVERAGE.md`](docs/PRD_COVERAGE.md)
+maps every Must Have to the file that implements it and the test that proves it,
+and says plainly which single requirement is Partial and why.
 
 ---
 
@@ -80,10 +99,10 @@ npm run dev:web                  # http://localhost:5173
 
 | Command | What it does |
 |---|---|
-| `npm test` | 491 tests. **Set the env vars** — integration tests skip silently without them |
+| `npm test` | 555 tests. **Set the env vars** — integration tests skip silently without them |
 | `npm run typecheck` | All four workspaces |
 | `npm run build` | Builds everything; the web build **fails** if `VITE_*` is missing (see below) |
-| `npm run eval` | 17 AI evaluation cases against real models (~4 min, spends quota) |
+| `npm run eval` | 18 AI evaluation cases against real models (~4 min, spends quota) |
 | `npm run eval <suite>` | One of `tutor`, `retrieval`, `assessment`, `recommendation`, `security` |
 | `npm run eval -- --list` | Every case and what it protects |
 | `npm run rehearse` | Drives the entire loop against **production** with a fresh account |
@@ -268,7 +287,11 @@ the one place whose whole job is to be believed.
 
 | Document | What is in it |
 |---|---|
-| [`docs/DECISIONS.md`](docs/DECISIONS.md) | **57 numbered decisions**, each with the alternative rejected and why. Written as the work happened, not reconstructed. Code comments cite them by id (`// see D-005`) |
+| [`docs/PRD_COVERAGE.md`](docs/PRD_COVERAGE.md) | **Every PRD Must Have mapped to the code that implements it and the test that proves it.** Start here if you are checking the build against the requirements |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System diagram, layer boundaries, data model, request flows, and the major decisions with what was rejected |
+| [`docs/AI_USAGE.md`](docs/AI_USAGE.md) | AI used to **build** the product vs AI used **by** the product, kept strictly apart |
+| [`docs/PROMPTS.md`](docs/PROMPTS.md) | The actual development prompts, recovered from the session transcripts rather than written from memory |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | **77 numbered decisions**, each with the alternative rejected and why. Written as the work happened, not reconstructed. Code comments cite them by id (`// see D-005`) |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Deploying the three services, and the configuration mistakes that fail silently |
 | [`docs/RUNBOOK.md`](docs/RUNBOOK.md) | Build state, task checklist, and a landmine list |
 | [`.env.example`](.env.example) | Every variable, what it is for, and which ones must never reach the browser |
@@ -303,7 +326,7 @@ that does not.
   as "improving". A proper fix compares a recent segment against what preceded
   it, which needs more history than a four-day build produces to tune honestly
   (D-049).
-- **17 evaluation cases is a floor, not a comprehensive suite.** Notably absent:
+- **18 evaluation cases is a floor, not a comprehensive suite.** Notably absent:
   multi-turn Tutor coherence, grading consistency across repeated runs of the
   same answer, and retrieval quality on a document large enough for chunk
   boundaries to matter (D-054).
@@ -312,7 +335,25 @@ that does not.
 - **Green and red sit at deutan ΔE 7.9**, below the ΔE 8 separation target. New
   charts are single-series so identity never rests on colour; where the pair
   does appear it carries a text label (D-051).
-- **PDF only.** No DOCX, no plain text, no URLs.
+- **PDF only.** No DOCX, no plain text, no URLs. A scanned PDF with no text
+  layer extracts nothing — there is no OCR step.
+- **No agentic tool-calling loop.** Structured AI interaction is
+  application-orchestrated: the app chooses the capability, the model returns
+  structured data, and that data is validated against a zod schema before it can
+  persist or change state. This meets PRD §8's stated requirements but is not
+  the tool-request pattern its diagram sketches. Called out honestly in
+  [`docs/PRD_COVERAGE.md`](docs/PRD_COVERAGE.md).
+- **Three Supabase security-advisor warnings remain, all understood.**
+  `is_admin()`, `owns_project()` and `owns_space()` are `SECURITY DEFINER` and
+  callable over RPC by signed-in users — they have to be, because the RLS
+  policies that call them execute as the caller, and each only answers a
+  question about *you* (do you own this row, are you an admin), so there is no
+  information to gain. The ten `search_path` warnings are all pg-boss's own
+  functions; ours were hardened in migration `0005`. Leaked-password protection
+  is a Supabase Auth toggle that is currently off.
+- **Unindexed foreign keys on `user_id` columns** (23, per the performance
+  advisor). Hot paths are covered by the composite and `project_id` indexes;
+  at prototype volume this is an INFO-level finding, not a latency problem.
 - **The Tutor does not stream.** Answers arrive whole. Streaming is in the PRD's
   "Should Have", and the Must-Haves came first.
 - **Open-ended answers still take a few seconds to grade**, because grading one

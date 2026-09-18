@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-18 19:00 · **Day:** Fri · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-18 19:15 · **Day:** Fri · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -212,6 +212,38 @@ the Project view the PRD asks for.
 
 **Verified in a browser** on a throwaway seeded account, every page, then the
 account was deleted. **Tests: 555 passing.**
+
+### Submission deliverables audit (§20) — three were missing
+
+**Session 2026-09-18 19:00.** Read the PRD end to end as an evaluator would and
+mapped it against the repository. Every Must Have was implemented; **three
+required submission deliverables were not in the repo at all**:
+
+- [`docs/AI_USAGE.md`](AI_USAGE.md) — §20.5, build-time AI vs product AI. (The
+  transcripts show this was started on 2026-09-17 and deferred.)
+- [`docs/PROMPTS.md`](PROMPTS.md) — §20.6. Built from the **real** session
+  transcripts in `~/.claude/projects/.../*.jsonl`: 102 distinct prompts across 8
+  sessions, 42 substantive, grouped by the PRD's own categories.
+- [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) — §20.4 asks for a dedicated
+  architecture document with a diagram; it existed only as a README section.
+
+Also added [`docs/PRD_COVERAGE.md`](PRD_COVERAGE.md): every Must Have → the file
+that implements it → the test that proves it, with §8 marked **Partial** and the
+reason stated rather than claimed as done.
+
+**Stale claims fixed in the README** — it advertised 491 tests, 17 eval cases and
+57 decisions; the real numbers are 555, 18 and 77. An evaluator checking a claim
+and finding it wrong discounts every other claim in the file.
+
+### >>> STILL OUTSTANDING BEFORE SUBMITTING <<<
+
+1. **The demo video (§20.2).** Not optional, not in the repo, and cannot be
+   produced from here. Must walk: create Space → create Project → upload PDF →
+   watch it process → ask the Tutor → grounded answer with citation → ask
+   something the material does not cover → adaptive quiz → open-ended answer +
+   feedback → mastery/growth → analytics → recommendation → Admin Dashboard.
+2. **Enable leaked-password protection** in Supabase Auth (one toggle;
+   Authentication → Policies). The security advisor flags it.
 
 **Tasks 10, 11 and 12 complete.** Grounded Tutor, unsupported-question
 handling, and the prompt-injection boundary — the three highest-risk items on
