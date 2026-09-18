@@ -16,7 +16,15 @@ import { listProjects, listSpaces } from './queries.ts';
  */
 export type StudyContext = { project: Project; space: Space | null };
 
-export function useStudyContext(projectId?: string) {
+export type StudyContextState = {
+  spaces: Space[];
+  projects: Project[];
+  loading: boolean;
+  error: unknown;
+  current: StudyContext | null;
+};
+
+export function useStudyContext(projectId?: string): StudyContextState {
   const [spaces, setSpaces] = useState<Space[] | null>(null);
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [error, setError] = useState<unknown>(null);

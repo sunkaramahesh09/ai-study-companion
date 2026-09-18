@@ -1,10 +1,11 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { createSpace, listSpaces } from '../lib/queries.ts';
+import { createSpace } from '../lib/queries.ts';
 import type { Space } from '@asc/shared';
 import { EmptyState, ErrorNote, Spinner, PageHeader } from '../components/Ui.tsx';
 import { Icon, type IconName } from '../components/Icon.tsx';
-import { ContinueCard } from '../components/StudyContext.tsx';
+import { ContinueCardView } from '../components/StudyContext.tsx';
+import { useStudyContext } from '../lib/studyContext.ts';
 
 const SPACE_ICONS: IconName[] = ['book', 'brain', 'file', 'link', 'flask', 'cap', 'target', 'folder'];
 const SPACE_COLORS = [
@@ -17,16 +18,20 @@ const SPACE_COLORS = [
 ];
 
 export function Spaces() {
-  const [spaces, setSpaces] = useState<Space[] | null>(null);
+  // One source for the page and for the "pick up where you left off" card, so
+  // both appear in the same frame. Fetching them separately is what made the
+  // card drop in late and shove the rest of the page down.
+  const ctx = useStudyContext();
+  // Spaces created in this session, kept locally so the list updates without a
+  // refetch. Newest first, matching where the API would put them.
+  const [created, setCreated] = useState<Space[]>([]);
   const [error, setError] = useState<unknown>(null);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    listSpaces().then(setSpaces).catch(setError);
-  }, []);
+  const spaces = ctx.loading ? null : [...created, ...ctx.spaces];
 
   async function onCreate(e: FormEvent) {
     e.preventDefault();
@@ -34,7 +39,7 @@ export function Spaces() {
     setError(null);
     try {
       const space = await createSpace({ name, description: description || undefined });
-      setSpaces((prev) => [space, ...(prev ?? [])]);
+      setCreated((prev) => [space, ...prev]);
       setName('');
       setDescription('');
       setCreating(false);
@@ -45,25 +50,41 @@ export function Spaces() {
     }
   }
 
+  const header = (
+    <PageHeader
+      icon={<Icon name="upload" size={26} />}
+      title="Spaces"
+      description="A Space is a broad area you want to learn. Projects live inside it."
+      action={
+        <button onClick={() => setCreating((v) => !v)} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          {creating ? 'Cancel' : <><span>＋</span> New Space</>}
+        </button>
+      }
+    />
+  );
+
+  // Nothing below the header renders until both lists are in. The hero is
+  // static and could paint immediately, but painting it first would only mean
+  // watching it jump down when the card arrives above it a moment later.
+  if (spaces === null) {
+    return (
+      <section className="fade-in">
+        {header}
+        {ctx.error ? <ErrorNote error={ctx.error} /> : <Spinner />}
+      </section>
+    );
+  }
+
   return (
     <section className="fade-in">
-      <PageHeader
-        icon={<Icon name="upload" size={26} />}
-        title="Spaces"
-        description="A Space is a broad area you want to learn. Projects live inside it."
-        action={
-          <button onClick={() => setCreating((v) => !v)} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            {creating ? 'Cancel' : <><span>＋</span> New Space</>}
-          </button>
-        }
-      />
+      {header}
 
       {/* The learner almost always wants the project they were last in. Leading
           with it turns "Spaces → Space → Project" into one click, and the card
           carries its own switcher for the times it is the wrong guess (D-065).
           `hideWhenEmpty` because this page already has its own empty state for
           a learner with no spaces — two would just argue with each other. */}
-      <ContinueCard showRecents hideWhenEmpty />
+      <ContinueCardView ctx={ctx} showRecents hideWhenEmpty />
 
       {/* Hero */}
       <div className="spaces-hero">
@@ -73,7 +94,7 @@ export function Spaces() {
           Create spaces for each subject or interest, add projects, upload materials,
           and get personalized learning support from AI.
         </p>
-        {(!spaces || spaces.length === 0) && (
+        {spaces.length === 0 && (
           <button onClick={() => setCreating(true)} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             ＋ Create Your First Space
           </button>
@@ -101,9 +122,8 @@ export function Spaces() {
       )}
 
       {error ? <ErrorNote error={error} /> : null}
-      {spaces === null && !error && <Spinner />}
 
-      {spaces?.length === 0 && !creating && (
+      {spaces.length === 0 && !creating && (
         <EmptyState
           icon={<Icon name="book" size={26} />}
           title="No Spaces yet"
@@ -113,7 +133,7 @@ export function Spaces() {
       )}
 
       {/* Spaces Grid */}
-      {spaces && spaces.length > 0 && (
+      {spaces.length > 0 && (
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: 'var(--space-5) 0 var(--space-3)' }}>
             <h3>Your Spaces</h3>

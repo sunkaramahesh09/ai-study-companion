@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { Project, Space } from '@asc/shared';
-import { useStudyContext } from '../lib/studyContext.ts';
+import { useStudyContext, type StudyContextState } from '../lib/studyContext.ts';
 import { EmptyState, ErrorNote, Spinner } from './Ui.tsx';
 import { Icon, type IconName } from './Icon.tsx';
 
@@ -107,31 +107,41 @@ export function StudyContextBar({ projectId, mode }: { projectId: string; mode: 
   const { spaces, projects, current, loading } = useStudyContext(projectId);
   const [open, setOpen] = useState(false);
 
-  // Nothing useful to say until the names are in; a bar that pops in with
-  // "— › —" is worse than one that appears a beat later.
-  if (loading || !current) return null;
-
+  // The shell renders from the first frame, names or not. Returning null while
+  // the names load and the bar in afterwards would push the whole page down a
+  // beat after it settled — the jump is worse than a moment of grey.
   return (
     <div className="context-bar">
       <div className="context-bar-crumbs">
         <Link to={`/projects/${projectId}`} className="context-bar-back" title="Back to project">
           <Icon name="arrow-right" size={16} />
         </Link>
-        <span className="context-bar-space">
-          <Icon name="folder" size={14} />
-          {current.space?.name ?? 'Space'}
-        </span>
-        <span className="context-bar-sep">›</span>
-        <Link to={`/projects/${projectId}`} className="context-bar-project">
-          {current.project.name}
-        </Link>
+        {current ? (
+          <>
+            <span className="context-bar-space">
+              <Icon name="folder" size={14} />
+              {current.space?.name ?? 'Space'}
+            </span>
+            <span className="context-bar-sep">›</span>
+            <Link to={`/projects/${projectId}`} className="context-bar-project">
+              {current.project.name}
+            </Link>
+          </>
+        ) : (
+          <span className="skeleton context-bar-loading" aria-hidden="true" />
+        )}
       </div>
 
-      <button type="button" className="context-bar-change" onClick={() => setOpen((v) => !v)}>
+      <button
+        type="button"
+        className="context-bar-change"
+        disabled={!current}
+        onClick={() => setOpen((v) => !v)}
+      >
         <Icon name="refresh" size={14} /> {open ? 'Close' : 'Change'}
       </button>
 
-      {open && (
+      {open && !loading && (
         <ProjectSwitcher
           spaces={spaces}
           projects={projects}
@@ -152,20 +162,37 @@ export function StudyContextBar({ projectId, mode }: { projectId: string; mode: 
  * sidebar's Tutor/Quiz entries. One click continues; the switcher is there for
  * the times the answer is a different project.
  */
-export function ContinueCard({
-  defaultMode,
-  showRecents = false,
-  hideWhenEmpty = false,
-}: {
+type ContinueCardProps = {
   /** What continuing means here. Omitted (Spaces) it means "open the project". */
   defaultMode?: Mode;
   /** Chips for the next few projects — faster than the switcher when the answer is "the other one". */
   showRecents?: boolean;
   /** For pages that already say something sensible when there is nothing to continue. */
   hideWhenEmpty?: boolean;
-}) {
+};
+
+/** Self-fetching form, for a page whose only content is this card. */
+export function ContinueCard(props: ContinueCardProps) {
+  const ctx = useStudyContext();
+  return <ContinueCardView ctx={ctx} {...props} />;
+}
+
+/**
+ * Same card, driven by data the page already has.
+ *
+ * A page that renders its own content *and* this card must load both through
+ * one gate. Letting the card fetch separately means it arrives after the page
+ * has painted and pushes everything below it down — which is exactly what
+ * Spaces did.
+ */
+export function ContinueCardView({
+  ctx,
+  defaultMode,
+  showRecents = false,
+  hideWhenEmpty = false,
+}: ContinueCardProps & { ctx: StudyContextState }) {
   const navigate = useNavigate();
-  const { spaces, projects, current, loading, error } = useStudyContext();
+  const { spaces, projects, current, loading, error } = ctx;
   const [open, setOpen] = useState(false);
 
   // When the card is an addition to a page that stands on its own, it stays out
@@ -215,7 +242,7 @@ export function ContinueCard({
   const recents = projects.filter((p) => p.id !== project.id).slice(0, 4);
 
   return (
-    <div className="card continue-card" style={{ marginTop: 'var(--space-4)' }}>
+    <div className="card continue-card">
       <div className="continue-card-head">
         <div className="continue-card-icon">
           <Icon name="play" size={20} />

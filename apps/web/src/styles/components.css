@@ -766,6 +766,13 @@ section > .card { margin-top: var(--space-4); }
   white-space: nowrap;
 }
 .context-bar-sep { color: var(--text-disabled); }
+/* Holds the crumb line's height while the names load, so the bar is the same
+   size before and after and nothing below it moves. */
+.context-bar-loading {
+  display: inline-block;
+  height: 14px;
+  width: min(240px, 50%);
+}
 .context-bar-project {
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
@@ -798,6 +805,11 @@ section > .card { margin-top: var(--space-4); }
   box-shadow: none;
 }
 
+.context-bar-change:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 /* The space/project selects, shared by the bar and the continue card. */
 .context-switcher {
   flex-basis: 100%;
@@ -820,6 +832,10 @@ section > .card { margin-top: var(--space-4); }
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  /* Both margins live here rather than on the caller: the card is followed by
+     another card-like surface on Spaces (the hero), and with only a top margin
+     the two edges met with no gap and read as one overlapping shape. */
+  margin: var(--space-4) 0;
   border-color: var(--primary-100);
   background: linear-gradient(135deg, rgba(243, 240, 255, 0.9) 0%, rgba(255, 255, 255, 0.86) 60%);
 }

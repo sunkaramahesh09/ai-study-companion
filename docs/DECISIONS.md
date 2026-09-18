@@ -2181,4 +2181,46 @@ Spaces, `/quiz` and `/tutor`; the switcher's project select follows the space
 select; switching navigates and the bar updates; quizzing a project reordered
 "last used" on the next visit. Account deleted afterwards.
 
+### Follow-up, same day — a component that fetches for itself shifts the page
+
+**Symptom (reported from real use):** Spaces painted its hero and its grid, and
+then, a beat later, the continue card dropped in at the top and shoved
+everything down.
+
+**Cause:** the card fetched its own spaces and projects. Two independent loads
+on one page resolve at different times, and the later one arrives *after* the
+page has painted. The card renders above the hero, so it could only push.
+
+**Rule:** a component placed above existing content must not own its own fetch.
+Either the page loads both behind one gate, or the component reserves its
+height from the first frame. Both are now in place:
+
+- `useStudyContext()` exports its state type, `ContinueCard` splits into a
+  self-fetching wrapper (for `/quiz` and `/tutor`, where the card *is* the
+  page) and `ContinueCardView`, which takes data the page already has.
+- Spaces now calls the hook itself and renders header + spinner until both
+  lists are in, then everything in one frame. It no longer fetches spaces
+  separately — one request instead of two — and keeps spaces created in this
+  session in local state so the list still updates without a refetch.
+- `StudyContextBar` renders its shell from the first frame with a skeleton
+  where the names go, rather than returning `null` and appearing later. Its
+  height is set by the back button, so it is identical before and after.
+
+**Measured, not eyeballed:** polling the DOM through a client-side navigation,
+the card, hero and grid all first appear in the same tick, and `.spaces-hero`'s
+`top` never changes after it exists. On a project quiz, the bar is 54px from
+the first frame through to the names arriving ~1s later, and the header below
+it stays at the same `top` throughout.
+
+**Note on measuring this:** `PerformanceObserver` with `type: 'layout-shift'`
+reported nothing at all here — not even for a deliberately injected 200px
+element — so CLS of 0 proved nothing. Polling `getBoundingClientRect()` across
+the transition is what actually answered the question.
+
+**And one more from the screenshot:** the card carried only a top margin, so on
+Spaces its bottom edge met the hero's top edge at 0px and the two rounded
+surfaces read as one overlapping shape. Margin now lives on `.continue-card`
+itself, both sides — a component that can be followed by another surface should
+not leave its spacing to whoever places it.
+
 ---
