@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { askTutor, getMessages, touchProject, type TutorMessage } from '../lib/queries.ts';
+import {
+  askTutor,
+  getMessages,
+  listConversations,
+  touchProject,
+  type TutorMessage,
+} from '../lib/queries.ts';
 import { ErrorNote, PageHeader } from '../components/Ui.tsx';
 import { Icon, type IconName } from '../components/Icon.tsx';
 import { StudyContextBar } from '../components/StudyContext.tsx';
@@ -19,11 +25,66 @@ export function Tutor() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  // True until we know whether this project has a conversation to restore, so
+  // the empty state does not flash before the history lands.
+  const [restoring, setRestoring] = useState(true);
   const endRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * Bring back the conversation on a reload.
+   *
+   * Every turn was already being written to `conversations` and `messages` —
+   * the page simply started from empty state each time it mounted, so a
+   * refresh looked like the chat had been lost when it was sitting in the
+   * database the whole time (D-070).
+   *
+   * Both fetches happen here, and `restoring` stays true across both: setting
+   * the conversation id first and letting a second effect fetch its messages
+   * would leave a gap where the id is known and the messages are not, and the
+   * "Ask Your AI Tutor" empty state would flash in it.
+   *
+   * This is also the reset when the learner switches project from the context
+   * bar: the route stays mounted across `/projects/a/tutor` →
+   * `/projects/b/tutor`, so without clearing here, project B would open
+   * showing project A's chat.
+   */
   useEffect(() => {
-    if (conversationId) getMessages(conversationId).then(setMessages).catch(() => {});
-  }, [conversationId]);
+    // Defensive: the route always supplies one, but if it ever did not,
+    // returning here with `restoring` left true would show the loading dots
+    // forever instead of the composer.
+    if (!projectId) {
+      setRestoring(false);
+      return;
+    }
+    let active = true;
+    setMessages([]);
+    setConversationId(undefined);
+    setError(null);
+    setRestoring(true);
+
+    (async () => {
+      try {
+        const conversations = await listConversations(projectId);
+        // Ordered by `updated_at` descending, so the first is the one they
+        // were last talking in.
+        const latest = conversations[0];
+        if (!latest || !active) return;
+        const history = await getMessages(latest.id);
+        if (!active) return;
+        setConversationId(latest.id);
+        setMessages(history);
+      } catch {
+        // A failed restore is not worth an error card — the composer still
+        // works, and asking anything starts a fresh conversation.
+      } finally {
+        if (active) setRestoring(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [projectId]);
 
   // Asking the Tutor is using the project, so it moves `last_active_at` — that
   // is what "continue where you left off" reads (D-065).
@@ -95,11 +156,37 @@ export function Tutor() {
         icon={<Icon name="tutor" size={26} />}
         title="AI Tutor"
         description="Answers come from your uploaded material, with the page they came from."
+        action={
+          // Restoring the last conversation means a learner would otherwise be
+          // stuck appending to it forever. This is the way to a clean one; the
+          // old conversation is kept, not deleted.
+          messages.length > 0 ? (
+            <button
+              type="button"
+              className="cta-ghost"
+              onClick={() => {
+                setConversationId(undefined);
+                setMessages([]);
+                setError(null);
+              }}
+            >
+              <Icon name="plus" size={15} /> New chat
+            </button>
+          ) : undefined
+        }
       />
 
       {/* Chat Area */}
       <div className="chat">
-        {messages.length === 0 && !busy && (
+        {restoring && messages.length === 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, gap: '6px' }}>
+            <span className="typing-dot" />
+            <span className="typing-dot" />
+            <span className="typing-dot" />
+          </div>
+        )}
+
+        {messages.length === 0 && !busy && !restoring && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 'var(--space-4)', padding: 'var(--space-8)' }}>
             <div style={{ fontSize: 48, marginBottom: 'var(--space-2)' }}><Icon name="cap" size={16} /></div>
             <h3 style={{ textAlign: 'center' }}>Ask Your AI Tutor</h3>

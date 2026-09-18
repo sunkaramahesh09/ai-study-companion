@@ -2371,3 +2371,49 @@ than rendered, and that a Markdown link does not become an `<a>`. `vitest`'s
 include gained `*.test.tsx` for it; the environment stays `node`.
 
 ---
+
+## D-070 — The chat was never lost, the page just never asked for it
+**Date:** 2026-09-18 · **Area:** Product / UI
+
+**Reported:** "if we are chatting with tutor and then refresh page chat is
+disappearing — is it a design constraint or can we achieve it?"
+
+**Neither a constraint nor missing work.** Every turn was already persisted:
+`conversations` and `messages` (0003_tutor_assessment), written by
+`/api/tutor/ask` before the answer is returned. `GET /api/conversations` and
+`GET /api/conversations/:id/messages` both existed and were both already
+wrapped in `lib/queries.ts` as `listConversations` and `getMessages`.
+`listConversations` had **no caller anywhere in the app**. The Tutor page
+simply mounted with `messages: []` and waited to be asked something.
+
+**Fix:** on mount, the page loads the project's most recent conversation
+(`updated_at` descending) and its messages, and shows them.
+
+**Both fetches in one effect, not two.** Setting the conversation id first and
+letting a second effect fetch its messages leaves a window where the id is
+known and the messages are not — the "Ask Your AI Tutor" empty state would
+flash in it. `restoring` stays true across both, and the redundant second
+`getMessages` that the old effect fired after every ask is gone with it.
+
+**A second bug fixed by the same effect:** this route stays mounted across
+`/projects/a/tutor` → `/projects/b/tutor` — which the context bar's switcher
+(D-065) made a normal thing to do. Without clearing state on a `projectId`
+change, project B opened showing project A's conversation. It now resets.
+
+**"New chat" in the header**, because restoring the last conversation without
+one would leave a learner appending to the same thread forever. It clears the
+local view and lets the next question open a fresh conversation; nothing is
+deleted.
+
+**Restored messages render identically to live ones:** `citations` is stored as
+the same camelCase `Citation[]` the live response returns, and the column is
+`not null default '[]'`, so a user turn has an empty array rather than null and
+`m.citations.length` is safe for both roles. (The comment above that column in
+0003 describes a snake_case shape and is stale — the code has never written
+that. Left alone rather than editing an applied migration.)
+
+**A failed restore is not an error card.** The composer still works and the
+next question starts a fresh conversation, so a fetch failure degrades to
+exactly the behaviour this decision replaced.
+
+---
