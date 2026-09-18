@@ -2417,3 +2417,39 @@ next question starts a fresh conversation, so a fetch failure degrades to
 exactly the behaviour this decision replaced.
 
 ---
+
+## D-071 — There is no admin login, because an admin is made rather than configured
+**Date:** 2026-09-18 · **Area:** Auth / Ops
+
+**Asked:** "where is our admin login details?"
+
+**There were none, and no account had the role.** Every row in `profiles` was
+`role = 'user'`, which meant the Admin Dashboard — a PRD requirement (§16, and
+§11 "visibility into users, learning activity, AI usage, AI quality, and system
+health") — was unreachable by anyone, including a reviewer. The sidebar hides
+the link, and every admin route 403s. Task 21 was built and tested; nobody
+could open it.
+
+**Why no seeded admin:** `role` lives in `public.profiles` and is read from the
+database on every request, never from a token claim (D-053). That is the whole
+point of the design — an admin cannot be minted by presenting the right JWT. It
+also means there is nothing to check into the repo: no admin email, no password,
+no env var that grants the role. The repo is public (CLAUDE.md), so this is the
+correct shape, but it does mean a deployment has zero admins until someone makes
+one.
+
+**Chosen:** `scripts/create-admin.mjs`. Takes the email (and optional name) as
+arguments and reads the password from stdin with `readline`'s `_writeToOutput`
+muted, so it reaches neither shell history, nor the repo, nor a log, nor a
+transcript. Creates the auth user with the service role — the only key that may
+— then sets `role = 'admin'`. Idempotent: an existing email is promoted with its
+password untouched, and `full_name` is only written when one was passed, so
+promoting a real person does not rename them to "Admin".
+
+Documented in RUNBOOK under "Admin access", with the query to list current
+admins.
+
+**Left deliberately:** the existing accounts stay `user`. Admin is a separate
+login, so a reviewer can be handed one without being handed the owner's account.
+
+---

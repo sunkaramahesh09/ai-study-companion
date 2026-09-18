@@ -631,3 +631,29 @@ Test accounts: create via the service role
 (`admin.auth.admin.createUser({email, password, email_confirm: true})`),
 then sign in with the anon key to get a real JWT. Always delete the user at the
 end — `auth.users` cascades to everything.
+
+## Admin access
+
+There is no seeded admin and no admin login in the repo — `role` lives in
+`public.profiles` and is read from the database on every request (D-053), so an
+admin is made, not configured. To create one:
+
+```bash
+node --env-file=.env scripts/create-admin.mjs admin@yourdomain.com "Admin Name"
+```
+
+It prompts for the password with echo off (nothing reaches shell history, the
+repo or a log), creates the auth user, and sets `profiles.role = 'admin'`.
+Re-running it on an existing email promotes that account and leaves the
+password alone. Then sign in normally — the Admin link appears in the sidebar
+because the role comes from the database, not from the token.
+
+To check who is an admin:
+
+```bash
+node --env-file=.env -e "
+const { createClient } = await import('@supabase/supabase-js');
+const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+console.table((await db.from('profiles').select('email, role').eq('role','admin')).data);
+"
+```
