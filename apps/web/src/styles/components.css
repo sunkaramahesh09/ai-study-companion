@@ -962,3 +962,22 @@ section > .card { margin-top: var(--space-4); }
   font-weight: var(--weight-semibold);
   white-space: nowrap;
 }
+
+.confirm-dialog h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xl);
+}
+.confirm-dialog p {
+  margin: 0;
+  line-height: 1.6;
+}
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+@media (max-width: 480px) {
+  .confirm-dialog-actions { flex-direction: column-reverse; }
+  .confirm-dialog-actions button { width: 100%; justify-content: center; }
+}

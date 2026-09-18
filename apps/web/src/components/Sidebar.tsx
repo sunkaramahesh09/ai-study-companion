@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthProvider.tsx';
 import { listSpaces } from '../lib/queries.ts';
 import type { Space } from '@asc/shared';
 import { Icon, type IconName } from './Icon.tsx';
+import { ConfirmDialog } from './Ui.tsx';
 
 const SPACE_COLORS = [
   '#6c47ec', '#10b981', '#f59e0b', '#ef4444', '#3b82f6',
@@ -24,6 +25,10 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const { profile, signOut } = useAuth();
   const location = useLocation();
   const [spaces, setSpaces] = useState<Space[]>([]);
+  // Signing out is one click away from everything else in this rail, and the
+  // way back is a full sign-in. Worth a question first.
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     listSpaces().then(setSpaces).catch(() => {});
@@ -129,7 +134,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             <button
               type="button"
               className="sidebar-signout"
-              onClick={() => void signOut()}
+              onClick={() => setConfirmingSignOut(true)}
               title="Sign out"
               aria-label="Sign out"
             >
@@ -138,6 +143,34 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           </div>
         </div>
       </aside>
+
+      {confirmingSignOut && (
+        <ConfirmDialog
+          title="Sign out?"
+          body={
+            <>
+              You'll need to sign in again to reach your spaces. Nothing is
+              deleted — your projects, materials and progress are waiting when
+              you come back.
+            </>
+          }
+          confirmLabel="Sign out"
+          cancelLabel="Stay signed in"
+          busy={signingOut}
+          onCancel={() => setConfirmingSignOut(false)}
+          onConfirm={async () => {
+            setSigningOut(true);
+            try {
+              await signOut();
+            } finally {
+              // The auth state change unmounts this, but if sign-out fails the
+              // dialog must not be left stuck on "Working…".
+              setSigningOut(false);
+              setConfirmingSignOut(false);
+            }
+          }}
+        />
+      )}
     </>
   );
 }

@@ -2247,3 +2247,24 @@ Costs nothing extra — `useStudyContext()` already holds every project and
 space, so the index is the data the card was using anyway.
 
 ---
+
+## D-066 — Sign out asks first
+**Date:** 2026-09-18 · **Area:** UI
+
+The sign-out control sits in the sidebar rail one click from everything else,
+with no undo — the way back is a full sign-in. It now opens a confirmation
+first: "Sign out?" with **Stay signed in** / **Sign out**.
+
+**Not `window.confirm`.** It is unstyled, differs per browser, and blocks the
+tab until answered. `ConfirmDialog` in `components/Ui.tsx` uses the
+`.modal-overlay` / `.modal-content` styles that were already in the stylesheet
+and unused: closes on Escape or a click outside, `role="dialog"` +
+`aria-modal`, and **focus starts on Cancel** so a stray Enter cannot confirm.
+The overlay dismisses only when a click both starts and ends on itself, so a
+drag that began inside the dialog does not close it.
+
+Generic on purpose — `title`, `body`, labels, a `danger` flag and a `busy`
+flag. The material delete still uses `window.confirm`; swapping it is a
+one-line change whenever that is wanted.
+
+---

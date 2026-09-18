@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Icon, type IconName } from './Icon.tsx';
 
 /** Loading spinner with animated dots */
@@ -268,6 +268,79 @@ export function PageHeader({
         </div>
       </div>
       {action}
+    </div>
+  );
+}
+
+/**
+ * Confirmation dialog for an action the learner cannot undo by clicking again.
+ *
+ * Not `window.confirm`: that one is unstyled, differs per browser, and blocks
+ * the whole tab until it is answered. This renders in the app, closes on
+ * Escape or a click outside, and starts with focus on Cancel so a stray Enter
+ * cannot confirm anything.
+ */
+export function ConfirmDialog({
+  title,
+  body,
+  confirmLabel,
+  cancelLabel = 'Cancel',
+  danger = false,
+  busy = false,
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  body?: ReactNode;
+  confirmLabel: string;
+  cancelLabel?: string;
+  danger?: boolean;
+  busy?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    cancelRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onCancel]);
+
+  return (
+    <div
+      className="modal-overlay"
+      // The overlay closes only on a click that starts AND ends on itself; a
+      // drag that began inside the dialog must not dismiss it.
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div
+        className="modal-content confirm-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-dialog-title"
+      >
+        <h3 id="confirm-dialog-title">{title}</h3>
+        {body && <p className="muted">{body}</p>}
+        <div className="confirm-dialog-actions">
+          <button type="button" className="btn-secondary" ref={cancelRef} onClick={onCancel}>
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            className={danger ? 'btn-danger' : undefined}
+            disabled={busy}
+            onClick={onConfirm}
+          >
+            {busy ? 'Working…' : confirmLabel}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
