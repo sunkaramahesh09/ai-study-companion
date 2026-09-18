@@ -39,10 +39,18 @@ export function Admin() {
     return (
       <section className="fade-in">
         <Link to="/home" className="back">← Back to Home</Link>
+        {/* Naming the account is the whole difference between "why is this
+            broken" and "ah, wrong login" — the usual way to land here is
+            signing in as someone else on a tab still pointed at /admin. */}
         <EmptyState
           icon={<Icon name="lock" size={26} />}
           title="Administrator access required"
-          hint="Your account does not have the admin role. This page is gated on the server too — there is nothing to see here without it."
+          hint={`You are signed in as ${profile.email}, which does not have the admin role. Sign in with an admin account to see this page. It is gated on the server too, so there is nothing here without it.`}
+          action={
+            <Link to="/home" className="cta">
+              Go to Home
+            </Link>
+          }
         />
       </section>
     );

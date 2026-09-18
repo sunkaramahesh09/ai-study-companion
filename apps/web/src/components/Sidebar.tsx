@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.tsx';
 import { listSpaces } from '../lib/queries.ts';
 import type { Space } from '@asc/shared';
@@ -24,6 +24,7 @@ const NAV_ITEMS: { path: string; icon: IconName; label: string }[] = [
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { profile, signOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [spaces, setSpaces] = useState<Space[]>([]);
   // Signing out is one click away from everything else in this rail, and the
   // way back is a full sign-in. Worth a question first.
@@ -168,6 +169,13 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           onConfirm={async () => {
             setSigningOut(true);
             try {
+              // Leave the gated route BEFORE the session goes. Signing out on
+              // /admin used to leave the browser parked there, so signing back
+              // in as anyone without the role landed straight on
+              // "Administrator access required" — correct, and baffling
+              // (D-074). Replace rather than push: the signed-out route has no
+              // business in the back history.
+              navigate('/home', { replace: true });
               await signOut();
             } finally {
               // The auth state change unmounts this, but if sign-out fails the

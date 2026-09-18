@@ -2541,3 +2541,34 @@ more than one user — because the fix must not be "admins see less", it must be
 "admins see everything in one place and nothing extra anywhere else".
 
 ---
+
+## D-074 — Signing out left the browser parked on a route the next person cannot open
+**Date:** 2026-09-18 · **Area:** UI
+
+**Reported:** "I have logged out from admin and logged in to the user account
+but it is showing me 'you are restricted'."
+
+**The page was right.** The URL was still `/admin` and the session was now a
+learner's, so "Administrator access required" is the correct answer. Nothing
+was broken; the app had simply parked the browser on a route the new session
+had no business on.
+
+`Gate` swaps the Shell for `<Login />` without touching the URL — deliberate,
+because after a session expires it returns the learner to the page they were
+reading. The one route where that is wrong is a gated one.
+
+**Fix:** sign-out navigates to `/home` *before* clearing the session, with
+`replace` so a route the user has signed out of does not sit in the back
+history.
+
+**And the gate now names the account.** "Your account does not have the admin
+role" gives someone with two logins nothing to act on. It now reads "You are
+signed in as <email>, which does not have the admin role" with a button to
+Home. The difference between "why is this broken" and "ah, wrong login" is
+usually just saying which account you are.
+
+**Not fixed, on purpose:** a non-admin who bookmarks `/admin` still sees the
+gate rather than a redirect. A silent bounce to Home would leave them guessing
+why; the message and the way out are better.
+
+---
