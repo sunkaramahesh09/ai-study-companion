@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { askTutor, getMessages, type TutorMessage } from '../lib/queries.ts';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { askTutor, getMessages, touchProject, type TutorMessage } from '../lib/queries.ts';
 import { ErrorNote, PageHeader } from '../components/Ui.tsx';
 import { Icon, type IconName } from '../components/Icon.tsx';
+import { StudyContextBar } from '../components/StudyContext.tsx';
 
 export function Tutor() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -22,6 +23,12 @@ export function Tutor() {
   useEffect(() => {
     if (conversationId) getMessages(conversationId).then(setMessages).catch(() => {});
   }, [conversationId]);
+
+  // Asking the Tutor is using the project, so it moves `last_active_at` — that
+  // is what "continue where you left off" reads (D-065).
+  useEffect(() => {
+    if (projectId) void touchProject(projectId).catch(() => {});
+  }, [projectId]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -81,7 +88,7 @@ export function Tutor() {
 
   return (
     <section className="tutor-page fade-in">
-      <Link to={`/projects/${projectId}`} className="back">← Back to Project</Link>
+      {projectId && <StudyContextBar projectId={projectId} mode="tutor" />}
 
       <PageHeader
         icon={<Icon name="tutor" size={26} />}

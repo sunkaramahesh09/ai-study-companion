@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-17 21:10 · **Day:** Thu · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-18 10:20 · **Day:** Fri · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -123,6 +123,31 @@ rehearsal. Typecheck clean, web build verified to contain the app.
 because each lived in a layer the tests do not exercise — the browser's CORS
 enforcement, wall-clock latency, the HTTP body parser, and an error response's
 fields beyond `message`. `npm run rehearse` now covers the first two.
+
+### Fifth from real use: the app knew where you were and made you say it again
+
+**Session 2026-09-18.** Reaching a quiz or the Tutor meant walking Spaces →
+space → project → feature every single time; the sidebar's Quizzes and Ask
+Tutor entries both redirected to `/spaces`. Fixed by leading with the last used
+space and project everywhere, with the switcher one click away (D-065).
+
+- `apps/web/src/lib/studyContext.ts` — `useStudyContext()`. "Last used" is the
+  first row of `GET /api/projects` (ordered by `last_active_at`), **not**
+  localStorage.
+- `apps/web/src/components/StudyContext.tsx` — `ContinueCard` (landing) and
+  `StudyContextBar` (breadcrumb + switcher on a project-scoped page).
+- `apps/web/src/routes/StudyLauncher.tsx` — `/quiz` and `/tutor` are now real
+  pages, not redirects. They do **not** auto-start anything: starting a quiz
+  spends model quota.
+- Quiz and Tutor now `POST /projects/:id/touch` on mount, so `last_active_at`
+  tracks the work, not just dashboard visits.
+- Two rendering bugs fixed on the way: space cards had been printing the
+  literal words "book"/"brain"/"file" instead of their icons since the
+  emoji→line-icon change, and `.pill`'s `capitalize` was mangling typed project
+  names ("Paging And TLBs").
+
+Verified in a browser against a throwaway seeded account, then deleted. Not
+covered by automated tests — it is navigation and layout.
 
 **Tasks 10, 11 and 12 complete.** Grounded Tutor, unsupported-question
 handling, and the prompt-injection boundary — the three highest-risk items on

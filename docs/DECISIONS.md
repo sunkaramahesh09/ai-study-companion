@@ -2120,3 +2120,65 @@ there, where they only muddy text.
 touched. Every element added is `aria-hidden` and non-interactive.
 
 ---
+
+## D-065 — The last used space and project, derived from the server
+**Date:** 2026-09-18 · **Area:** Product / UI
+
+**Symptom (reported from real use):** reaching a quiz or the Tutor meant
+Spaces → the space → the project → the feature, *every time*, even when the
+learner had been in that project a minute earlier. The sidebar's "Quizzes" and
+"Ask Tutor" both redirected to `/spaces` — correct, since both features are
+per-project, and tedious, since the app already knew the answer.
+
+**Chosen:** every entry point leads with the last used space and project, and
+keeps switching one click away.
+
+- `/quiz` and `/tutor` are now a launcher (`StudyLauncher`) instead of a
+  redirect: "Pick up where you left off — Operating Systems › Paging and TLBs",
+  a primary button that continues, chips for the next few projects, and a
+  space/project switcher behind one link.
+- `/projects/:id/quiz` and `/projects/:id/tutor` carry a breadcrumb bar
+  (`StudyContextBar`) saying which space and project they are scoped to, with
+  the same switcher. It renders in the "Can't start a quiz yet" state too, so
+  landing on a project with no material is no longer a dead end.
+- Spaces leads with the same card, primary action "Continue project".
+
+**Where "last used" comes from: the database, not localStorage.**
+`GET /api/projects` already returns every project ordered by `last_active_at`
+descending — that *is* this question — and `POST /projects/:id/touch` already
+existed to maintain it. So the first row of a list the app was already fetching
+answers it. No second copy of the truth, it follows the learner to another
+browser, it cannot point at a deleted project, and it cannot leak a previous
+account's project to whoever signs in next on a shared machine. A localStorage
+cache would have needed a per-user key, an invalidation rule and a staleness
+story to be *worse* than one ordered query.
+
+**Touch moved to where the work happens.** Only the project dashboard called
+`/touch`, so a learner who quizzed for twenty minutes without passing through
+the dashboard left `last_active_at` pointing somewhere else. Quiz and Tutor now
+touch on mount.
+
+**No auto-redirect into the last project.** The launcher shows the card and
+waits. Starting a quiz generates a question — navigation must never spend model
+quota on the learner's behalf (same rule as the Tutor's prefilled `?q=`, D-063).
+
+**Two bugs found while building it:**
+- `Spaces.tsx` rendered `{icon}` where `icon` was an `IconName` string, not an
+  element — every space card had shown the literal word "book", "brain", "file"
+  inside its coloured tile since the emoji→line-icon change.
+- `.pill` sets `text-transform: capitalize`, which is right for a status word
+  and wrong for a name the learner typed: "Paging and TLBs" rendered as "Paging
+  And TLBs". Overridden on the project chips.
+
+**Cascade gotcha:** the global `button:hover:not(:disabled)` is specificity
+(0,2,1), so a plain `.context-bar-change:hover` (0,2,0) lost to it and painted
+the button solid purple on purple text. Any button-shaped control with its own
+hover style in this codebase needs `:hover:not(:disabled)`.
+
+**Verified in the browser**, not just by typecheck: a throwaway account with two
+spaces and three projects, staggered `last_active_at`. Continue card correct on
+Spaces, `/quiz` and `/tutor`; the switcher's project select follows the space
+select; switching navigates and the bar updates; quizzing a project reordered
+"last used" on the next visit. Account deleted afterwards.
+
+---

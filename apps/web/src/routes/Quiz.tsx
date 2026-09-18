@@ -7,11 +7,13 @@ import {
   getQuizAttempt,
   nextQuizQuestion,
   startQuiz,
+  touchProject,
   type AnswerResult,
   type QuizQuestion,
 } from '../lib/queries.ts';
 import { ErrorNote, Spinner, ProgressRing, PageHeader } from '../components/Ui.tsx';
 import { Icon } from '../components/Icon.tsx';
+import { StudyContextBar } from '../components/StudyContext.tsx';
 
 export function Quiz() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -86,6 +88,10 @@ export function Quiz() {
   useEffect(() => {
     if (!projectId) return;
     load(projectId);
+    // Quizzing a project is using it. Without this, `last_active_at` only moved
+    // when the dashboard was opened, so the "continue where you left off"
+    // context could point at a project the learner had left an hour ago.
+    void touchProject(projectId).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
@@ -169,12 +175,21 @@ export function Quiz() {
     setText('');
   }
 
-  if (starting) return <Spinner label="Preparing your quiz…" />;
+  // The bar renders during the wait too: starting a quiz takes a few seconds,
+  // and this is exactly when a learner realises they picked the wrong project.
+  if (starting) {
+    return (
+      <section className="fade-in">
+        {projectId && <StudyContextBar projectId={projectId} mode="quiz" />}
+        <Spinner label="Preparing your quiz…" />
+      </section>
+    );
+  }
 
   if (error && !question) {
     return (
       <section className="fade-in">
-        <Link to={`/projects/${projectId}`} className="back">← Back to Project</Link>
+        {projectId && <StudyContextBar projectId={projectId} mode="quiz" />}
         <div className="card" style={{ textAlign: 'center', padding: 'var(--space-8)' }}>
           <span style={{ fontSize: 48, marginBottom: 'var(--space-3)', display: 'block' }}><Icon name="note" size={16} /></span>
           <h2>Can't start a quiz yet</h2>
@@ -227,7 +242,7 @@ export function Quiz() {
 
   return (
     <section className="fade-in">
-      <Link to={`/projects/${projectId}`} className="back">← Back to Project</Link>
+      {projectId && <StudyContextBar projectId={projectId} mode="quiz" />}
 
       <PageHeader
         icon={<Icon name="check-circle" size={26} />}

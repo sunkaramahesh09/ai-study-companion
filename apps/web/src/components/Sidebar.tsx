@@ -10,8 +10,9 @@ const SPACE_COLORS = [
   '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#06b6d4',
 ];
 
-// Tutor/Quiz are per-project — there is no standalone page for either, so
-// these fall through to Spaces where the learner picks a project first.
+// Tutor/Quiz are per-project. These land on a launcher that leads with the last
+// space and project used, so continuing is one click rather than a walk back
+// down the hierarchy (D-065).
 const NAV_ITEMS: { path: string; icon: IconName; label: string }[] = [
   { path: '/home', icon: 'home', label: 'Home' },
   { path: '/tutor', icon: 'tutor', label: 'Ask Tutor' },
@@ -30,6 +31,11 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 
   const isActive = (path: string) => {
     if (path === '/home') return location.pathname === '/home' || location.pathname === '/';
+    // `/projects/<id>/quiz` IS the Quizzes section — highlighting only the
+    // launcher would leave the nav blank for the whole time a quiz is running.
+    if (path === '/quiz' || path === '/tutor') {
+      return location.pathname === path || location.pathname.endsWith(path);
+    }
     return location.pathname.startsWith(path);
   };
 

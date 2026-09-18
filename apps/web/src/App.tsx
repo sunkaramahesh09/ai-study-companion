@@ -7,6 +7,7 @@ import { SpaceDetail } from './routes/SpaceDetail.tsx';
 import { ProjectDashboard } from './routes/ProjectDashboard.tsx';
 import { Tutor } from './routes/Tutor.tsx';
 import { Quiz } from './routes/Quiz.tsx';
+import { StudyLauncher } from './routes/StudyLauncher.tsx';
 import { Growth } from './routes/Growth.tsx';
 import { Analytics } from './routes/Analytics.tsx';
 import { GlobalAnalytics } from './routes/GlobalAnalytics.tsx';
@@ -57,10 +58,12 @@ function Gate() {
           <Route path="/projects/:projectId/growth" element={<Growth />} />
           <Route path="/projects/:projectId/analytics" element={<Analytics />} />
 
-          {/* Tutor/Quiz are per-project — there is no standalone page, so the
-              sidebar's global shortcuts land on Spaces to pick a project. */}
-          <Route path="/tutor" element={<Navigate to="/spaces" replace />} />
-          <Route path="/quiz" element={<Navigate to="/spaces" replace />} />
+          {/* Tutor/Quiz are per-project, so the sidebar's global shortcuts land
+              on a launcher that leads with the last space and project used and
+              keeps the switcher one click away (D-065) — rather than dumping
+              the learner at Spaces to walk the hierarchy again. */}
+          <Route path="/tutor" element={<StudyLauncher mode="tutor" />} />
+          <Route path="/quiz" element={<StudyLauncher mode="quiz" />} />
           <Route path="/progress" element={<Navigate to="/analytics" replace />} />
 
           <Route path="/analytics" element={<GlobalAnalytics />} />

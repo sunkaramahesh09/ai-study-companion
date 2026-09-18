@@ -4,6 +4,7 @@ import { createSpace, listSpaces } from '../lib/queries.ts';
 import type { Space } from '@asc/shared';
 import { EmptyState, ErrorNote, Spinner, PageHeader } from '../components/Ui.tsx';
 import { Icon, type IconName } from '../components/Icon.tsx';
+import { ContinueCard } from '../components/StudyContext.tsx';
 
 const SPACE_ICONS: IconName[] = ['book', 'brain', 'file', 'link', 'flask', 'cap', 'target', 'folder'];
 const SPACE_COLORS = [
@@ -56,6 +57,13 @@ export function Spaces() {
           </button>
         }
       />
+
+      {/* The learner almost always wants the project they were last in. Leading
+          with it turns "Spaces → Space → Project" into one click, and the card
+          carries its own switcher for the times it is the wrong guess (D-065).
+          `hideWhenEmpty` because this page already has its own empty state for
+          a learner with no spaces — two would just argue with each other. */}
+      <ContinueCard showRecents hideWhenEmpty />
 
       {/* Hero */}
       <div className="spaces-hero">
@@ -127,12 +135,12 @@ export function Spaces() {
             {/* Space cards */}
             {spaces.map((s, i) => {
               const colorScheme = SPACE_COLORS[i % SPACE_COLORS.length]!;
-              const icon = SPACE_ICONS[i % SPACE_ICONS.length];
+              const icon = SPACE_ICONS[i % SPACE_ICONS.length]!;
               return (
                 <Link key={s.id} to={`/spaces/${s.id}`} className="card tile space-card hover-lift">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div className="space-card-icon" style={{ background: colorScheme.bg, color: colorScheme.color }}>
-                      {icon}
+                      <Icon name={icon} size={22} />
                     </div>
                   </div>
                   <strong style={{ fontSize: 'var(--text-md)' }}>{s.name}</strong>

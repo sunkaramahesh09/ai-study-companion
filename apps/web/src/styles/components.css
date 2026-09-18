@@ -719,3 +719,168 @@ section > .card { margin-top: var(--space-4); }
   transition: width 0.6s var(--ease-out);
 }
 .rowbar-value { text-align: right; }
+
+/* ─── Study context: last used space + project ────────────────────────── */
+
+/* Breadcrumb bar on a page already scoped to a project (Tutor, Quiz). */
+.context-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: 10px var(--space-4);
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-xs);
+}
+.context-bar-crumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+  font-size: var(--text-sm);
+}
+.context-bar-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  background: var(--bg-page);
+  /* The icon set has no left arrow; this is the right one, turned. */
+  transform: rotate(180deg);
+}
+.context-bar-back:hover { color: var(--primary-600); background: var(--lavender-50); }
+.context-bar-space {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.context-bar-sep { color: var(--text-disabled); }
+.context-bar-project {
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.context-bar-project:hover { color: var(--primary-600); }
+.context-bar-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  background: var(--bg-white);
+  border: 1px solid var(--border-normal);
+  box-shadow: none;
+}
+/* `:not(:disabled)` to out-specify the global `button:hover:not(:disabled)`,
+   which otherwise paints this solid purple on the same purple text. */
+.context-bar-change:hover:not(:disabled) {
+  color: var(--primary-600);
+  border-color: var(--primary-400);
+  background: var(--lavender-50);
+  transform: none;
+  box-shadow: none;
+}
+
+/* The space/project selects, shared by the bar and the continue card. */
+.context-switcher {
+  flex-basis: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items: end;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-light);
+}
+.context-switcher-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Landing card: where you were last, one click from continuing. */
+.continue-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  border-color: var(--primary-100);
+  background: linear-gradient(135deg, rgba(243, 240, 255, 0.9) 0%, rgba(255, 255, 255, 0.86) 60%);
+}
+.continue-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+.continue-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: var(--radius-lg);
+  background: var(--primary-500);
+  color: var(--text-inverse);
+  box-shadow: var(--shadow-primary);
+}
+.continue-card .overline {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--primary-500);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
+}
+.continue-card-title {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-lg);
+}
+.continue-card-actions { margin-top: auto; }
+
+@media (max-width: 640px) {
+  .context-switcher { grid-template-columns: 1fr; }
+  .context-bar { padding: var(--space-3); }
+}
+
+.continue-recents {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-light);
+}
+.continue-recent {
+  text-decoration: none;
+  color: var(--text-primary);
+  background: var(--bg-white);
+  max-width: 100%;
+  font-size: var(--text-sm);
+  padding: 5px 12px;
+  /* `.pill` capitalizes, which is right for a status word and wrong for a name
+     the learner typed — it turned "Paging and TLBs" into "Paging And TLBs". */
+  text-transform: none;
+}
+.continue-recent:hover {
+  border-color: var(--primary-400);
+  color: var(--primary-600);
+  background: var(--lavender-50);
+}
+.continue-recent .muted { font-size: var(--text-xs); }
