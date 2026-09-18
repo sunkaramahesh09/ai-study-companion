@@ -325,7 +325,14 @@ export type AiUsageSummary = {
 
 export type ActivitySummary = {
   buckets: DayBucket[];
-  streak: StudyStreak;
+  /**
+   * Absent on the admin overview. A streak is a learner's own run of days;
+   * "consecutive days on which SOMEONE used the platform" is not the same
+   * measure and is not worth showing. The type said it was always present,
+   * which is how `activity.streak.current` reached production and crashed the
+   * Admin Dashboard on open (D-072).
+   */
+  streak?: StudyStreak;
   totalEvents: number;
   byType: Record<string, number>;
 };

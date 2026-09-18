@@ -66,9 +66,15 @@ export function ActivityPanel({ activity, days }: { activity: ActivitySummary; d
 
       <div className="stats">
         <Stat value={activity.totalEvents} label="events" />
-        <Stat value={activity.streak.current} label="day streak" hint="Consecutive days with activity. Today being empty does not break it." />
-        <Stat value={activity.streak.longest} label="longest streak" />
-        <Stat value={activity.streak.activeDays} label={`active days of ${days}`} />
+        {/* Streak is a learner measure and the admin overview does not send
+            one. Rendering it unconditionally is what crashed that page. */}
+        {activity.streak && (
+          <>
+            <Stat value={activity.streak.current} label="day streak" hint="Consecutive days with activity. Today being empty does not break it." />
+            <Stat value={activity.streak.longest} label="longest streak" />
+            <Stat value={activity.streak.activeDays} label={`active days of ${days}`} />
+          </>
+        )}
       </div>
 
       <BarChart bars={bars} formatValue={(n) => `${n} event${n === 1 ? '' : 's'}`} />

@@ -31,9 +31,16 @@ const toSpace = (r: Row) => ({
  * Space routes.
  *
  * Every handler queries through `req.db`, the RLS-scoped client bound to the
- * caller's JWT, so isolation is enforced by Postgres rather than by a `where`
- * clause a handler could forget (D-012). None of these queries filter on
- * user_id explicitly — that is the point.
+ * caller's JWT, so Postgres enforces isolation rather than a `where` clause a
+ * handler could forget (D-012).
+ *
+ * They ALSO filter on `user_id` explicitly, which D-012 originally said was
+ * unnecessary. It is not: every select policy reads
+ * `user_id = auth.uid() OR public.is_admin()`, so for an admin RLS is not a
+ * filter at all and these routes returned every user's rows — an admin's own
+ * Spaces page listed other people's spaces (D-073). Admin-wide reads belong to
+ * `/api/admin/*` and nowhere else. RLS remains the backstop; the filter is the
+ * statement of intent.
  */
 export const spaceRoutes: FastifyPluginAsync = async (app) => {
   app.get('/api/spaces', { preHandler: app.requireAuth }, async (req, reply) => {
@@ -41,6 +48,7 @@ export const spaceRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('spaces')
       // Aggregated count avoids an N+1 round trip per space on the dashboard.
       .select(`${SELECT}, projects(count)`)
+      .eq('user_id', req.user!.id)
       .order('created_at', { ascending: false });
 
     if (error) return replyDbError(reply, error);
@@ -55,6 +63,7 @@ export const spaceRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('spaces')
       .select(`${SELECT}, projects(count)`)
       .eq('id', params.id)
+      .eq('user_id', req.user!.id)
       .single();
 
     if (error) return replyDbError(reply, error);
@@ -109,6 +118,7 @@ export const spaceRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('spaces')
       .update(patch)
       .eq('id', params.id)
+      .eq('user_id', req.user!.id)
       .select(SELECT)
       .single();
 
@@ -126,6 +136,7 @@ export const spaceRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('spaces')
       .delete()
       .eq('id', params.id)
+      .eq('user_id', req.user!.id)
       .select('id');
 
     if (error) return replyDbError(reply, error);

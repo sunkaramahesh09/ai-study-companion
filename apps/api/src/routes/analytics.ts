@@ -47,6 +47,7 @@ export const analyticsRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('projects')
       .select('id, name')
       .eq('id', params.id)
+      .eq('user_id', req.user!.id)
       .single();
     if (error || !project) return replyDbError(reply, error ?? { message: 'not found', code: 'PGRST116' });
 
@@ -133,23 +134,30 @@ export const analyticsRoutes: FastifyPluginAsync = async (app) => {
 
     const [{ data: spaces }, { data: projects }, { data: events, error: eventsError }, { data: answers }, { data: ai }] =
       await Promise.all([
-        req.db!.from('spaces').select('id'),
-        req.db!.from('projects').select('id, name, space_id'),
+        // Every one of these filters on user_id. This endpoint has no project
+        // in its path to hang ownership off, so RLS was the only thing scoping
+        // it — and an admin's policy matches every row, which is how the
+        // admin's own dashboard came to show another learner's totals (D-073).
+        req.db!.from('spaces').select('id').eq('user_id', req.user!.id),
+        req.db!.from('projects').select('id, name, space_id').eq('user_id', req.user!.id),
         req
           .db!.from('learning_events')
           .select('event_type, created_at, project_id')
+          .eq('user_id', req.user!.id)
           .gte('created_at', since.toISOString())
           .order('created_at', { ascending: false })
           .limit(ROW_LIMIT),
         req
           .db!.from('quiz_questions')
           .select('question_type, difficulty, is_correct, score, answered_at')
+          .eq('user_id', req.user!.id)
           .not('answered_at', 'is', null)
           .order('answered_at', { ascending: false })
           .limit(ROW_LIMIT),
         req
           .db!.from('ai_requests')
           .select('feature, model, status, latency_ms, total_tokens, estimated_cost_usd, used_fallback')
+          .eq('user_id', req.user!.id)
           .gte('created_at', since.toISOString())
           .order('created_at', { ascending: false })
           .limit(ROW_LIMIT),

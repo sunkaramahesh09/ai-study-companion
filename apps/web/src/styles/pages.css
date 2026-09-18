@@ -283,7 +283,7 @@
   box-shadow: none;
   border-radius: 0;
 }
-.login-tab:hover {
+.login-tab:hover:not(:disabled) {
   background: var(--bg-page);
   transform: none;
   box-shadow: none;
@@ -854,7 +854,7 @@
   font-size: 14px;
   box-shadow: none;
 }
-.turn-action-btn:hover {
+.turn-action-btn:hover:not(:disabled) {
   background: var(--bg-hover);
   color: var(--primary-600);
   transform: none;
@@ -919,7 +919,7 @@
   box-shadow: none;
   font-weight: var(--weight-medium);
 }
-.quick-action:hover {
+.quick-action:hover:not(:disabled) {
   border-color: var(--primary-300);
   color: var(--primary-600);
   background: var(--lavender-50);

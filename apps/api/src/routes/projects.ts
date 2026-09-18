@@ -35,7 +35,14 @@ export const projectRoutes: FastifyPluginAsync = async (app) => {
     const query = parseOrReply(listQuerySchema, req.query, reply);
     if (!query) return;
 
-    let q = req.db!.from('projects').select(SELECT).order('last_active_at', { ascending: false });
+    // `.eq('user_id')` as well as RLS: an admin's policy is
+    // `user_id = auth.uid() OR is_admin()`, so without this the learner-facing
+    // project list returned every user's projects to an admin (D-073).
+    let q = req
+      .db!.from('projects')
+      .select(SELECT)
+      .eq('user_id', req.user!.id)
+      .order('last_active_at', { ascending: false });
     if (query.spaceId) q = q.eq('space_id', query.spaceId);
 
     const { data, error } = await q;
@@ -60,6 +67,7 @@ export const projectRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('projects')
       .select(SELECT)
       .eq('id', params.id)
+      .eq('user_id', req.user!.id)
       .single();
 
     if (error) return replyDbError(reply, error);
@@ -139,6 +147,7 @@ export const projectRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('projects')
       .update(patch)
       .eq('id', params.id)
+      .eq('user_id', req.user!.id)
       .select(SELECT)
       .single();
 
@@ -150,7 +159,12 @@ export const projectRoutes: FastifyPluginAsync = async (app) => {
     const params = parseOrReply(uuidParamSchema, req.params, reply);
     if (!params) return;
 
-    const { data, error } = await req.db!.from('projects').delete().eq('id', params.id).select('id');
+    const { data, error } = await req
+      .db!.from('projects')
+      .delete()
+      .eq('id', params.id)
+      .eq('user_id', req.user!.id)
+      .select('id');
     if (error) return replyDbError(reply, error);
     if (!data || data.length === 0) {
       return reply.code(404).send({ error: 'not_found', message: 'Not found.' });
@@ -170,6 +184,7 @@ export const projectRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('projects')
       .update({ last_active_at: new Date().toISOString() })
       .eq('id', params.id)
+      .eq('user_id', req.user!.id)
       .select('id, last_active_at')
       .single();
 

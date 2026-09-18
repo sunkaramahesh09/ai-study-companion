@@ -332,7 +332,7 @@
   font-size: 16px;
   box-shadow: none;
 }
-.sidebar-signout:hover {
+.sidebar-signout:hover:not(:disabled) {
   background: var(--error-50);
   color: var(--error-500);
   transform: none;
@@ -473,7 +473,7 @@
     background var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out);
 }
-.mobile-menu-btn:hover {
+.mobile-menu-btn:hover:not(:disabled) {
   background: var(--bg-hover);
   transform: none;
   box-shadow: var(--shadow-md);

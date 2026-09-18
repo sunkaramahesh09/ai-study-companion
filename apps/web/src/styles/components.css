@@ -27,6 +27,14 @@ button, .btn-primary {
   color: var(--text-inverse);
   box-shadow: var(--shadow-sm);
 }
+/**
+ * The default purple hover. It is (0,2,1) — a bare `.variant:hover` is (0,2,0)
+ * and LOSES to it, whatever the source order, so a secondary button would be
+ * painted solid purple while keeping its own muted text colour: invisible.
+ * That is why every variant below carries `:not(:disabled)`, which is not
+ * about disabled state but about winning the cascade. A new button variant
+ * needs the same. See D-072.
+ */
 button:hover:not(:disabled), .btn-primary:hover {
   background: var(--primary-600);
   box-shadow: var(--shadow-primary);
@@ -57,7 +65,7 @@ button:disabled {
   align-items: center;
   gap: var(--space-2);
 }
-.btn-secondary:hover, .cta-ghost:hover {
+.btn-secondary:hover:not(:disabled), .cta-ghost:hover:not(:disabled) {
   border-color: var(--primary-400);
   color: var(--primary-600);
   background: var(--lavender-50);
@@ -69,7 +77,7 @@ button:disabled {
   color: var(--error-600);
   border: 1px solid var(--error-100);
 }
-.btn-danger:hover {
+.btn-danger:hover:not(:disabled) {
   background: var(--error-100);
   color: var(--error-600);
 }
@@ -85,7 +93,7 @@ button.link, .btn-link {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-button.link:hover, .btn-link:hover {
+button.link:hover, .btn-link:hover:not(:disabled) {
   color: var(--primary-600);
   background: none;
   transform: none;
@@ -107,7 +115,7 @@ button.link:hover, .btn-link:hover {
   transition: all var(--duration-fast) var(--ease-out);
   box-shadow: var(--shadow-sm);
 }
-.cta:hover {
+.cta:hover:not(:disabled) {
   background: var(--primary-600);
   color: var(--text-inverse);
   box-shadow: var(--shadow-primary);
@@ -439,7 +447,7 @@ textarea:focus {
   transition: color var(--duration-fast) var(--ease-out),
               border-color var(--duration-fast) var(--ease-out);
 }
-.tab:hover {
+.tab:hover:not(:disabled) {
   color: var(--text-primary);
   background: none;
   transform: none;

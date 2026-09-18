@@ -228,7 +228,7 @@ export function Home() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
               <Icon name="flame" size={22} style={{ color: 'var(--warning-500)' }} />
               <div>
-                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700 }}>{analytics?.activity.streak.current ?? 0}</div>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700 }}>{analytics?.activity.streak?.current ?? 0}</div>
                 <div className="muted small">days in a row</div>
               </div>
             </div>

@@ -31,6 +31,7 @@ export const growthRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('projects')
       .select('id, name')
       .eq('id', params.id)
+      .eq('user_id', req.user!.id)
       .single();
     if (error || !project) return replyDbError(reply, error ?? { message: 'not found', code: 'PGRST116' });
 

@@ -48,6 +48,7 @@ export const quizRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('projects')
       .select('id')
       .eq('id', body.projectId)
+      .eq('user_id', req.user!.id)
       .single();
     if (projectError || !project) {
       return reply.code(404).send({ error: 'not_found', message: 'Project not found.' });
@@ -58,6 +59,7 @@ export const quizRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('quiz_attempts')
       .select('id')
       .eq('project_id', body.projectId)
+      .eq('user_id', req.user!.id)
       .eq('status', 'in_progress')
       .limit(1);
     if (open && open.length > 0) {
@@ -122,6 +124,7 @@ export const quizRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('quiz_attempts')
       .select('id, project_id, status, target_length, questions_answered, correct_count, score, started_at, completed_at')
       .eq('id', params.id)
+      .eq('user_id', req.user!.id)
       .single();
     if (error) return replyDbError(reply, error);
 
@@ -155,6 +158,7 @@ export const quizRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('quiz_attempts')
       .select('id, project_id, status, target_length, questions_answered, correct_count')
       .eq('id', params.id)
+      .eq('user_id', req.user!.id)
       .single();
     if (attemptError) return replyDbError(reply, attemptError);
     if (attempt.status !== 'in_progress') {
@@ -364,6 +368,7 @@ export const quizRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('quiz_attempts')
       .select('id, project_id, status, target_length, questions_answered, correct_count')
       .eq('id', params.id)
+      .eq('user_id', req.user!.id)
       .single();
     if (attemptError) return replyDbError(reply, attemptError);
 
@@ -420,6 +425,7 @@ export const quizRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('quiz_attempts')
       .update({ status: 'abandoned', completed_at: new Date().toISOString() })
       .eq('id', params.id)
+      .eq('user_id', req.user!.id)
       .eq('status', 'in_progress')
       .select('id');
     if (error) return replyDbError(reply, error);

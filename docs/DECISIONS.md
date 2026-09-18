@@ -2453,3 +2453,91 @@ admins.
 login, so a reviewer can be handed one without being handed the owner's account.
 
 ---
+
+## D-072 — Two bugs the Admin Dashboard could not survive being opened
+**Date:** 2026-09-18 · **Area:** UI
+
+### The crash
+
+`/admin` died on open with `Cannot read properties of undefined (reading
+'current')`. `ActivityPanel` is shared by Project Analytics, Global Analytics
+and the Admin overview, and renders `activity.streak.current`. The admin
+endpoint returns `activity: { buckets, totalEvents, byType }` — **no streak** —
+because a platform-wide "consecutive days on which somebody used the product"
+is not a measure worth having.
+
+`AdminOverview.activity` was nonetheless typed as `ActivitySummary`, which
+declares `streak` as required. The type was hand-written to describe a response
+nobody had checked: **the client and the server declare this contract
+independently, so `tsc` cannot catch a disagreement between them.** That is the
+real lesson — a shared response type is a claim about another program.
+
+`streak` is now optional and the panel renders those three stats only when it
+is there. Making the type honest immediately surfaced a second unguarded
+`analytics.activity.streak.current` on the Home page, which would have crashed
+the same way for any user whose analytics call returned a payload without it.
+
+### The invisible hover
+
+Hovering the login page's "Create account" tab, or the "Stay signed in" button
+in the sign-out dialog, turned them solid purple with unreadable text.
+
+`button:hover:not(:disabled)` is specificity (0,2,1). A variant's own
+`.btn-secondary:hover` is (0,2,0) and **loses regardless of source order**, so
+the global rule supplied `background: var(--primary-600)` while the variant
+still supplied its own muted `color`. Purple on purple.
+
+Rather than patch the two reported cases, a script matched every single-class
+`:hover` rule in the stylesheets against the classes actually used on a
+`<button>` element: eight were losing, including `.tab`, `.quick-action`,
+`.sidebar-signout` and `.mobile-menu-btn`. All now carry `:not(:disabled)`,
+which here is not about disabled state at all — it is the cheapest way to add a
+pseudo-class and win the cascade. The global rule carries a comment saying so,
+because the next variant added will hit this again. (`.linkish` and
+`.context-bar-change` already had it: the same bug, found twice before and
+fixed locally both times without anyone asking how many others there were.)
+
+---
+
+## D-073 — An admin is an admin on /api/admin, and a learner everywhere else
+**Date:** 2026-09-18 · **Area:** Security
+
+**Reported:** a brand-new admin account's Home showed "1 Study Space", a
+sidebar containing another user's "Machine Learning" space, "20 Questions
+Answered" and "30% Recent Accuracy". None of it was the admin's. It was
+somebody else's learning data, rendered as the admin's own.
+
+**Cause.** Every RLS select policy reads
+`user_id = (select auth.uid()) or public.is_admin()`. That is correct and
+deliberate — the Admin Dashboard needs a platform-wide view. But **D-012 chose
+to let RLS be the only filter on the learner routes**: "None of these queries
+filter on user_id explicitly — that is the point." For a normal user that
+reasoning holds. For an admin, `is_admin()` makes the policy match every row in
+the table, so RLS stops being a filter and the learner routes return the whole
+platform: `GET /api/spaces` listed everyone's spaces, `/api/analytics` summed
+everyone's events, and an admin could have opened another user's project and
+used its Tutor from the ordinary UI.
+
+This is precisely what CLAUDE.md asks for and D-012 talked itself out of:
+*enforce isolation on every query*. RLS is the backstop, not the statement of
+intent.
+
+**Fix:** every learner-facing read, update and delete now filters
+`user_id = <caller>` explicitly — spaces, projects, materials, analytics
+(project and global), growth, quiz attempts, conversations and messages, 31
+call sites. Where a route is keyed by `project_id`, the filter goes on the
+project ownership lookup that gates it, so one check covers everything
+downstream. Admin-wide reads live in `/api/admin/*` and nowhere else.
+
+**Proven, not asserted.** `adminIsolation.test.ts` creates a learner with a
+space and a project, creates a second user, promotes it in the database exactly
+as `scripts/create-admin.mjs` does, and then checks what the admin can see.
+Stashing the route changes and re-running it: **6 of the 10 fail.** With the
+fix, 10 pass. A test for a data-isolation bug that cannot fail against the
+broken code is not evidence of anything.
+
+The suite also asserts the other half — that `/api/admin/users` still returns
+more than one user — because the fix must not be "admins see less", it must be
+"admins see everything in one place and nothing extra anywhere else".
+
+---

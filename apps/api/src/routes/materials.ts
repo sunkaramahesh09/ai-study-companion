@@ -44,6 +44,7 @@ export const materialRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('projects')
       .select('id')
       .eq('id', parsedProject.data)
+      .eq('user_id', req.user!.id)
       .single();
     if (projectError || !project) {
       return reply.code(404).send({ error: 'not_found', message: 'Project not found.' });
@@ -127,6 +128,7 @@ export const materialRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('materials')
       .select(SELECT)
       .eq('project_id', query.data.projectId)
+      .eq('user_id', req.user!.id)
       .order('created_at', { ascending: false });
 
     if (error) return replyDbError(reply, error);
@@ -137,7 +139,12 @@ export const materialRoutes: FastifyPluginAsync = async (app) => {
     const params = parseOrReply(uuidParamSchema, req.params, reply);
     if (!params) return;
 
-    const { data, error } = await req.db!.from('materials').select(SELECT).eq('id', params.id).single();
+    const { data, error } = await req
+      .db!.from('materials')
+      .select(SELECT)
+      .eq('id', params.id)
+      .eq('user_id', req.user!.id)
+      .single();
     if (error) return replyDbError(reply, error);
     return { material: data };
   });
@@ -155,6 +162,7 @@ export const materialRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('materials')
       .select('id, project_id, status')
       .eq('id', params.id)
+      .eq('user_id', req.user!.id)
       .single();
     if (error) return replyDbError(reply, error);
 
@@ -187,6 +195,7 @@ export const materialRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('materials')
       .delete()
       .eq('id', params.id)
+      .eq('user_id', req.user!.id)
       .select('id, storage_path');
 
     if (error) return replyDbError(reply, error);

@@ -40,6 +40,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('conversations')
       .select('id, title, created_at, updated_at')
       .eq('project_id', query.data.projectId)
+      .eq('user_id', req.user!.id)
       .order('updated_at', { ascending: false });
     if (error) return replyDbError(reply, error);
     return { conversations: data };
@@ -52,6 +53,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('messages')
       .select('id, role, content, citations, grounded, created_at')
       .eq('conversation_id', params.id)
+      .eq('user_id', req.user!.id)
       .order('created_at', { ascending: true });
     if (error) return replyDbError(reply, error);
     return { messages: data };
@@ -75,6 +77,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
       .db!.from('projects')
       .select('id, goal')
       .eq('id', body.projectId)
+      .eq('user_id', req.user!.id)
       .single();
     if (projectError || !project) {
       return reply.code(404).send({ error: 'not_found', message: 'Project not found.' });
@@ -89,6 +92,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
         .select('id')
         .eq('id', conversationId)
         .eq('project_id', body.projectId)
+        .eq('user_id', req.user!.id)
         .single();
       if (!existing) conversationId = undefined;
     }
