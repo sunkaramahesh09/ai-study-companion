@@ -70,39 +70,47 @@ function readSecret(prompt) {
 
 const MIN_LENGTH = 12;
 
-// An explicit escape hatch for a shell that cannot give the script a terminal.
-// Not the default: an env var is visible to `ps` on some systems and lands in
-// shell history unless the line is prefixed with a space.
-const password = process.env.ADMIN_PASSWORD
-  ? process.env.ADMIN_PASSWORD
-  : await readSecret(`Password for ${email} (not echoed, not stored): `);
+/**
+ * Only called when an account has to be CREATED. Promoting an existing one
+ * never asks, because it never needs to know.
+ */
+async function readPassword(forEmail) {
+  // An explicit escape hatch for a shell that cannot give the script a
+  // terminal. Not the default: an env var is visible to `ps` on some systems
+  // and lands in shell history unless the line is prefixed with a space.
+  const password = process.env.ADMIN_PASSWORD
+    ? process.env.ADMIN_PASSWORD
+    : await readSecret(`Password for ${forEmail} (not echoed, not stored): `);
 
-if (password.length === 0) {
-  console.error(
-    '\nNo password received — stdin closed without sending a line.\n' +
-      'This needs a real terminal. If you ran it through a wrapper that does not\n' +
-      'attach one (Claude Code\'s `!` prefix, a CI step, an editor task runner),\n' +
-      'use one of these instead:\n\n' +
-      '  • run it in a normal Terminal window, or\n' +
-      '  • pipe the password in:\n' +
-      "      printf '%s' 'your-password' | node --env-file=.env scripts/create-admin.mjs " +
-      `${email}\n` +
-      '  • or pass it as an env var (note the LEADING SPACE, which keeps the line\n' +
-      '    out of zsh/bash history when HIST_IGNORE_SPACE is on):\n' +
-      `       ADMIN_PASSWORD='your-password' node --env-file=.env scripts/create-admin.mjs ${email}\n`,
-  );
-  process.exit(1);
-}
+  if (password.length === 0) {
+    console.error(
+      '\nNo password received — stdin closed without sending a line.\n' +
+        'This needs a real terminal. If you ran it through a wrapper that does not\n' +
+        'attach one (Claude Code\'s `!` prefix, a CI step, an editor task runner),\n' +
+        'use one of these instead:\n\n' +
+        '  • run it in a normal Terminal window, or\n' +
+        '  • pipe the password in:\n' +
+        "      printf '%s' 'your-password' | node --env-file=.env scripts/create-admin.mjs " +
+        `${forEmail}\n` +
+        '  • or pass it as an env var (note the LEADING SPACE, which keeps the line\n' +
+        '    out of zsh/bash history when HIST_IGNORE_SPACE is on):\n' +
+        `       ADMIN_PASSWORD='your-password' node --env-file=.env scripts/create-admin.mjs ${forEmail}\n`,
+    );
+    process.exit(1);
+  }
 
-// Supabase enforces 6; this is our own floor, for an account that can read
-// every user's activity on a public deployment.
-if (password.length < MIN_LENGTH) {
-  console.error(
-    `\nReceived ${password.length} characters; this script wants at least ${MIN_LENGTH}.\n` +
-      'That is our rule, not Supabase\'s — this account can read every user\'s\n' +
-      'activity, and the deployment is public.\n',
-  );
-  process.exit(1);
+  // Supabase enforces 6; this is our own floor, for an account that can read
+  // every user's activity on a public deployment.
+  if (password.length < MIN_LENGTH) {
+    console.error(
+      `\nReceived ${password.length} characters; this script wants at least ${MIN_LENGTH}.\n` +
+        'That is our rule, not Supabase\'s — this account can read every user\'s\n' +
+        'activity, and the deployment is public.\n',
+    );
+    process.exit(1);
+  }
+
+  return password;
 }
 
 const admin = createClient(url, serviceRole, {
@@ -115,8 +123,15 @@ if (listError) throw listError;
 let user = list.users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
 
 if (user) {
-  console.log(`User already exists (${user.id}) — promoting, password left unchanged.`);
+  // Promotion is a role change and nothing else. Asking for a password here —
+  // which the first version did, before it had even looked the account up —
+  // implied the script was about to set one, and made promoting an account
+  // created in the Supabase dashboard needlessly look like a credentials
+  // operation. It is not: the password is never read, sent or changed.
+  console.log(`Found ${email} (${user.id}). Promoting — password untouched.`);
 } else {
+  console.log(`No account for ${email}; creating one.`);
+  const password = await readPassword(email);
   const { data, error } = await admin.auth.admin.createUser({
     email,
     password,
