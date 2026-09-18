@@ -17,3 +17,4 @@ export * from './mistakes.ts';
 export * from './recommend.ts';
 export * from './growth.ts';
 export * from './facts.ts';
+export * from './progress.ts';

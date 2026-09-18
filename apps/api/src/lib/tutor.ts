@@ -1,6 +1,7 @@
-import { selectFacts, type LearnerFact } from '@asc/shared';
+import { classifyTutorIntent, selectFacts, type LearnerFact, type StudyBrief } from '@asc/shared';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { generationProvider } from './ai.ts';
+import { answerProgressQuestion, loadProgressBrief } from './progress.ts';
 import { retrieve, type RetrievedChunk } from './retrieval.ts';
 import {
   buildInsufficientEvidenceReply,
@@ -19,7 +20,13 @@ export type TutorAnswer = {
   citations: Citation[];
   /** False when the Tutor declined for lack of evidence — a first-class outcome. */
   grounded: boolean;
-  reason: 'ok' | 'no_materials' | 'not_indexed' | 'no_relevant_evidence';
+  reason: 'ok' | 'no_materials' | 'not_indexed' | 'no_relevant_evidence' | 'progress';
+  /**
+   * Which half of the Tutor answered. `material` is grounded in the uploaded
+   * documents; `progress` is grounded in the learner's own record and cites no
+   * pages, because no page knows how the learner is doing.
+   */
+  mode: 'material' | 'progress';
   model: string | null;
   usedFallback: boolean;
   latencyMs: number;
@@ -27,6 +34,15 @@ export type TutorAnswer = {
   bestDistance: number | null;
   /** Which durable facts were actually used, for analytics and evaluation. */
   factsUsed: { kind: string; content: string }[];
+  /** Present only on the progress path — what the brief decided, for analytics. */
+  progress?: {
+    aspects: string[];
+    stage: StudyBrief['stage'];
+    steps: number;
+    focus: string[];
+    generated: boolean;
+    rejectedBecause: string;
+  };
 };
 
 export type AskOptions = {
@@ -42,6 +58,8 @@ export type AskOptions = {
    * depends on the evidence that retrieval returns.
    */
   facts?: LearnerFact[];
+  /** Project name, for the progress path. */
+  projectName?: string;
 };
 
 /**
@@ -78,6 +96,56 @@ const TUTOR_CONTEXT_TOKENS = 1600;
 export async function askTutor(db: SupabaseClient, opts: AskOptions): Promise<TutorAnswer> {
   const startedAt = Date.now();
 
+  // Route on what was asked, before spending an embedding on retrieval.
+  //
+  // "Where was I, how am I doing, and what should I do next?" has no answer in
+  // the learner's PDFs, and sending it to retrieval produced a confident,
+  // cited fabrication: the model read the document's contents page and
+  // reported it back as the pages the learner had visited. The record of what
+  // they actually did lives in the database, so the question goes there
+  // instead. Deterministic routing — see D-075.
+  const intent = classifyTutorIntent(opts.question);
+  if (intent.kind === 'progress') {
+    const brief = await loadProgressBrief(db, {
+      userId: opts.userId,
+      projectId: opts.projectId,
+      projectName: opts.projectName ?? 'this Project',
+      goal: opts.goal ?? null,
+    });
+
+    const progress = await answerProgressQuestion({
+      brief,
+      question: opts.question,
+      aspects: intent.aspects,
+      userId: opts.userId,
+      projectId: opts.projectId,
+    });
+
+    return {
+      answer: progress.answer,
+      // No page supports a statement about the learner, so there is nothing to
+      // cite. An empty citation list here is correct, not a failure to ground.
+      citations: [],
+      grounded: true,
+      reason: 'progress',
+      mode: 'progress',
+      model: progress.model,
+      usedFallback: progress.usedFallback,
+      latencyMs: Date.now() - startedAt,
+      retrieved: 0,
+      bestDistance: null,
+      factsUsed: [],
+      progress: {
+        aspects: intent.aspects,
+        stage: brief.stage,
+        steps: brief.steps.length,
+        focus: brief.focus.map((f) => f.name),
+        generated: progress.generated,
+        rejectedBecause: progress.rejectedBecause,
+      },
+    };
+  }
+
   const retrieval = await retrieve(db, opts.projectId, opts.question, {
     matchCount: TUTOR_MATCH_COUNT,
     maxContextTokens: TUTOR_CONTEXT_TOKENS,
@@ -95,6 +163,7 @@ export async function askTutor(db: SupabaseClient, opts: AskOptions): Promise<Tu
       citations: [],
       grounded: false,
       reason: retrieval.reason === 'ok' ? 'no_relevant_evidence' : retrieval.reason,
+      mode: 'material',
       model: null,
       usedFallback: false,
       latencyMs: Date.now() - startedAt,
@@ -162,6 +231,7 @@ export async function askTutor(db: SupabaseClient, opts: AskOptions): Promise<Tu
       citations: [],
       grounded: false,
       reason: 'no_relevant_evidence',
+      mode: 'material',
       model: result.model,
       usedFallback: result.usedFallback,
       latencyMs: Date.now() - startedAt,
@@ -188,6 +258,7 @@ export async function askTutor(db: SupabaseClient, opts: AskOptions): Promise<Tu
     citations,
     grounded,
     reason: 'ok',
+    mode: 'material',
     model: result.model,
     usedFallback: result.usedFallback,
     latencyMs: Date.now() - startedAt,

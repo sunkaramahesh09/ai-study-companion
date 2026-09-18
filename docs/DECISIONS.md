@@ -2572,3 +2572,113 @@ gate rather than a redirect. A silent bounce to Home would leave them guessing
 why; the message and the way out are better.
 
 ---
+
+## D-075 — The Tutor answered "how am I doing?" by inventing the learner
+**Date:** 2026-09-18 · **Area:** Tutor / learning core
+
+**Reported,** with a screenshot: *"does that answer suit the question? it should
+give answers like 'you are here, and next you have to learn these' — but it is
+not giving an answer like this."*
+
+The question asked was **"Where was I, how am I doing, and what should I do
+next?"** The Tutor replied under the heading *"Where you were in the material"*
+with:
+
+> You have opened the complete "LLM Basics – 5-Page Guide" [S3]. The pages you
+> have accessed cover: Page 1: the core idea of an LLM… Page 2: tokens and
+> embeddings… Page 5: applications, the RAG pipeline, fine-tuning…
+
+Fluent, cited, and **entirely fabricated**. Nothing in the system records which
+pages a learner has opened. What it had actually retrieved was the document's
+own overview page, and it reported the guide's table of contents back as the
+learner's reading history. The citations were real — they pointed at pages that
+genuinely say those things — which made the invention *more* convincing, not
+less. And it never answered the other two thirds of the question at all: no
+score, no weakness, no next step.
+
+**The cause is routing, not prompting.** Every Tutor question went to RAG over
+the uploaded PDFs. A progress question has no answer in a PDF, so retrieval can
+only answer it by inventing the learner. No amount of prompt-tuning fixes a
+question pointed at the wrong data source.
+
+Meanwhile the real answer was already in the database and had been all along:
+`concept_mastery`, `quiz_attempts`, `quiz_questions`, the repeated-mistake
+detector, and the active recommendation — the same state the dashboard and the
+recommendation engine already read.
+
+### The fix: route on intent, answer from the record
+
+`packages/shared/src/learning/progress.ts` — pure, no AI, no I/O:
+
+- **`classifyTutorIntent(question)`** — four aspect groups (position, standing,
+  weakness, next), nearly all requiring an explicit first-person reference.
+  Deterministic on purpose: asking a model to classify would spend a round trip
+  against the 8000 TPM ceiling *before* the real request, and would make routing
+  unexplainable. The returned aspects are exactly the patterns that matched.
+- **`buildStudyBrief(state, now)`** — decides what is true and what to do about
+  it: stage, ordered focus concepts, strengths, untested concepts, and 1–3 next
+  steps. This is the same class of decision as a recommendation trigger, so it
+  is made the same way — by rules over state, in priority order (PRD §9/§10/§13,
+  CLAUDE.md).
+- **`renderStudyBrief(brief)`** — the brief as a finished answer.
+
+`apps/api/src/lib/progress.ts` loads the state (every query filtered on
+`user_id` as well as `project_id` — D-073), then asks a model **only to reword
+the brief**, on the **fallback tier**: it is a rewrite, not reasoning, and the
+primary pool is worth more spent on grounded explanations.
+
+### Deliberate choices
+
+**The classifier errs toward `material`.** A progress question mistaken for a
+material question gets the old, unhelpful answer. A material question mistaken
+for a progress question gets a report nobody asked for *instead of* the
+explanation they did — worse. So "what's next in the RAG pipeline?" stays on the
+material path (bare "what next" is progress only when it names no topic), and
+the test suite asserts eight ordinary questions still route to retrieval.
+
+**Three output guards, because this answer is authoritative in a way a material
+answer is not.** "You're at 72% on embeddings" is unfalsifiable from the
+learner's side. So a generation is rejected, and the brief's own rendering shown
+instead, when it: looks hijacked; drops the three-part shape; or **quotes a
+number the brief does not contain** (`unsupportedNumbers`, with the numbered
+list's own ordinals stripped). Every number the answer may use is already in the
+brief, so that last check is total rather than heuristic.
+
+**The brief is the answer; the model only rewords it.** A provider outage costs
+phrasing and nothing else. This fired for real during live testing — one run
+returned `rejectedBecause: 'unavailable'` and served a complete, correct answer
+anyway.
+
+**The active recommendation leads the steps when there is one.** The dashboard
+card and the Tutor are answering the same question; if they disagree the learner
+has been given two next actions, which is none.
+
+**It says what it does not know.** Where the old answer claimed reading history,
+the brief says "No quiz completed yet, so nothing has been measured about what
+you know." A test asserts no line of a brief ever claims the learner opened,
+read, accessed, viewed or visited anything.
+
+**`messages.mode` (migration 0009), nullable.** A progress turn has no
+citations — which is exactly what an *ungrounded* material answer also looks
+like. Without the column the UI cannot tell them apart, and would either label a
+progress report "Based on your materials" or flag it "No supporting evidence
+found". Both are lies about a correct answer. Rows written before the migration
+stay NULL rather than being backfilled to a classification nobody made.
+
+### Verified against the reported project, not a fixture
+
+Same project, same question. Stage `assessed`; 11 concepts, 10 tested; Embeddings
+and Inference at 0% with 4-of-4 recent answers wrong; last quiz down 60 points.
+Next steps: re-explain Embeddings before re-testing it, then quiz the one
+untested concept. 41 new unit tests, one new evaluation case
+(`tutor.answers-a-progress-question-from-the-record`, 4/4 tutor suite passing),
+and the live Tutor tests still green — the material path is unchanged.
+
+**Found on the way:** `beforeEach(() => generate.mockReset())` is a trap.
+`mockReset()` returns the mock, vitest treats a hook's return value as a
+teardown function, and so the stub is called once more after every test. Silent
+while it resolves; the one test that makes it *throw* then fails with an
+unhandled error while its own assertions pass. Fixed here and in
+`providerFailure.test.ts`, which had the same latent form.
+
+---

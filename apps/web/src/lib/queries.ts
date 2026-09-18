@@ -134,6 +134,13 @@ export type TutorMessage = {
   content: string;
   citations: CitationDto[];
   grounded: boolean | null;
+  /**
+   * Which half of the Tutor answered. `progress` turns are grounded in the
+   * learner's own record rather than in a document, so they carry no citations
+   * — and must not be labelled as an answer that failed to find any. NULL on
+   * turns written before the progress path existed (migration 0009).
+   */
+  mode: 'material' | 'progress' | null;
   created_at: string;
 };
 
@@ -141,7 +148,8 @@ export type AskResponse = {
   conversationId: string;
   message: TutorMessage;
   grounded: boolean;
-  reason: 'ok' | 'no_materials' | 'not_indexed' | 'no_relevant_evidence';
+  reason: 'ok' | 'no_materials' | 'not_indexed' | 'no_relevant_evidence' | 'progress';
+  mode: 'material' | 'progress';
   diagnostics: {
     retrieved: number;
     bestDistance: number | null;

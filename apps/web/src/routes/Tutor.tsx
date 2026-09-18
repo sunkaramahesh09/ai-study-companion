@@ -113,6 +113,7 @@ export function Tutor() {
       content: q,
       citations: [],
       grounded: null,
+      mode: null,
       created_at: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, optimistic]);
@@ -142,6 +143,7 @@ export function Tutor() {
   }
 
   const quickActions: { icon: IconName; label: string }[] = [
+    { icon: 'chart-line', label: 'Where am I, and what should I do next?' },
     { icon: 'bulb', label: 'Explain simply' },
     { icon: 'note', label: 'Give an example' },
     { icon: 'quiz', label: 'Quiz me on this' },
@@ -155,7 +157,7 @@ export function Tutor() {
       <PageHeader
         icon={<Icon name="tutor" size={26} />}
         title="AI Tutor"
-        description="Answers come from your uploaded material, with the page they came from."
+        description="Answers come from your uploaded material, with the page they came from — and questions about your own progress are answered from your record."
         action={
           // Restoring the last conversation means a learner would otherwise be
           // stuck appending to it forever. This is the way to a clean one; the
@@ -213,7 +215,18 @@ export function Tutor() {
               <Icon name={m.role === 'assistant' ? 'cap' : 'user'} size={16} />
             </div>
             <div className="turn-content">
-              {m.role === 'assistant' && m.citations.length > 0 && (
+              {/* Two different kinds of grounding, said as two different
+                  things. A progress answer has no citations by design — it is
+                  built from this learner's mastery, quizzes and mistakes — so
+                  labelling it "Based on your materials" would be a lie, and
+                  leaving it unlabelled next to the cited turns reads as a
+                  weaker answer rather than a different one (D-075). */}
+              {m.role === 'assistant' && m.mode === 'progress' && (
+                <div className="turn-grounded-badge">
+                  <Icon name="chart-line" size={15} /> Based on your progress
+                </div>
+              )}
+              {m.role === 'assistant' && m.mode !== 'progress' && m.citations.length > 0 && (
                 <div className="turn-grounded-badge">
                   <Icon name="book" size={15} /> Based on your materials
                 </div>
@@ -241,7 +254,7 @@ export function Tutor() {
 
               {/* A refusal is a correct outcome, so it is labelled as such
                   rather than styled like an error. */}
-              {m.role === 'assistant' && m.grounded === false && (
+              {m.role === 'assistant' && m.mode !== 'progress' && m.grounded === false && (
                 <span className="pill pill-queued"><Icon name="alert" size={15} /> No supporting evidence found</span>
               )}
 

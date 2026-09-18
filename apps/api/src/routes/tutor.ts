@@ -51,7 +51,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     if (!params) return;
     const { data, error } = await req
       .db!.from('messages')
-      .select('id, role, content, citations, grounded, created_at')
+      .select('id, role, content, citations, grounded, mode, created_at')
       .eq('conversation_id', params.id)
       .eq('user_id', req.user!.id)
       .order('created_at', { ascending: true });
@@ -75,7 +75,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     // Ownership check through RLS: not the caller's project, no rows, stop here.
     const { data: project, error: projectError } = await req
       .db!.from('projects')
-      .select('id, goal')
+      .select('id, name, goal')
       .eq('id', body.projectId)
       .eq('user_id', req.user!.id)
       .single();
@@ -153,6 +153,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
         projectId: body.projectId,
         question: body.question,
         goal: project.goal,
+        projectName: project.name as string,
         history: (history ?? []).reverse().map((m) => ({
           role: m.role as 'user' | 'assistant',
           content: m.content as string,
@@ -188,8 +189,9 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
         content: answer.answer,
         citations: answer.citations,
         grounded: answer.grounded,
+        mode: answer.mode,
       })
-      .select('id, role, content, citations, grounded, created_at')
+      .select('id, role, content, citations, grounded, mode, created_at')
       .single();
     if (saveError) return replyDbError(reply, saveError);
 
@@ -208,6 +210,10 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
       payload: {
         conversationId,
         reason: answer.reason,
+        // Which half of the Tutor answered, so "how often does anyone ask
+        // about their own progress" is answerable from the event stream.
+        mode: answer.mode,
+        ...(answer.progress ? { progress: answer.progress } : {}),
         citations: answer.citations.length,
         retrieved: answer.retrieved,
         bestDistance: answer.bestDistance,
@@ -224,6 +230,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
       message: saved,
       grounded: answer.grounded,
       reason: answer.reason,
+      mode: answer.mode,
       diagnostics: {
         retrieved: answer.retrieved,
         bestDistance: answer.bestDistance,
@@ -231,6 +238,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
         usedFallback: answer.usedFallback,
         latencyMs: answer.latencyMs,
         factsUsed: answer.factsUsed.map((f) => f.kind),
+        ...(answer.progress ? { progress: answer.progress } : {}),
       },
     };
   });

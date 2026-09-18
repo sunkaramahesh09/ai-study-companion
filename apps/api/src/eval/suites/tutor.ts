@@ -123,4 +123,55 @@ export const tutorCases: EvalCase[] = [
       };
     },
   },
+  {
+    id: 'tutor.answers-a-progress-question-from-the-record',
+    suite: 'tutor',
+    intent:
+      'A question about the learner is answered from the learner\'s record, not from retrieval — which can only answer it by inventing them.',
+    async run({ db, projectId, userId }) {
+      const progress = await askTutor(db, {
+        userId,
+        projectId,
+        question: 'Where was I, how am I doing, and what should I do next?',
+      });
+
+      // The regression this case exists for: retrieval answered this by
+      // reading the document's contents page back as the pages the learner had
+      // visited. Nothing records that, so no answer may claim it (D-075).
+      const inventedReading = /\byou (?:have |'ve )?(?:opened|read|accessed|viewed|visited)\b/i.test(
+        progress.answer,
+      );
+
+      // The other half: routing must not swallow ordinary questions.
+      const material = await askTutor(db, {
+        userId,
+        projectId,
+        question: GROUND_TRUTH[0]!.question,
+      });
+
+      const checks = {
+        routedToProgress: progress.mode === 'progress',
+        // A statement about the learner has no page behind it. Citing one
+        // would mean the answer came from the wrong place.
+        citesNoPages: progress.citations.length === 0,
+        namesANextStep: (progress.progress?.steps ?? 0) > 0,
+        doesNotInventReading: !inventedReading,
+        materialQuestionStillRetrieves: material.mode === 'material' && material.citations.length > 0,
+      };
+
+      const passed = Object.values(checks).every(Boolean);
+      return {
+        passed,
+        score: Object.values(checks).filter(Boolean).length / Object.values(checks).length,
+        detail: {
+          ...checks,
+          stage: progress.progress?.stage,
+          aspects: progress.progress?.aspects,
+          wordedByModel: progress.progress?.generated,
+          rejectedBecause: progress.progress?.rejectedBecause,
+          answer: progress.answer.slice(0, 400),
+        },
+      };
+    },
+  },
 ];

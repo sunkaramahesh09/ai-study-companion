@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-18 10:20 · **Day:** Fri · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-18 18:30 · **Day:** Fri · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -148,6 +148,42 @@ space and project everywhere, with the switcher one click away (D-065).
 
 Verified in a browser against a throwaway seeded account, then deleted. Not
 covered by automated tests — it is navigation and layout.
+
+### Sixth from real use: the Tutor answered "how am I doing?" by inventing the learner
+
+**Session 2026-09-18.** Asked *"Where was I, how am I doing, and what should I
+do next?"*, the Tutor retrieved the document's own overview page and reported
+its table of contents back as the learner's reading history — *"the pages you
+have accessed cover: Page 1… Page 2…"*. Cited, fluent, fabricated. Nothing
+records which pages anyone has read. It also never answered the other two
+thirds: no score, no weakness, no next step.
+
+The cause was routing, not prompting: **every** question went to RAG over the
+PDFs, and a progress question has no answer in a PDF. Fixed by routing on intent
+and answering from the record the system already keeps (D-075).
+
+- `packages/shared/src/learning/progress.ts` — `classifyTutorIntent`,
+  `buildStudyBrief`, `renderStudyBrief`. Pure: no AI, no I/O. Decides what is
+  true and what to do next, the same way the recommendation rules do.
+- `apps/api/src/lib/progress.ts` — loads the state (`user_id` filtered on every
+  query), then asks a model **only to reword the brief**, on the fallback tier.
+  Rejects a generation that is hijacked, loses the three-part shape, or quotes a
+  number the brief does not contain, and shows the brief instead.
+- `messages.mode` (**migration 0009, applied to production**) — nullable
+  `'material' | 'progress'`. Without it the UI cannot tell a progress answer
+  from an ungrounded one, since neither has citations. The Tutor page now shows
+  "Based on your progress" and suppresses the "no supporting evidence" pill on
+  progress turns.
+
+**Verified against the reported project itself**, not a fixture: stage
+`assessed`, 10 of 11 concepts tested, Embeddings and Inference at 0% with 4-of-4
+recent answers wrong, last quiz down 60 points, next step "re-explain Embeddings
+before re-testing it". Live-model wording checked too, and the fallback fired
+for real once on a transient provider error — the answer was complete anyway.
+
+**Tests: 553 passing** (41 new). Tutor evaluation suite **4/4** with a new case,
+`tutor.answers-a-progress-question-from-the-record`, which also asserts ordinary
+material questions still retrieve and cite.
 
 **Tasks 10, 11 and 12 complete.** Grounded Tutor, unsupported-question
 handling, and the prompt-injection boundary — the three highest-risk items on
@@ -591,6 +627,13 @@ Working tree clean except `.env` and `.env.railway` (both gitignored).
    before believing it. Deterministic assertions (what the server *chose* to
    send) are preferred over assertions on model wording — see
    `learnerContext.test.ts`, which asserts on `factsUsed`, not on phrasing.
+
+11. **`beforeEach(() => mock.mockReset())` calls the mock again.** `mockReset()`
+    returns the mock, and vitest treats a value returned from a hook as a
+    teardown function — so the concise arrow form invokes the stub once more
+    after every test. Invisible while the stub resolves; the one test that makes
+    it *throw* then fails with an unhandled error while its own assertions pass.
+    Use a block body. Cost ~20 minutes chasing a passing test's failure (D-075).
 
 8. **`npx vitest run` skips every live test silently** — they are guarded on
    env vars being present. Use `node --env-file=.env ./node_modules/.bin/vitest run`

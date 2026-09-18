@@ -93,7 +93,12 @@ describeIntegration('provider failure reaches the user as a usable error', () =>
     await processMaterial({ materialId, userId, projectId });
   }, 120_000);
 
-  afterEach(() => generate.mockReset());
+  // Braces, not a concise body: `mockReset()` returns the mock, and vitest
+  // treats a hook's return value as a teardown function — so the concise form
+  // calls the stub one extra time after every test.
+  afterEach(() => {
+    generate.mockReset();
+  });
 
   afterAll(async () => {
     if (userId) await admin.auth.admin.deleteUser(userId);
