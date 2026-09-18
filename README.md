@@ -216,6 +216,21 @@ There is an adversarial PDF fixture in the repo, and the evaluation suite runs
 the injection case three times per run precisely because a single clean pass
 proves little.
 
+### Two kinds of question, two sources of truth
+
+A question about the *material* goes to retrieval and is answered with citations
+back to a page. A question about the *learner* — "where was I, how am I doing,
+what should I do next?" — is answered from their own record: concept mastery,
+quiz history, repeated mistakes, the active recommendation.
+
+Routing between them is deterministic, and the split exists because sending the
+second kind to retrieval produced a confident, cited fabrication — the model read
+the document's contents page and reported it back as the pages the learner had
+visited. Nothing records what anyone has read. `buildStudyBrief` computes where
+the learner stands and what to do next; the model only words it, and a generation
+that quotes a number the brief does not contain is discarded in favour of the
+brief's own rendering (D-075).
+
 ### Observability
 
 Every provider call writes an `ai_requests` row: feature, model, status,
@@ -235,7 +250,7 @@ mixing the two makes both numbers unreadable.
 npm run eval
 ```
 
-17 curated cases across the five AI experiences, scored against a **four-page
+18 curated cases across the five AI experiences, scored against a **four-page
 document written for the purpose** with recorded ground truth — question → the
 page the answer is actually printed on.
 
@@ -330,8 +345,12 @@ that does not.
   multi-turn Tutor coherence, grading consistency across repeated runs of the
   same answer, and retrieval quality on a document large enough for chunk
   boundaries to matter (D-054).
-- **Dark mode only.** The chart palette was validated against the dark surface;
-  a light theme would need the ramps re-stepped, not flipped (D-051).
+- **One theme, and it is light.** There is no dark mode and no theme toggle;
+  `--bg-page` is `#faf9ff`. The chart palette in D-051 was originally stepped
+  against a dark surface, and when the UI moved to the light lavender treatment
+  the ramps were re-tuned by eye rather than re-validated with the contrast
+  measurements that produced the original numbers. Adding a dark theme is not a
+  colour flip — it needs the ramps re-stepped and re-measured.
 - **Green and red sit at deutan ΔE 7.9**, below the ΔE 8 separation target. New
   charts are single-series so identity never rests on colour; where the pair
   does appear it carries a text label (D-051).
