@@ -14,6 +14,7 @@ import {
 import { ErrorNote, Spinner, ProgressRing, PageHeader } from '../components/Ui.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { StudyContextBar } from '../components/StudyContext.tsx';
+import { Prose } from '../components/Prose.tsx';
 
 export function Quiz() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -346,7 +347,11 @@ export function Quiz() {
               {/* The PRD asks for feedback that explains rather than scoring (§9). */}
               {result.grade && (
                 <div className="card" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-light)' }}>
-                  <p style={{ marginBottom: 'var(--space-3)' }}>{result.grade.feedback}</p>
+                  {/* Generated prose, same as a Tutor answer — it arrives with
+                      Markdown in it and is rendered rather than shown raw. */}
+                  <div style={{ marginBottom: 'var(--space-3)' }}>
+                    <Prose text={result.grade.feedback} />
+                  </div>
                   {result.grade.understood.length > 0 && (
                     <div style={{ marginBottom: 'var(--space-3)' }}>
                       <strong className="ok"><Icon name="check-circle" size={15} /> You covered</strong>

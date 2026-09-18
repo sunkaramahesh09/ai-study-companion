@@ -981,3 +981,54 @@ section > .card { margin-top: var(--space-4); }
   .confirm-dialog-actions { flex-direction: column-reverse; }
   .confirm-dialog-actions button { width: 100%; justify-content: center; }
 }
+
+/* ─── Rendered model prose ────────────────────────────────────────────── */
+
+.prose > :first-child { margin-top: 0; }
+.prose > :last-child { margin-bottom: 0; }
+.prose p {
+  margin: 0 0 var(--space-3);
+  line-height: 1.65;
+}
+.prose-heading {
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+.prose ul,
+.prose ol {
+  margin: 0 0 var(--space-3);
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.prose li {
+  line-height: 1.6;
+  /* The marker is the list's own, not a character the model typed. */
+  padding-left: var(--space-1);
+}
+.prose ul { list-style: disc; }
+.prose ol { list-style: decimal; }
+.prose strong { font-weight: var(--weight-semibold); color: var(--text-primary); }
+.prose code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.9em;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--lavender-50);
+  color: var(--primary-600);
+}
+
+/* Inline citation marker, matching the chip in the source list below. */
+.cite-ref {
+  display: inline-block;
+  margin: 0 1px;
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  line-height: 1.6;
+  vertical-align: 1px;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--lavender-100);
+  color: var(--primary-600);
+}

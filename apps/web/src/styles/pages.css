@@ -793,6 +793,8 @@
 }
 
 .turn-body {
+  /* Only the learner's own text needs its newlines preserved verbatim; the
+     assistant's side is rendered Markdown, which brings its own layout. */
   white-space: pre-wrap;
   line-height: 1.65;
   padding: var(--space-3) var(--space-4);
@@ -805,6 +807,7 @@
   border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg);
 }
 .turn-assistant .turn-body {
+  white-space: normal;
   background: var(--bg-page);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--radius-sm);

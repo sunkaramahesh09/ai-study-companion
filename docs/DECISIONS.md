@@ -2328,3 +2328,46 @@ The schema, the trigger and the sign-up form were all correct and in place from
 task 1. A field is not wired up until something displays it.
 
 ---
+
+## D-069 — Rendering the Markdown the models emit, rather than asking them to stop
+**Date:** 2026-09-18 · **Area:** UI / Groundedness
+
+**Symptom:** a Tutor answer arrived as a wall of asterisks — `- **Tokens** –
+the basic text units…` — because `.turn-body` printed the model's text
+verbatim under `white-space: pre-wrap`.
+
+**Chosen:** render it. `components/Prose.tsx` handles the slice of Markdown
+that actually shows up: `**bold**`, `__bold__`, `*italic*`, `` `code` ``,
+`-`/`*`/`•` bullets, `1.` lists, `#` headings, paragraphs, and wrapped list
+items that continue on the next line. The Tutor's own `[S1]` markers render as
+the same chip the source list below the message uses, so they stop reading as
+stray brackets mid-sentence.
+
+**Not a Markdown package**, for a reason beyond bundle size: this text is
+generated from the learner's uploaded material, which this app treats as data
+and never as instructions (CLAUDE.md). Everything here builds React elements —
+no `dangerouslySetInnerHTML`, no HTML string anywhere on the path — so a
+crafted PDF has nothing to inject through. **Links are deliberately not
+supported:** `[text](url)` in an answer sourced from a document we did not
+write is not a link this app will render. Both are asserted in tests.
+
+**Not "tell the model to stop formatting" either.** The bold and the bullets
+genuinely help a learner skim an explanation; the bug was that they were not
+being drawn. Asking a model to suppress its default formatting is also the
+weaker kind of fix — it holds until it doesn't, and then the UI is wrong again
+with no way to tell.
+
+Anything unsupported degrades to plain text, which is exactly what the UI did
+before, so no construct is worse off than it was.
+
+Applied to the Tutor answer and to quiz grading feedback — both are generated
+prose. Recommendation bodies are single sentences (30–400 chars, D-047) and are
+left alone.
+
+**Tested by rendering:** `Prose.test.tsx` runs the literal answer from the
+report through `renderToStaticMarkup` and asserts no `**` survives, that three
+bullets become one `<ul>` with three `<li>`, that `<script>` is escaped rather
+than rendered, and that a Markdown link does not become an `<a>`. `vitest`'s
+include gained `*.test.tsx` for it; the environment stays `node`.
+
+---

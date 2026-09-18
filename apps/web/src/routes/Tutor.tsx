@@ -4,6 +4,7 @@ import { askTutor, getMessages, touchProject, type TutorMessage } from '../lib/q
 import { ErrorNote, PageHeader } from '../components/Ui.tsx';
 import { Icon, type IconName } from '../components/Icon.tsx';
 import { StudyContextBar } from '../components/StudyContext.tsx';
+import { Prose } from '../components/Prose.tsx';
 
 export function Tutor() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -130,7 +131,11 @@ export function Tutor() {
                   <Icon name="book" size={15} /> Based on your materials
                 </div>
               )}
-              <div className="turn-body">{m.content}</div>
+              {/* The learner's own words are shown exactly as typed; the
+                  Tutor's answer arrives as Markdown and is rendered (D-069). */}
+              <div className="turn-body">
+                {m.role === 'assistant' ? <Prose text={m.content} /> : m.content}
+              </div>
 
               {m.role === 'assistant' && m.citations.length > 0 && (
                 <div className="citations">
