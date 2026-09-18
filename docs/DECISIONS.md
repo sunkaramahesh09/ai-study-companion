@@ -2300,3 +2300,31 @@ the reasoning in the test body. The quiz's 10-character floor on a *written
 graded answer* stays: that one is grading a paragraph, not opening a chat.
 
 ---
+
+## D-068 — The sidebar showed the email twice and called one of them a name
+**Date:** 2026-09-18 · **Area:** UI
+
+**Symptom:** the sidebar's user block read `sunkaramahesh494` in the name slot
+and `sunkaramahesh...` underneath — the same address twice, one of them
+truncated, with nothing that looked like a person's name.
+
+**Cause:** `Sidebar.tsx` derived the name as `profile.email.split('@')[0]`.
+The real name was never missing: the sign-up form collects it, `signUp` puts it
+in `raw_user_meta_data.full_name`, and `handle_new_user()` writes it to
+`profiles.full_name` (0001_foundation). The frontend simply never selected the
+column — `AuthProvider` asked for `id, email, role`.
+
+**Fix:** `Profile` carries `fullName`, `AuthProvider` selects `full_name`, and
+the sidebar shows it, with the email's local part kept only as a fallback for a
+profile that genuinely has no name. The avatar initial now comes from the name
+rather than the address, so "S" for Sunkara rather than for the mailbox.
+
+Both lines carry a `title`, because the rail truncates them; `.sidebar-user-name`
+gained the ellipsis rule the email line already had, so a long real name cannot
+push the sign-out button off the edge.
+
+**Worth noting:** this was not a missing feature, it was a column nobody read.
+The schema, the trigger and the sign-up form were all correct and in place from
+task 1. A field is not wired up until something displays it.
+
+---

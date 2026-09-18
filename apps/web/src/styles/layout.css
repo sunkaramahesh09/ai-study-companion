@@ -304,6 +304,11 @@
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
+  /* A real name can be longer than the rail; it truncates like the email
+     below it rather than pushing the sign-out button off the edge. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .sidebar-user-email {
   font-size: var(--text-xs);

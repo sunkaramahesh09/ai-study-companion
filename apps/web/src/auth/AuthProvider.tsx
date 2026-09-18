@@ -3,7 +3,13 @@ import { createContext, use, useEffect, useMemo, useState, type ReactNode } from
 import { setSessionExpiredHandler } from '../lib/api.ts';
 import { supabase } from '../lib/supabase.ts';
 
-export type Profile = { id: string; email: string; role: 'user' | 'admin' };
+export type Profile = {
+  id: string;
+  email: string;
+  /** Given at sign-up. Falls back in the DB trigger to the email's local part. */
+  fullName: string | null;
+  role: 'user' | 'admin';
+};
 
 type AuthState = {
   session: Session | null;
@@ -69,11 +75,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // so the role shown in the UI is the role the database actually holds.
     supabase
       .from('profiles')
-      .select('id, email, role')
+      .select('id, email, full_name, role')
       .eq('id', session.user.id)
       .single()
       .then(({ data }) => {
-        if (active && data) setProfile(data as Profile);
+        if (!active || !data) return;
+        const row = data as { id: string; email: string; full_name: string | null; role: Profile['role'] };
+        setProfile({ id: row.id, email: row.email, fullName: row.full_name, role: row.role });
       });
     return () => {
       active = false;

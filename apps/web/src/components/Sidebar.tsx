@@ -44,8 +44,13 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     return location.pathname.startsWith(path);
   };
 
-  const userInitial = profile?.email?.charAt(0).toUpperCase() ?? 'S';
-  const userName = profile?.email?.split('@')[0] ?? 'Student';
+  // The name the learner gave at sign-up, which the profile row has had all
+  // along — the sidebar was just never reading it, so it showed the email's
+  // local part in the name slot and the same address again underneath, and the
+  // block read as the email twice (D-068). The local part stays as the
+  // fallback for a profile created before the name field existed.
+  const userName = profile?.fullName?.trim() || profile?.email?.split('@')[0] || 'Student';
+  const userInitial = userName.charAt(0).toUpperCase();
 
   return (
     <>
@@ -128,8 +133,10 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           <div className="sidebar-user">
             <div className="sidebar-user-avatar">{userInitial}</div>
             <div className="sidebar-user-info">
-              <div className="sidebar-user-name">{userName}</div>
-              <div className="sidebar-user-email">{profile?.email}</div>
+              <div className="sidebar-user-name" title={userName}>{userName}</div>
+              {/* Truncated to the rail's width, so the full address lives in
+                  the tooltip rather than being lost. */}
+              <div className="sidebar-user-email" title={profile?.email}>{profile?.email}</div>
             </div>
             <button
               type="button"
