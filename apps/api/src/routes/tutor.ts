@@ -16,7 +16,10 @@ const FACT_CANDIDATES = 12;
 
 const askSchema = z.object({
   projectId: z.string().uuid(),
-  question: z.string().trim().min(3, 'Ask a question.').max(2000, 'That question is too long.'),
+  // min(1), not min(3): "hi" is a real thing a learner types, and the Tutor
+  // answers it the same way it answers anything its material does not cover —
+  // by saying so. Rejecting it only produced a dead Send button (D-067).
+  question: z.string().trim().min(1, 'Ask a question.').max(2000, 'That question is too long.'),
   // nullish, not optional: JSON clients routinely send `null` to mean "no
   // value", and rejecting that with a 400 is pedantry rather than validation.
   // Normalised to undefined so the handler has one absent case to reason about.

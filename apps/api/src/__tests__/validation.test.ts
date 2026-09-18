@@ -131,9 +131,22 @@ describeIntegration('input validation', () => {
   });
 
   describe('the tutor endpoint', () => {
-    it('rejects a question that is too short to mean anything', async () => {
+    it('rejects a question that is empty or only whitespace', async () => {
+      for (const question of ['', '   ', '\n\t ']) {
+        const res = await post('/api/tutor/ask', { projectId, question });
+        expect(res.statusCode).toBe(400);
+      }
+    });
+
+    it('accepts a very short question rather than disabling Send', async () => {
+      // "hi" used to be rejected as "too short to mean anything". In the UI
+      // that showed up as a Send button that simply would not light, with
+      // nothing saying why. A greeting is a real thing a learner types, and
+      // the Tutor already has an answer for anything its material does not
+      // cover — it says so (D-067). Asserted by NOT being a validation error;
+      // the project has no material, so it legitimately declines below.
       const res = await post('/api/tutor/ask', { projectId, question: 'hi' });
-      expect(res.statusCode).toBe(400);
+      expect(res.statusCode).not.toBe(400);
     });
 
     it('rejects a question far past the length limit', async () => {

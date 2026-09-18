@@ -198,7 +198,10 @@ export function Tutor() {
               maxLength={2000}
               disabled={busy}
             />
-            <button type="submit" className="ask-send" disabled={busy || question.trim().length < 3}>
+            {/* Only an empty box blocks sending. A three-character floor here
+                meant "hi" left the button dead with nothing explaining why —
+                a silently disabled control reads as a broken app. */}
+            <button type="submit" className="ask-send" disabled={busy || !question.trim()}>
               <Icon name={busy ? 'clock' : 'arrow-right'} size={15} /> {busy ? 'Thinking…' : 'Send'}
             </button>
           </div>

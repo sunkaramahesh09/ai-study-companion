@@ -2268,3 +2268,35 @@ flag. The material delete still uses `window.confirm`; swapping it is a
 one-line change whenever that is wanted.
 
 ---
+
+## D-067 — "hi" could not be sent to the Tutor
+**Date:** 2026-09-18 · **Area:** Product
+
+**Symptom:** typing `hi` into the Tutor composer left the Send button dead.
+No message, no tooltip, nothing explaining why — the app simply looked broken.
+
+**Cause:** the question had a three-character floor, in the route's zod schema
+(`min(3, 'Ask a question.')`) and mirrored in the button's `disabled`. `hi` is
+two characters. The API's error message existed but the learner never saw it,
+because the client refused to make the request that would have returned it.
+
+**Fix:** the floor is now one character on both sides — only an empty or
+whitespace-only box blocks sending.
+
+**Why not keep the floor and show the reason instead:** there is nothing to
+explain. The premise — that a short question is "too short to mean anything" —
+is wrong. A greeting is a real thing a learner types when they open a chat, and
+the Tutor already has a correct answer for anything its material does not
+cover: it says so rather than guessing (D-029). Rejecting the input bought
+nothing and cost a dead control.
+
+**Lesson (the same one as D-061 and D-060):** a silently disabled control is
+the worst way to enforce a rule. If input is refused, the learner has to be
+able to find out why; if the reason will not survive being said out loud, the
+rule is the thing to remove.
+
+The validation test that asserted the rejection now asserts the opposite, with
+the reasoning in the test body. The quiz's 10-character floor on a *written
+graded answer* stays: that one is grading a paragraph, not opening a chat.
+
+---
