@@ -2223,4 +2223,27 @@ surfaces read as one overlapping shape. Margin now lives on `.continue-card`
 itself, both sides — a component that can be followed by another surface should
 not leave its spacing to whoever places it.
 
+### Follow-up 2 — the launcher was one card on an empty page
+
+**Reported:** `/tutor` showed the continue card and then nothing, on a screen of
+white. Fair: a page with one card on it looks unfinished, and it answers
+"continue" but not "somewhere else".
+
+**Chosen:** the launcher now indexes every project below the card, grouped by
+space, each card linking straight to `/projects/:id/<mode>`.
+
+**Not the Spaces grid, which is what was asked for.** A space card on the Tutor
+page leads to the space, then a project, then the project *dashboard* — the
+three-step walk this whole change exists to remove. Tutor and Quiz are
+per-project, so the index for them is projects, and every card lands in the
+feature. The space name is still a heading with an "Open space →" link for the
+times browsing really is the point.
+
+The recent-project chips came off the launcher at the same time: with the full
+list directly underneath they were the same links twice. They stay on Spaces,
+which has no project list of its own.
+
+Costs nothing extra — `useStudyContext()` already holds every project and
+space, so the index is the data the card was using anyway.
+
 ---

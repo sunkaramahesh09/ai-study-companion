@@ -900,3 +900,65 @@ section > .card { margin-top: var(--space-4); }
   background: var(--lavender-50);
 }
 .continue-recent .muted { font-size: var(--text-xs); }
+
+/* Index of every project, under the continue card on the Tutor/Quiz landing. */
+.project-index {
+  margin-top: var(--space-6);
+}
+.project-index > h3 {
+  margin-bottom: var(--space-4);
+}
+.project-index > section + section {
+  margin-top: var(--space-5);
+}
+/* Slightly wider than the default grid track: these cards carry a name, a goal
+   and a meta row, and at 260px the meta row wrapped on every one of them. */
+.project-index .grid {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+.project-index-space {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.project-index-space .card-link {
+  margin-left: auto;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: var(--weight-medium);
+}
+.project-index-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: var(--radius-lg);
+  background: var(--lavender-100);
+  color: var(--primary-600);
+}
+.project-index-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* Wraps as two whole lines rather than breaking "Last active 18/09/2026"
+     across one, which is what a narrow card in this grid would otherwise do. */
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.project-index-meta > span { white-space: nowrap; }
+.project-index-go {
+  color: var(--primary-600);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}

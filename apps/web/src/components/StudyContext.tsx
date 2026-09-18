@@ -306,3 +306,70 @@ export function ContinueCardView({
     </div>
   );
 }
+
+/**
+ * Every project the learner has, grouped by space, each card opening this
+ * page's feature directly.
+ *
+ * The obvious thing to put under the continue card was the Spaces grid, since
+ * that is what Spaces itself shows. But a space card on the Tutor page leads
+ * to the space, then a project, then the project dashboard — the three-step
+ * walk this whole change exists to remove. Tutor and Quiz are per-project, so
+ * the index for them is projects, and every card here lands in the feature.
+ */
+export function ProjectGrid({ ctx, mode }: { ctx: StudyContextState; mode: Mode }) {
+  const { spaces, projects } = ctx;
+  if (projects.length === 0) return null;
+
+  // `projects` arrives ordered by last activity, so a space's position follows
+  // its most recently used project and grouping preserves that order within it.
+  const bySpace = spaces
+    .map((space) => ({ space, items: projects.filter((p) => p.spaceId === space.id) }))
+    .filter((g) => g.items.length > 0)
+    .sort((a, b) => projects.indexOf(a.items[0]!) - projects.indexOf(b.items[0]!));
+
+  return (
+    <div className="project-index">
+      <h3>Or pick another project</h3>
+      {bySpace.map(({ space, items }) => (
+        <section key={space.id}>
+          <div className="project-index-space">
+            <Icon name="folder" size={14} />
+            <span>{space.name}</span>
+            <Link to={`/spaces/${space.id}`} className="card-link">
+              Open space →
+            </Link>
+          </div>
+          <div className="grid stagger">
+            {items.map((p) => (
+              <Link key={p.id} to={`/projects/${p.id}/${mode}`} className="card tile hover-lift">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                  <div className="project-index-icon">
+                    <Icon name={mode === 'quiz' ? 'quiz' : 'tutor'} size={16} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <strong>{p.name}</strong>
+                    {p.goal && (
+                      <p className="muted clamp" style={{ fontSize: 'var(--text-sm)', marginTop: 2 }}>
+                        {p.goal}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="project-index-meta">
+                  <span>
+                    <Icon name="calendar" size={14} /> Last active{' '}
+                    {new Date(p.lastActiveAt).toLocaleDateString()}
+                  </span>
+                  <span className="project-index-go">
+                    {mode === 'quiz' ? 'Start quiz' : 'Ask Tutor'} →
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
