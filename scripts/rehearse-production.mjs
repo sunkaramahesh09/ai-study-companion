@@ -20,6 +20,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { makePdf } from '../apps/api/src/__tests__/fixtures/makePdf.ts';
 import { containsNormalised } from '../packages/shared/src/text.ts';
+// The same marker list the postbuild check uses, imported rather than copied:
+// a second copy went stale when UI copy changed and reported a healthy
+// production bundle as empty (D-086).
+import { MARKERS, MIN_BYTES, missingMarkers } from '../apps/web/scripts/verify-bundle.mjs';
 
 const API = process.env.REHEARSAL_API_URL ?? 'https://ai-study-companion-production-a07f.up.railway.app';
 const WEB = process.env.REHEARSAL_WEB_URL ?? 'https://ai-study-companion-ruby.vercel.app';
@@ -84,12 +88,12 @@ async function main() {
     const bundle = await (await fetch(`${WEB}${asset}`)).text();
     // The bundle is grepped rather than trusted: a build can succeed and ship
     // no application code at all (D-052).
-    const markers = ['Ask the Tutor', 'Concept mastery', 'Learning activity'];
-    const missing = markers.filter((m) => !bundle.includes(m));
+    const missing = missingMarkers(bundle);
     check(
       'Frontend bundle actually contains the application',
-      missing.length === 0 && bundle.length > 400_000,
-      `${bundle.length.toLocaleString()} bytes${missing.length ? `, missing: ${missing.join(', ')}` : ''}`,
+      missing.length === 0 && bundle.length > MIN_BYTES,
+      `${bundle.length.toLocaleString()} bytes, ${MARKERS.length - missing.length}/${MARKERS.length} markers` +
+        `${missing.length ? `, missing: ${missing.join(', ')}` : ''}`,
     );
   }
 

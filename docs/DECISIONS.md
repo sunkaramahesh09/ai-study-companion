@@ -1935,85 +1935,6 @@ with them reading their feedback. Nothing to change there.
 
 ---
 
-## D-062 — Merged an externally-built frontend redesign, not a wholesale swap
-**Date:** 2026-09-17 · **Area:** Frontend
-
-**Context:** the user built a full visual redesign of `apps/web` with a
-separate AI coding tool ("Antigravity"), working from an earlier snapshot of
-this repo, and asked whether it could be integrated. Both trees were audited
-file-by-file before anything was merged; the live app was never touched during
-the audit.
-
-**Chosen:** adopt the new design layer (CSS design system, Sidebar/Topbar
-shell, `Home` route, `Ui.tsx` primitives, restyled routes) file by file,
-re-porting this session's business logic onto each one, rather than replacing
-`apps/web` wholesale. The redesign was built from a snapshot that predated
-several same-day fixes and had drifted from this repo's stated engineering
-principles in ways that would have shipped real regressions or misleading UI
-if merged as-is.
-
-**What the audit found and how each was handled:**
-- **D-061 (409 quiz resume, shipped hours earlier) was absent** —
-  `ApiError` had no `body`, `getQuizAttempt` was gone, `Quiz.tsx` had no
-  409-handling. Re-ported in full onto the new visual design; verified live
-  (see below) by triggering the 409 mid-session.
-- **Material retry/poll/upload-progress (Task 8) was absent** —
-  `MaterialUpload.tsx` had no retry button, no status polling, no progress
-  callback. Re-ported onto the new dropzone UI.
-- **D-052's build guard was disabled** — `vite.config.ts` had `envDir`
-  commented out and the build script dropped `verify-bundle.mjs`. Neither was
-  adopted; the guard caught a real (trivial) marker-text mismatch on the first
-  build after the merge, which is exactly what it's for.
-- **Decoupled from `@asc/shared`** — hand-copied type stubs (`types/shared.ts`)
-  duplicating the zod-derived types instead of importing them. Every route was
-  repointed at `@asc/shared`; the stub file was never adopted.
-- **Two nav pages (`My Materials`, `Recommendations`) were hardcoded, always-
-  empty stubs** with no backing endpoint — `GET /api/materials` requires a
-  `projectId`, and there is no global recommendations list route. Building
-  real global aggregation now would be new scope this close to the deadline
-  and isn't a PRD Must-Have. Dropped from nav and routing entirely rather than
-  shipped as a page that always claims "no materials found."
-- **`Home.tsx` fabricated a "Current Mastery" stat and a "78%" progress ring**
-  hardcoded for every account regardless of real data, plus an always-on
-  "improved 12% this week" banner. `GlobalAnalytics` has no mastery field at
-  all (mastery is per-project only). Replaced with real fields from
-  `GET /api/analytics` (`assessment.recentAccuracy`, `activity.byType`), with
-  `null` rendering as "—" per this repo's established convention (D-049)
-  rather than a fake percentage — verified live against a fresh account
-  showing all real zeros/em-dashes.
-- **Several decorative-but-inert controls**: a topbar search box and
-  notification bell with no handlers, a chat "attach material" pill and a
-  permanently-"active" RAG toggle, thumbs-up/down feedback buttons, a
-  "Forgot password?" link and a "Sign in with Google" button with no OAuth
-  provider configured anywhere in this project. Removed rather than shipped
-  non-functional — a control that visibly does nothing on click is worse than
-  no control, especially under a technical evaluation. The chat's "copy
-  response" action was wired for real (`navigator.clipboard`) since it needed
-  no backend.
-- **Chart colours** — new `--ok`/`--error` CSS variables pointed at
-  `--success-500`/`--error-400` instead of the D-051 measured pair (deutan ΔE
-  7.9). Pinned back to the measured hex values; `Charts.tsx` and
-  `AnalyticsPanels.tsx` (explicitly protected by a comment citing D-051) were
-  left untouched rather than merged, since the new CSS system already
-  restyles their existing class names with zero risk.
-
-**Verified before merging to `main`:** `npx tsc -b` clean across all
-workspaces, `npx vitest run` — 491/491, `npm run build --workspace=@asc/web`
-green including `verify-bundle.mjs`, and a full logged-in browser walkthrough
-against local `worker`+`api`+`web` (a throwaway account, confirmed and later
-deleted via SQL with explicit permission, since production Supabase requires
-email confirmation): sign-up → space → project → PDF upload → live poll to
-ready → Tutor question with a real citation → quiz with a live-triggered
-409-resume → Growth → Analytics → non-admin 403 on `/admin`.
-
-**Not done:** the redesign's own `package.json`/`vite.config.ts` were never
-adopted (this repo's already had the correct, protected versions). No new
-backend endpoints were added to support the dropped global pages — if a
-"materials across all projects" or "global recommendations" view is wanted
-later, that is new scope, not a frontend fix.
-
----
-
 ## D-062 — Quota share splits processes, not model tiers
 **Date:** 2026-09-17 · **Area:** AI / Performance
 
@@ -3133,5 +3054,137 @@ stays generation rather than an exhausted concept list.
 **Not fixed retroactively:** attempt `3ffafe8e` gets no recommendation. The
 event was never written, and back-filling a learning event to fake a history
 that did not happen would corrupt the record these analytics are built on.
+
+
+---
+
+## D-085 — Merged an externally-built frontend redesign, not a wholesale swap
+**Date:** 2026-09-17 · **Area:** Frontend
+
+**Renumbered 2026-09-19.** This entry was originally written as a second
+`D-062`, duplicating the quota-share decision above it. Code comments and
+`ARCHITECTURE.md` cite `D-062` for the quota split, so that id stayed where it
+was and this one moved to the end of the log. The date above is the date the
+decision was made, not the date it was renumbered.
+
+
+**Context:** the user built a full visual redesign of `apps/web` with a
+separate AI coding tool ("Antigravity"), working from an earlier snapshot of
+this repo, and asked whether it could be integrated. Both trees were audited
+file-by-file before anything was merged; the live app was never touched during
+the audit.
+
+**Chosen:** adopt the new design layer (CSS design system, Sidebar/Topbar
+shell, `Home` route, `Ui.tsx` primitives, restyled routes) file by file,
+re-porting this session's business logic onto each one, rather than replacing
+`apps/web` wholesale. The redesign was built from a snapshot that predated
+several same-day fixes and had drifted from this repo's stated engineering
+principles in ways that would have shipped real regressions or misleading UI
+if merged as-is.
+
+**What the audit found and how each was handled:**
+- **D-061 (409 quiz resume, shipped hours earlier) was absent** —
+  `ApiError` had no `body`, `getQuizAttempt` was gone, `Quiz.tsx` had no
+  409-handling. Re-ported in full onto the new visual design; verified live
+  (see below) by triggering the 409 mid-session.
+- **Material retry/poll/upload-progress (Task 8) was absent** —
+  `MaterialUpload.tsx` had no retry button, no status polling, no progress
+  callback. Re-ported onto the new dropzone UI.
+- **D-052's build guard was disabled** — `vite.config.ts` had `envDir`
+  commented out and the build script dropped `verify-bundle.mjs`. Neither was
+  adopted; the guard caught a real (trivial) marker-text mismatch on the first
+  build after the merge, which is exactly what it's for.
+- **Decoupled from `@asc/shared`** — hand-copied type stubs (`types/shared.ts`)
+  duplicating the zod-derived types instead of importing them. Every route was
+  repointed at `@asc/shared`; the stub file was never adopted.
+- **Two nav pages (`My Materials`, `Recommendations`) were hardcoded, always-
+  empty stubs** with no backing endpoint — `GET /api/materials` requires a
+  `projectId`, and there is no global recommendations list route. Building
+  real global aggregation now would be new scope this close to the deadline
+  and isn't a PRD Must-Have. Dropped from nav and routing entirely rather than
+  shipped as a page that always claims "no materials found."
+- **`Home.tsx` fabricated a "Current Mastery" stat and a "78%" progress ring**
+  hardcoded for every account regardless of real data, plus an always-on
+  "improved 12% this week" banner. `GlobalAnalytics` has no mastery field at
+  all (mastery is per-project only). Replaced with real fields from
+  `GET /api/analytics` (`assessment.recentAccuracy`, `activity.byType`), with
+  `null` rendering as "—" per this repo's established convention (D-049)
+  rather than a fake percentage — verified live against a fresh account
+  showing all real zeros/em-dashes.
+- **Several decorative-but-inert controls**: a topbar search box and
+  notification bell with no handlers, a chat "attach material" pill and a
+  permanently-"active" RAG toggle, thumbs-up/down feedback buttons, a
+  "Forgot password?" link and a "Sign in with Google" button with no OAuth
+  provider configured anywhere in this project. Removed rather than shipped
+  non-functional — a control that visibly does nothing on click is worse than
+  no control, especially under a technical evaluation. The chat's "copy
+  response" action was wired for real (`navigator.clipboard`) since it needed
+  no backend.
+- **Chart colours** — new `--ok`/`--error` CSS variables pointed at
+  `--success-500`/`--error-400` instead of the D-051 measured pair (deutan ΔE
+  7.9). Pinned back to the measured hex values; `Charts.tsx` and
+  `AnalyticsPanels.tsx` (explicitly protected by a comment citing D-051) were
+  left untouched rather than merged, since the new CSS system already
+  restyles their existing class names with zero risk.
+
+**Verified before merging to `main`:** `npx tsc -b` clean across all
+workspaces, `npx vitest run` — 491/491, `npm run build --workspace=@asc/web`
+green including `verify-bundle.mjs`, and a full logged-in browser walkthrough
+against local `worker`+`api`+`web` (a throwaway account, confirmed and later
+deleted via SQL with explicit permission, since production Supabase requires
+email confirmation): sign-up → space → project → PDF upload → live poll to
+ready → Tutor question with a real citation → quiz with a live-triggered
+409-resume → Growth → Analytics → non-admin 403 on `/admin`.
+
+**Not done:** the redesign's own `package.json`/`vite.config.ts` were never
+adopted (this repo's already had the correct, protected versions). No new
+backend endpoints were added to support the dropped global pages — if a
+"materials across all projects" or "global recommendations" view is wanted
+later, that is new scope, not a frontend fix.
+
+---
+
+## D-086 — The bundle-marker list is imported, not copied
+**Date:** 2026-09-19 · **Area:** Testing / Deployment
+
+**Symptom:** the final pre-submission `npm run rehearse` came back **1 check
+failed** — *"Frontend bundle actually contains the application — 598,124 bytes,
+missing: Concept mastery"*. Read literally, that says the deployed Vercel bundle
+is the empty one D-052 was written about, hours before the demo video.
+
+**It wasn't.** The deployed bundle is fine. `scripts/rehearse-production.mjs`
+kept its **own copy** of the marker list that `apps/web/scripts/verify-bundle.mjs`
+uses. The frontend redesign (D-085) renamed the dashboard heading *Concept
+mastery* → *Concept **M**astery*. The postbuild verifier's list was updated;
+the rehearsal's copy was not, and had been quietly wrong ever since — the
+rehearsal's last green run predates the rename.
+
+**Both directions of this failure are bad:**
+
+- **False positive**, which is what happened: the check that exists to catch a
+  catastrophic silent deploy cries wolf. A red D-052 check the night before
+  submitting is the worst possible time to have to work out whether it is real.
+- **False negative**, which was the live risk: the stale copy still contained
+  three markers that do exist, so if the check had been written as "any marker
+  present" rather than "all present", an app that had genuinely vanished could
+  have passed on the strength of an outdated string.
+
+**Fix:** one list. `verify-bundle.mjs` now exports `MARKERS`, `MIN_BYTES` and
+`missingMarkers()`, and the rehearsal imports them. The module's own check moved
+behind an `import.meta.url === argv[1]` guard so importing it does not try to
+read a `dist/` the importer has not built.
+
+**Rejected — matching case-insensitively.** It would have made this particular
+failure go away and weakened every future one: `Concept Mastery` and `concept
+mastery` are different strings, and a marker that matches loosely proves less.
+The markers are deliberately user-visible copy; the coupling to that copy is the
+point. Copy changes should force a decision, in one place.
+
+**Lesson, and it is the D-052 lesson again one level up:** a check is only worth
+what its oracle is worth. D-052 was a build that passed while shipping nothing;
+this is a checker that failed while nothing was wrong. Both were duplicated
+knowledge — there, "the build succeeded" standing in for "the app is present";
+here, two copies of what "present" means. The verifier of the verifier is the
+thing to keep single.
 
 ---

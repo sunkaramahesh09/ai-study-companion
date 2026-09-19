@@ -37,7 +37,7 @@ recovered from the session transcripts, not reconstructed. In summary:
   found that way, by a person clicking through the product, not by the test
   suite.
 - Every non-obvious choice was written to `DECISIONS.md` **as it was made**.
-  That file is 77 numbered entries and is the honest audit trail of the
+  That file is 86 numbered entries and is the honest audit trail of the
   collaboration, including the mistakes: a threshold documented as "measured"
   that never was (D-029), a web build that shipped a bundle with no application
   code in it and reported success (D-052), a data-isolation bug the tests could

@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-19 12:45 · **Day:** Sat · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-19 16:10 · **Day:** Sat · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -379,23 +379,75 @@ today** — the live suites are what burn it, and the demo video needs it.
 Targeted runs used instead: quizFlow, providerFailure, analytics,
 recommendations, plus all 303 offline tests.
 
+### Fourteenth: a pre-submission audit, and a checker that cried wolf
+
+**Session 2026-09-19 15:45.** Asked to verify submission readiness and produce
+a demo-video script. Everything was re-verified against production rather than
+taken from this file:
+
+- **`npm test` — 609 passing, 46 files**, live AI suites included. Typecheck
+  clean. Web build green with `verify-bundle`.
+- **`npm run eval` — 18/18**, 165s, 44 AI requests / 16,830 tokens / ~$0.004.
+  Run `5a24dc27`. Assessment suite means 83%, the rest 100%.
+- **`npm run rehearse` — every check green** against the deployed URLs. Grounded
+  answer citing page 1 in 1118ms, refusal, injection refused, mastery Δ −0.2862,
+  grading back in 3004ms, isolation holds, account deleted.
+- **Worker alive** — `pgboss.version.flow_on` 4s old. **API deployed at 12:36**,
+  one minute after the last commit. **Vercel bundle current** — contains the
+  flashcard stage and the `labels.ts` map from the two most recent frontend
+  commits. Nothing is waiting on a redeploy.
+- **20 tables, 36 policies, RLS on all 20** — matches what the docs claim.
+- **No secret ever committed**: no `.env` in any commit, no key pattern in
+  history, `.env.example` tracked and complete.
+
+**Two documentation defects and one real bug, all fixed:**
+
+1. **`npm run rehearse` failed one check** — *"Frontend bundle actually contains
+   the application — missing: Concept mastery"*. Read literally, that says the
+   deployed bundle is the empty one D-052 exists to catch, hours before
+   recording. **It was a stale duplicate of the marker list** (D-086): the
+   rehearsal kept its own copy, the redesign renamed the heading to *Concept
+   **M**astery*, and only `verify-bundle.mjs`'s copy was updated. The list is now
+   exported from `verify-bundle.mjs` and imported by the rehearsal — one list,
+   two readers. Re-ran: **4/4 markers, whole rehearsal green.**
+2. **`DECISIONS.md` had two `D-062` entries.** Code and `ARCHITECTURE.md` cite
+   D-062 for the quota-share split, so that id stayed; the frontend-merge entry
+   became **D-085** at the end of the log with a note saying why it is out of
+   date order. Ids are now 001–086 with no duplicates.
+3. **Stale counts in four documents.** README (601 tests, 77 decisions),
+   `PRD_COVERAGE.md` (601 tests / 45 files, 82 entries), `ARCHITECTURE.md` and
+   `AI_USAGE.md` (77 entries) — all corrected to 609 / 46 / 86. Same failure as
+   2026-09-18: an evaluator who checks one number and finds it wrong discounts
+   every other number in the file.
+
+**[`docs/DEMO_SCRIPT.md`](DEMO_SCRIPT.md) written** — the §20.2 shot list in the
+PRD's own order, for a screen recording with **no voice-over**, so on-screen
+title cards carry the narration. Includes the pre-flight (two accounts — the
+Admin rail only appears for `role = 'admin'`; a 5–20 page PDF; **nothing else
+hitting the AI providers during the take**, or the limiter makes the app look
+slow on camera), which shots must not be cut (`queued → ready` on one row; the
+citation opening to a real page), that **question 3 is the open-ended one**
+(`selectQuestionType`: every third above difficulty 1), and that the quiz must
+reach `Quiz Complete!` or no recommendation is enqueued.
+
 ### >>> STILL OUTSTANDING BEFORE SUBMITTING <<<
 
-1. **The demo video (§20.2).** Not optional, not in the repo, and cannot be
-   produced from here. Must walk: create Space → create Project → upload PDF →
-   watch it process → ask the Tutor → grounded answer with citation → ask
-   something the material does not cover → adaptive quiz → open-ended answer +
-   feedback → mastery/growth → analytics → recommendation → Admin Dashboard.
+1. **Record the demo video (§20.2).** The only remaining deliverable. Script is
+   in [`docs/DEMO_SCRIPT.md`](DEMO_SCRIPT.md). Needs the user; cannot be
+   produced from here.
 2. **Enable leaked-password protection** in Supabase Auth (one toggle;
-   Authentication → Policies). The security advisor flags it.
-3. **Click through the two new surfaces** — Progress → a project's analytics,
-   and Flashcards (generate → show answer → rate → watch the interval). Local
-   `api` + `worker` + `web` were left running against a seeded account whose
-   credentials are in **`.env.uicheck`** (gitignored — this repo is public, so a
-   working sign-in never goes in a tracked file). Material indexed, 9 concepts,
-   mastery seeded. Delete the account when done.
-4. **Redeploy.** Vercel builds `main`; the API and worker need a Railway deploy
-   for the flashcard routes. Migration 0010 is already applied to production.
+   Authentication → Policies). Still flagged by the security advisor. It is the
+   only advisor finding that is ours — the other two are pg-boss's own functions
+   and the three RLS helpers (`is_admin`, `owns_project`, `owns_space`), which
+   are `SECURITY DEFINER` on purpose and answer only about the caller.
+3. **Push this session's commit and let Vercel/Railway rebuild.** Nothing in it
+   changes runtime behaviour (docs + the rehearsal script), so a redeploy is
+   housekeeping rather than a gate on the video.
+4. **Delete the `.env.uicheck` seeded account** once the video is recorded; it
+   is no longer needed. Credentials are gitignored, never tracked.
+
+**Everything else is done.** Deployment, tests, evaluation, rehearsal, and all
+nine §20 deliverables except the video itself.
 
 **Tasks 10, 11 and 12 complete.** Grounded Tutor, unsupported-question
 handling, and the prompt-injection boundary — the three highest-risk items on
@@ -568,7 +620,7 @@ retry/poll/progress, `@asc/shared` types, the D-052 build guard (`envDir` +
 `verify-bundle.mjs`), and the D-051 colorblind-safe chart palette. Two fake
 always-empty nav pages and several inert decorative controls (fake search,
 notification badge, RAG toggle, unconfigured Google OAuth) were dropped
-rather than shipped. Full detail and rationale in **D-062**.
+rather than shipped. Full detail and rationale in **D-085** (written as a second `D-062`; renumbered 2026-09-19).
 
 **Verified:** `tsc -b` clean, 491/491 tests, `npm run build --workspace=@asc/web`
 green incl. `verify-bundle.mjs`, and a full logged-in browser walkthrough

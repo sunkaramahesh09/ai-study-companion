@@ -32,10 +32,10 @@ Legend: **Done** · **Partial** (working, with a stated gap) · **Not built**
 | 18 | **Structured AI interaction** | `packages/ai/src/json.ts` `generateJson()` — JSON mode + schema in prompt + **zod validation before the value is returned**, one repair, then hard failure | `json.test.ts`, eval `assessment.structured-output-survives-validation`. See the §8 note below |
 | 19 | **Basic AI observability and evaluation** | `ai_requests` (one row per call, written inside the provider) · `apps/api/src/eval/` — 18 cases, 5 suites, `eval_runs`/`eval_results` | `npm run eval`; admin AI and Evaluation tabs |
 | 20 | **Error handling** | Backoff + jitter, primary→fallback failover, `503` with the question preserved, deterministic fallbacks for recommendation and progress text | `providerFailure.test.ts`, `retry.test.ts`, `limiter.test.ts`, `tutorProgress.test.ts` |
-| 21 | **Testing** | 601 tests across 45 files, plus 18 evaluation cases and a production rehearsal | `npx vitest run`; live tests need real keys — see the README warning |
+| 21 | **Testing** | 609 tests across 46 files, plus 18 evaluation cases and a production rehearsal | `npx vitest run`; live tests need real keys — see the README warning |
 | 22 | **Deployment** | Vercel (web) · Railway (api + worker) · Supabase | Live URLs in the README; `npm run rehearse` drives the whole loop against production |
 | 23 | **Public repository** | `github.com/sunkaramahesh09/ai-study-companion` | Public from the first commit; `.env` gitignored, `.env.example` tracked, no secrets in history |
-| 24 | **Architecture documentation** | [`ARCHITECTURE.md`](ARCHITECTURE.md) + [`DECISIONS.md`](DECISIONS.md) (82 entries) | — |
+| 24 | **Architecture documentation** | [`ARCHITECTURE.md`](ARCHITECTURE.md) + [`DECISIONS.md`](DECISIONS.md) (86 entries) | — |
 
 **24 / 24 Must Haves implemented.**
 
