@@ -15,7 +15,8 @@ https://ai-study-companion-ruby.vercel.app
 
 | # | Thing | Why |
 |---|---|---|
-| 1 | **Two accounts ready.** A brand-new learner account you will create on camera, and a separate **admin** account you already made with `node --env-file=.env scripts/create-admin.mjs <email> "Name"` | The Admin link only appears in the sidebar for `profiles.role = 'admin'`. Recording the learner loop and then signing in as the admin is cleaner than promoting yourself mid-video |
+| 1 | **Two accounts, both created BEFORE the take.** A learner account and a separate **admin** account made with `node --env-file=.env scripts/create-admin.mjs <email> "Name"` | The Admin link only appears in the sidebar for `profiles.role = 'admin'`. Recording the learner loop and then signing in as the admin is cleaner than promoting yourself mid-video |
+| 1b | **Do not sign up on camera.** Sign-up sends a confirmation email, and the project uses Supabase's built-in SMTP, which is rate limited to a couple of messages an hour and is not meant for production use. Create the learner account and confirm it beforehand; **record the sign-in** | A confirmation mail that does not arrive stops the video at second ten. Sign-in demonstrates authentication just as well and has no rate limit. If you do want the sign-up on camera, do it as the very first thing with no other sign-ups in the preceding hour, and have the inbox open in tab 2 |
 | 2 | **A PDF on the desktop, 5–20 pages, one clear subject.** Lecture notes or a textbook chapter. Not the PRD itself | Pages become citations. A focused document makes the grounded answer obviously right and the refusal obviously right |
 | 3 | **One question the PDF answers**, written down, and **one it plainly does not** | You do not want to be composing these on camera |
 | 4 | **Nothing else running against the AI providers.** No `npm test`, no `npm run eval`, no `npm run rehearse` | Groq meters 8,000 TPM per model across everything. A test run during recording makes the app look slow on camera when it is your own terminal queueing behind the limiter (D-062) |
@@ -50,13 +51,14 @@ Nothing to click yet. ~3 seconds.
 
 > **1 · Authentication**
 
-- Click **Create an account**.
-- Fill name, email, password. Submit.
+- Sign in with the learner account you prepared. (See pre-flight 1b — signing
+  up on camera puts a rate-limited confirmation email on the critical path.)
 - Land on **Home**, signed in, with the empty state.
 
 **Let it show:** the sidebar with your name at the bottom, and that Home is
-empty — this is genuinely a new account, not a pre-loaded one. The fact that
-there is **no Admin entry in the sidebar** matters and comes back in §13.
+empty — this account has no spaces, no projects, no history. Everything the
+video shows after this is built on camera. The fact that there is **no Admin
+entry in the sidebar** matters and comes back in §14.
 
 ---
 
