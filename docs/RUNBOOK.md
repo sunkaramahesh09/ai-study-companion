@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-19 16:10 · **Day:** Sat · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-19 17:50 · **Day:** Sat · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -429,6 +429,39 @@ slow on camera), which shots must not be cut (`queued → ready` on one row; the
 citation opening to a real page), that **question 3 is the open-ended one**
 (`selectQuestionType`: every third above difficulty 1), and that the quiz must
 reach `Quiz Complete!` or no recommendation is enqueued.
+
+### Fifteenth: a quota rebalance had silently killed concept extraction
+
+**Session 2026-09-19 17:30.** Reported from real use against production: a
+project with a 5-page PDF reading `1 material · 1 ready · 5p · 5 chunks` and
+**0 concepts**, with the quiz saying *"no concepts yet — upload material and let
+it finish processing"*. It had finished.
+
+`material.concepts` was `failed` after 3 retries with the reason in its own
+output: `groq:fallback: request needs ~2156 tokens but the per-minute ceiling is
+2000`. **D-062 inverted an assumption this code was built on** — concept
+extraction's budget was hard-coded against a worker fallback share of 6000 TPM,
+D-062 gave the API the larger share to fix quiz latency, the worker fell to 2000,
+and the request became one the limiter rejects permanently (correctly: it can
+never fit any window). Full analysis in **D-088**.
+
+**Nothing caught it twice over.** The test asserted `sampleChunks` respected its
+own default, never that the resulting *request* fit the ceiling. And every
+document tried since was too small to need sampling — the rehearsal's 3-page and
+the eval's 4-page fixtures both fit under 2000. **Small fixtures hid a
+size-dependent bug**, the same shape as D-050.
+
+Fixed: the budget is derived from `GroqProvider.tokensPerMinuteFor(tier)` and
+mirrors `estimateRequestTokens`; it degrades to a smaller sample rather than an
+impossible request; fallback shares rebalanced to 0.6 API / 0.4 worker. Tests
+assert against the real estimator across six ceilings, verified by restoring the
+hard-coded values and watching three go red. The **Reprocess** button now shows
+on a settled material rather than only a failed one — the recovery path for this
+class of failure did not exist in the UI.
+
+**Verified on production after deploy:** the re-enqueued job completed in 3.3s
+and extracted **11 concepts** (Tokenization, Transformer Architecture,
+Embeddings, Inference, Context Window, …). The reported project is unblocked.
 
 ### >>> STILL OUTSTANDING BEFORE SUBMITTING <<<
 
