@@ -2976,3 +2976,48 @@ sources stay separable and a learner could be shown which is which. That is a
 schema change and a re-tuning of the update, not a Friday-night change.
 
 ---
+
+## D-082 — The flashcard is the one surface that gets its own theme
+**Date:** 2026-09-19 · **Area:** Frontend / design system
+
+Reported on the deployed build: the flashcard "should look better". It did not
+look broken — it looked like every other panel on the page, which for this one
+screen is the failure. A `.card` with a question in it gives the learner no
+signal that there is something to turn over, and a `min-height` with the text
+pinned to the top left 180px of empty white under the prompt.
+
+Three choices worth recording, because each one is a deliberate exception to how
+the rest of the app is styled:
+
+1. **The card gets its own gradient face and two offset edges behind it.**
+   Everywhere else, surfaces are the translucent `.card` so the page's glows
+   show through and nothing reads as a box pasted on top. The flashcard goes the
+   other way on purpose: it is the only element on the page that should read as
+   an object. The two edges behind it are the remaining queue as depth — they
+   disappear on the last card, because a deck that never runs down would be
+   lying about how much work is left.
+
+2. **The question stays on screen when the answer appears**, demoted to a
+   caption above it. Replacing it was the original behaviour and it is wrong:
+   comparing what you recalled against the back *is* the exercise, and with the
+   prompt gone there is nothing to compare against.
+
+3. **Tone moved from a 4px left border to a dot plus a hover wash**, driven by a
+   `--tone` custom property per rating. The D-051 constraint is unchanged and
+   the reason it exists is unchanged: each button still carries its own word, so
+   the four stay distinguishable without hue, and the red/green pair is still
+   the measured `--error`/`--ok` pair rather than the unmeasured 500 shades.
+
+The turn animation is a 300ms `rotateY` on a card keyed by
+`cardId:revealed`, so it plays for both transitions that matter — a new card
+arriving, and this one being turned over. It inherits the global
+`prefers-reduced-motion` clamp in `animations.css`, so there is nothing new to
+opt out of.
+
+**Verified in a browser, not just in a typecheck:** the three states (front,
+back, last-card-in-queue) were rendered against the real stylesheets in a
+throwaway static harness and screenshotted, because the live page needs a signed
+in account and the styles are the whole change. The harness was deleted; it is
+not in the repo.
+
+---

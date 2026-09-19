@@ -60,6 +60,12 @@ export function Flashcards() {
     [deck, reviewed],
   );
   const card: Flashcard | undefined = queue[0];
+  // Progress through this sitting, not through the whole deck: the rail should
+  // fill as the queue you sat down to actually empties. A card rated "again"
+  // stays in `deck.due` (it comes back in ten minutes), so it keeps its place
+  // in the total rather than silently shrinking it.
+  const sittingTotal = deck?.due.length ?? 0;
+  const done = Math.max(0, Math.min(sittingTotal, sittingTotal - queue.length));
 
   useEffect(() => {
     setRevealed(false);
@@ -179,61 +185,91 @@ export function Flashcards() {
           }
         />
       ) : card ? (
-        <div className="card flashcard">
-          <div className="flashcard-meta">
-            {card.conceptName && (
-              <span className="pill">
-                <Icon name="brain" size={13} /> {card.conceptName}
-              </span>
-            )}
-            {card.lapses > 0 && (
-              <span className="muted small">
-                forgotten {card.lapses} time{card.lapses === 1 ? '' : 's'}
-              </span>
-            )}
-            <span className="muted small">{queue.length} left in this queue</span>
-          </div>
-
-          <p className="flashcard-front">{card.front}</p>
-
-          {!revealed ? (
-            <>
-              {card.hint && <p className="muted small flashcard-hint">Hint: {card.hint}</p>}
-              <div className="cta-row">
-                <button type="button" className="cta" onClick={() => setRevealed(true)}>
-                  Show answer
-                </button>
-                <button
-                  type="button"
-                  className="linkish"
-                  onClick={() => remove(card.id)}
-                  disabled={busy}
-                >
-                  Delete this card
-                </button>
+        <div className={`flashcard-stage${queue.length <= 1 ? ' is-last' : ''}`}>
+          {/* Keyed on the card and on whether it is face up, so the turn
+              animation plays for both — a new card arriving and this one being
+              turned over. */}
+          <div className="flashcard" key={`${card.id}:${revealed ? 'back' : 'front'}`}>
+            <div className="flashcard-top">
+              <div className="flashcard-tags">
+                {card.conceptName && (
+                  <span className="flashcard-chip">
+                    <Icon name="brain" size={12} /> {card.conceptName}
+                  </span>
+                )}
+                {card.lapses > 0 && (
+                  <span className="flashcard-chip is-lapsed">
+                    <Icon name="refresh" size={12} /> forgotten {card.lapses} time
+                    {card.lapses === 1 ? '' : 's'}
+                  </span>
+                )}
               </div>
-            </>
-          ) : (
-            <>
-              <p className="flashcard-back">{card.back}</p>
-              <p className="muted small">How did that go?</p>
-              <div className="rating-row">
-                {RATINGS.map((r) => (
-                  <button
-                    key={r.rating}
-                    type="button"
-                    className={`rating ${r.tone}`}
-                    onClick={() => rate(r.rating)}
-                    disabled={busy}
-                    title={r.hint}
-                  >
-                    <strong>{r.label}</strong>
-                    <span className="muted small">{r.hint}</span>
+              <span className="flashcard-count">
+                Card {done + 1} of {sittingTotal} · {queue.length} left
+              </span>
+            </div>
+
+            <div className="flashcard-rail" aria-hidden="true">
+              <span style={{ width: `${sittingTotal ? (done / sittingTotal) * 100 : 0}%` }} />
+            </div>
+
+            <div className="flashcard-face">
+              <p className={`flashcard-front${revealed ? ' is-recap' : ''}`}>{card.front}</p>
+              {!revealed ? (
+                card.hint && (
+                  <p className="flashcard-hint">
+                    <Icon name="bulb" size={14} /> {card.hint}
+                  </p>
+                )
+              ) : (
+                <div className="flashcard-answer">
+                  <span className="flashcard-answer-label">Answer</span>
+                  <p className="flashcard-back">{card.back}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flashcard-actions">
+              {!revealed ? (
+                <div className="cta-row">
+                  <button type="button" className="cta" onClick={() => setRevealed(true)}>
+                    <Icon name="eye" size={15} />
+                    Show answer
                   </button>
-                ))}
-              </div>
-            </>
-          )}
+                  <button
+                    type="button"
+                    className="linkish"
+                    onClick={() => remove(card.id)}
+                    disabled={busy}
+                  >
+                    Delete this card
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <p className="flashcard-ask">How did that go?</p>
+                  <div className="rating-row">
+                    {RATINGS.map((r) => (
+                      <button
+                        key={r.rating}
+                        type="button"
+                        className={`rating ${r.tone}`}
+                        onClick={() => rate(r.rating)}
+                        disabled={busy}
+                        title={r.hint}
+                      >
+                        <span className="rating-label">
+                          <span className="rating-dot" aria-hidden="true" />
+                          {r.label}
+                        </span>
+                        <span className="rating-hint">{r.hint}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       ) : (
         <EmptyState

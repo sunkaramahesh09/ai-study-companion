@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-18 22:05 · **Day:** Fri · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-19 10:40 · **Day:** Sat · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -309,6 +309,31 @@ relative-time). Typecheck clean, web build green with `verify-bundle`.
 **NOT browser-verified.** The UI has not had a click-through: that needs signing
 in, and signing in on someone's behalf is not something to automate. A seeded
 account is waiting — see the note at the end of this section.
+
+### Eleventh: the flashcard did not look like a flashcard
+
+**Session 2026-09-19 10:20.** Reported against the deployed build — the study
+card "should look better". It was a plain `.card`: a question in a white panel
+among white panels, with nothing saying there was anything to turn over, and a
+`min-height` that left a large empty band under a short prompt (D-082).
+
+- `.flashcard-stage` — two tinted offset edges behind the live card, so the
+  remaining queue reads as depth. They are removed on the last card.
+- The card itself now has its own gradient face, a concept/lapse chip row, a
+  position counter (`Card 3 of 6 · 4 left`) and a thin progress rail for the
+  sitting. The face centres itself, so a one-line question is not marooned.
+- **The question stays visible when the answer appears**, demoted to a caption:
+  comparing your recall against the back is the exercise.
+- Ratings: colour tone moved to a `--tone` custom property driving a dot and a
+  hover wash. D-051 unchanged — each button keeps its own word, and red/green
+  are still the measured `--error`/`--ok` pair.
+- A 300ms `rotateY` turn, keyed `cardId:revealed`, under the existing global
+  `prefers-reduced-motion` clamp.
+
+CSS and markup only — no route, query or schema change. Typecheck clean, 601
+tests still green. **Rendered and screenshotted in Chrome** against the real
+stylesheets (front / back / last card) via a throwaway static harness, since
+the live page needs a signed-in account; harness deleted, not in the repo.
 
 ### >>> STILL OUTSTANDING BEFORE SUBMITTING <<<
 

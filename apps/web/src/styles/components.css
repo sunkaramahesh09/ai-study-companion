@@ -1054,68 +1054,257 @@ a.rowbar-link:focus-visible {
 }
 
 /* ─── Flashcards ──────────────────────────────────────────────────────────
-   One card at a time, deliberately tall and quiet: the whole point is that
-   nothing but the prompt is on screen while the learner tries to recall. */
+   A flashcard has to look like a card off the top of a deck, not like another
+   content panel — on the last screen it was a white rectangle among white
+   rectangles and nothing about it said "turn me over".
+
+   Two offset edges sit behind the live card so the rest of the queue reads as
+   physical depth, and the card is the one surface on the page with its own
+   gradient face. Everything else stays quiet: while the learner is trying to
+   recall, the prompt should be the only thing competing for attention. */
+.flashcard-stage {
+  position: relative;
+  margin: var(--space-5) 0 var(--space-6);
+  perspective: 1600px;
+}
+/* Two layers, not a fanned-out five: the exact number left is already stated in
+   words above the card, so this only needs to say "there are more". */
+.flashcard-stage::before,
+.flashcard-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: var(--radius-2xl);
+  /* Tinted rather than white: against a near-white card face, a white edge
+     disappears and the depth cue is wasted. */
+  background: linear-gradient(180deg, rgba(243, 240, 255, 0.95), rgba(236, 232, 253, 0.95));
+  border: 1px solid rgba(124, 92, 246, 0.18);
+  box-shadow: 0 10px 22px -16px rgba(76, 46, 172, 0.40);
+}
+.flashcard-stage::before { transform: translateY(11px) scale(0.978); }
+.flashcard-stage::after  { transform: translateY(21px) scale(0.954); opacity: 0.72; }
+/* Nothing behind the card when it is the last one — a deck that never runs down
+   would be a lie about how much work is left. */
+.flashcard-stage.is-last::before,
+.flashcard-stage.is-last::after { display: none; }
+
 .flashcard {
-  margin-top: var(--space-4);
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  min-height: 260px;
+  gap: var(--space-4);
+  min-height: 300px;
+  padding: var(--space-6) var(--space-6) var(--space-5);
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgba(124, 92, 246, 0.14);
+  background:
+    radial-gradient(ellipse 60% 55% at 88% 4%, rgba(196, 181, 253, 0.30) 0%, transparent 62%),
+    radial-gradient(ellipse 70% 60% at 2% 98%, rgba(167, 139, 250, 0.18) 0%, transparent 60%),
+    linear-gradient(158deg, #ffffff 0%, var(--lavender-50) 52%, #f2eeff 100%);
+  box-shadow: 0 2px 4px rgba(76, 46, 172, 0.05), 0 22px 44px -26px rgba(76, 46, 172, 0.45);
+  overflow: hidden;
+  /* Remounted under a key of card id + revealed state, so this plays on both
+     transitions that matter: a new card arriving and this one turning over. */
+  animation: cardTurn var(--duration-slow) var(--ease-out);
 }
-.flashcard-meta {
+@keyframes cardTurn {
+  from { transform: rotateY(-42deg) scale(0.97); opacity: 0; }
+  60%  { opacity: 1; }
+  to   { transform: none; opacity: 1; }
+}
+
+.flashcard-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.flashcard-tags {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   flex-wrap: wrap;
 }
-.flashcard-front {
-  font-size: var(--text-xl);
+.flashcard-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
   font-weight: var(--weight-semibold);
-  line-height: 1.45;
-  margin: var(--space-2) 0 0;
+  letter-spacing: 0.01em;
+  color: var(--primary-600);
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(124, 92, 246, 0.18);
+}
+.flashcard-chip svg { flex: none; }
+/* A card you have forgotten before is worth flagging, and worth flagging in a
+   different colour from the concept it belongs to. */
+.flashcard-chip.is-lapsed {
+  color: var(--warning-600);
+  background: rgba(255, 251, 235, 0.85);
+  border-color: rgba(245, 158, 11, 0.26);
+}
+.flashcard-count {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.flashcard-rail {
+  height: 3px;
+  border-radius: var(--radius-full);
+  background: rgba(124, 92, 246, 0.13);
+  overflow: hidden;
+}
+.flashcard-rail span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary-400), var(--primary-500));
+  transition: width var(--duration-slow) var(--ease-out);
+}
+
+/* The face centres itself in whatever height the card settles at, so a one-line
+   question does not sit marooned at the top of 300px of empty gradient. */
+.flashcard-face {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-3);
+}
+.flashcard-front {
+  margin: 0;
+  max-width: 46ch;
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+/* Once the answer is up, the question stays on screen but stands down to a
+   caption: comparing what you said against the back is the whole exercise. */
+.flashcard-front.is-recap {
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  max-width: 62ch;
 }
 .flashcard-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
   margin: 0;
+  font-size: var(--text-sm);
   font-style: italic;
+  color: var(--text-muted);
 }
-/* The answer arrives with a left rule rather than a box, so revealing it reads
-   as the same card continuing rather than a second card appearing. */
+.flashcard-hint svg { flex: none; margin-top: 2px; }
+
+.flashcard-answer {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(124, 92, 246, 0.12);
+  /* Inset rule rather than a border on one side, so the panel keeps a single
+     radius all the way round. */
+  box-shadow: inset 3px 0 0 var(--primary-400);
+}
+.flashcard-answer-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary-500);
+}
 .flashcard-back {
   margin: 0;
-  padding-left: var(--space-3);
-  border-left: 3px solid var(--primary-400);
-  line-height: 1.6;
+  font-size: var(--text-md);
+  line-height: 1.65;
   white-space: pre-wrap;
+}
+
+.flashcard-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid rgba(124, 92, 246, 0.12);
+}
+.flashcard-actions .cta-row { width: 100%; }
+/* Delete is a real action but not this screen's action; it goes to the far end
+   so it is never the thing a hurried thumb lands on. */
+.flashcard-actions .cta-row .linkish { margin-left: auto; }
+.flashcard-ask {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
 }
 
 .rating-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: var(--space-2);
 }
 .rating {
+  --tone: var(--primary-400);
+  --tone-wash: rgba(139, 92, 246, 0.10);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: 3px;
   text-align: left;
   padding: var(--space-3);
   border: 1px solid var(--border-normal);
-  border-left-width: 4px;
   border-radius: var(--radius-md);
-  background: var(--bg-card);
+  background: rgba(255, 255, 255, 0.85);
   cursor: pointer;
-  transition: border-color var(--duration-fast), transform var(--duration-fast);
+  transition: border-color var(--duration-fast), background var(--duration-fast),
+              transform var(--duration-fast), box-shadow var(--duration-fast);
 }
-.rating:hover:not(:disabled) { transform: translateY(-1px); }
-.rating:disabled { opacity: 0.6; cursor: default; }
+.rating:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: var(--tone);
+  background: var(--tone-wash);
+  box-shadow: 0 8px 18px -12px rgba(76, 46, 172, 0.55);
+}
+.rating:disabled { opacity: 0.55; cursor: default; }
+.rating-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+.rating-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: var(--radius-full);
+  background: var(--tone);
+  box-shadow: 0 0 0 3px var(--tone-wash);
+}
+.rating-hint {
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  color: var(--text-muted);
+}
 /* Colour is a second cue here, never the only one: each button carries its own
-   word, so the four stay distinguishable without relying on hue (D-051). */
-.rate-again { border-left-color: var(--error); }
-.rate-hard  { border-left-color: var(--warning-500); }
-.rate-good  { border-left-color: var(--primary-400); }
-.rate-easy  { border-left-color: var(--ok); }
+   word, so the four stay distinguishable without relying on hue (D-051). The
+   red and green are the measured --error/--ok pair rather than the unmeasured
+   500 shades, for the same reason the tokens are pinned that way. */
+.rate-again { --tone: var(--error);         --tone-wash: rgba(248, 113, 113, 0.13); }
+.rate-hard  { --tone: var(--warning-500);   --tone-wash: rgba(245, 158, 11, 0.13); }
+.rate-good  { --tone: var(--primary-500);   --tone-wash: rgba(108, 71, 236, 0.10); }
+.rate-easy  { --tone: var(--ok);            --tone-wash: rgba(74, 222, 128, 0.16); }
 
 .deck-list {
   list-style: none;
