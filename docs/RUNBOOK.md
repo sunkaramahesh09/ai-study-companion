@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-19 10:40 · **Day:** Sat · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-19 12:05 · **Day:** Sat · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -334,6 +334,27 @@ CSS and markup only — no route, query or schema change. Typecheck clean, 601
 tests still green. **Rendered and screenshotted in Chrome** against the real
 stylesheets (front / back / last card) via a throwaway static harness, since
 the live page needs a signed-in account; harness deleted, not in the repo.
+
+### Twelfth: raw event names in a learner's activity feed
+
+**Session 2026-09-19 11:35.** Asked whether showing this to a user is even in
+the PRD. Two things in the screenshots, opposite answers (D-083):
+
+- **AI activity on Project Analytics is PRD §12, by name** — unchanged from
+  D-077, which already removed it from Global Analytics where nothing asked
+  for it. Correct as it stands.
+- **`flashcards_generated` / `flashcard_reviewed` / `flashcard_generation` were
+  a bug** — three inline label maps, none exhaustive. Five older event types
+  (`space_created`, `material_processing`, `tutor_answer`,
+  `question_answered`, `weakness_detected`) would have leaked the same way.
+
+`apps/web/src/lib/labels.ts` now owns every label, icon and feature name, with
+a `humanise` fallback. Its test compares key sets against the `0010` CHECK
+lists, so it fails for a missing label *and* for a dead one; verified by
+deleting an entry and watching it go red. Admin keeps raw types on purpose
+(§16 — an operator filters on the value the API takes).
+
+**608 tests, 46 files.** Typecheck clean, web build green.
 
 ### >>> STILL OUTSTANDING BEFORE SUBMITTING <<<
 

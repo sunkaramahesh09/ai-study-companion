@@ -4,33 +4,8 @@ import { getProject, touchProject, type ProjectDashboard as Dash } from '../lib/
 import { EmptyState, ErrorNote, MasteryBar, Spinner } from '../components/Ui.tsx';
 import { MaterialUpload } from '../components/MaterialUpload.tsx';
 import { Recommendations } from '../components/Recommendations.tsx';
-import { Icon, type IconName } from '../components/Icon.tsx';
-
-const EVENT_LABELS: Record<string, string> = {
-  project_created: 'Project created',
-  material_uploaded: 'Material uploaded',
-  material_ready: 'Material processed',
-  material_failed: 'Processing failed',
-  tutor_question: 'Asked the Tutor',
-  tutor_unsupported: 'Tutor had insufficient evidence',
-  quiz_started: 'Started a quiz',
-  quiz_completed: 'Completed a quiz',
-  mastery_updated: 'Mastery updated',
-  recommendation_created: 'New recommendation',
-};
-
-const EVENT_ICONS: Record<string, IconName> = {
-  project_created: 'sparkle',
-  material_uploaded: 'file',
-  material_ready: 'check-circle',
-  material_failed: 'x-circle',
-  tutor_question: 'tutor',
-  tutor_unsupported: 'alert',
-  quiz_started: 'play',
-  quiz_completed: 'trophy',
-  mastery_updated: 'chart-bar',
-  recommendation_created: 'bulb',
-};
+import { Icon } from '../components/Icon.tsx';
+import { eventIcon, eventLabel } from '../lib/labels.ts';
 
 export function ProjectDashboard() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -150,8 +125,8 @@ export function ProjectDashboard() {
             {recentActivity.map((a) => (
               <li key={a.id}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                  <Icon name={EVENT_ICONS[a.event_type] ?? 'info'} size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                  <span>{EVENT_LABELS[a.event_type] ?? a.event_type}</span>
+                  <Icon name={eventIcon(a.event_type)} size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                  <span>{eventLabel(a.event_type)}</span>
                 </div>
                 <span className="muted small">{new Date(a.created_at).toLocaleString()}</span>
               </li>

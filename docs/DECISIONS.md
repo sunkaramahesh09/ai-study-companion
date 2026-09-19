@@ -3021,3 +3021,55 @@ in account and the styles are the whole change. The harness was deleted; it is
 not in the repo.
 
 ---
+
+## D-083 — A learner was shown `flashcards_generated`
+**Date:** 2026-09-19 · **Area:** Frontend / analytics presentation
+
+**Asked:** *"in any other apps or webs we never show this type of information to
+the user right? but why in our website we are showing, is it asked in prd?"*
+about two things in one screenshot pair. They have opposite answers.
+
+**1. The AI activity panel on Project Analytics — yes, the PRD asks for it.**
+Already settled as D-077 and unchanged: §12 names it (*"Project Analytics should
+show learning activity, assessment performance, mastery, concept trends, and AI
+activity"*), §2 "Observable AI" requires requests, failures, latency, token
+usage and cost to be visible, and §15 asks that *"how much did a request
+cost?"* and *"which model was used?"* be answerable. The instinct is right about
+consumer products — Duolingo does not show you its token bill — and that is why
+D-077 removed the panel from the learner's account-wide Global Analytics, where
+nothing asked for it. On a single Project it stays, because §12 puts it there by
+name.
+
+**2. `flashcards_generated` and `flashcard_reviewed` in Recent Activity — no,
+that is a bug.** Nothing asks for raw column values in a learner's feed, and the
+rows around them read *"Asked the Tutor"* and *"Tutor had insufficient
+evidence"*, so the inconsistency was visible. Same cause in the AI table, where
+`flashcard_generation` sat among *"Tutor answers"* and *"Question generation"*.
+
+**Cause:** three display maps, inline in the two components that used them, none
+of them exhaustive. Adding an event type means a table CHECK constraint, a
+TypeScript union, an emitter — and, easily missed, two hand-written label maps
+with no relationship to any of those. D-080 missed them. They had also drifted
+before flashcards: `space_created`, `material_processing`, `tutor_answer`,
+`question_answered` and `weakness_detected` were never in the dashboard map
+either, so five event types would have leaked the same way.
+
+**Fix:** `apps/web/src/lib/labels.ts` owns every label — timeline phrasing
+("Reviewed a flashcard"), counting phrasing ("Flashcard reviews"), icon, and AI
+feature name — with a `humanise` fallback so an unmapped value reads as prose
+rather than as a database column.
+
+**The test asserts the maps, not the rendered output.** Written the other way
+first and it was worthless: `humanise` turns a missing `flashcards_generated`
+into "Flashcards generated", so a test checking the output for underscores would
+have passed with the bug live. It now compares each map's key set against the
+`0010_flashcards.sql` CHECK lists, which fails in both directions — a missing
+label, and a dead label for a type the schema no longer has. Verified by
+deleting an entry and watching it go red.
+
+**Admin deliberately still shows the raw type** in a mono column. §16 asks that
+an operator be able to filter activity by type, and the value they filter on is
+the one the API takes. Machine names are correct there and wrong for a learner;
+that is the whole distinction.
+
+---

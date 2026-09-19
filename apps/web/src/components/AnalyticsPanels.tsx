@@ -1,5 +1,6 @@
 import { BarChart, RowBars, Stat, pct, type Bar } from './Charts.tsx';
 import type { ActivitySummary, AiUsageSummary, AssessmentSummary, TutorSummary } from '../lib/queries.ts';
+import { eventCountLabel, featureLabel } from '../lib/labels.ts';
 
 /**
  * Panels shared by Project and Global analytics.
@@ -8,33 +9,6 @@ import type { ActivitySummary, AiUsageSummary, AssessmentSummary, TutorSummary }
  * lives in one place — a number that means one thing on a project and another
  * globally would be a bug the UI could not show you.
  */
-
-const EVENT_LABELS: Record<string, string> = {
-  space_created: 'Spaces created',
-  project_created: 'Projects created',
-  material_uploaded: 'Materials uploaded',
-  material_ready: 'Materials processed',
-  material_failed: 'Processing failures',
-  tutor_question: 'Tutor questions',
-  tutor_answer: 'Tutor answers',
-  tutor_unsupported: 'Tutor declined',
-  quiz_started: 'Quizzes started',
-  question_answered: 'Questions answered',
-  quiz_completed: 'Quizzes completed',
-  mastery_updated: 'Mastery updates',
-  weakness_detected: 'Weaknesses detected',
-  recommendation_created: 'Recommendations',
-};
-
-const FEATURE_LABELS: Record<string, string> = {
-  tutor_answer: 'Tutor answers',
-  concept_extraction: 'Concept extraction',
-  question_generation: 'Question generation',
-  open_answer_grading: 'Answer grading',
-  recommendation: 'Recommendations',
-  embedding: 'Embeddings',
-  evaluation: 'Evaluation',
-};
 
 /** `2026-09-17` → `17 Sep`, for a tooltip a person can read. */
 function dayLabel(iso: string): string {
@@ -48,14 +22,14 @@ export function ActivityPanel({ activity, days }: { activity: ActivitySummary; d
     value: b.total,
     detail: Object.entries(b.byType)
       .sort((a, x) => x[1] - a[1])
-      .map(([type, n]) => `${EVENT_LABELS[type] ?? type}: ${n}`)
+      .map(([type, n]) => `${eventCountLabel(type)}: ${n}`)
       .join('\n'),
   }));
 
   const breakdown: Bar[] = Object.entries(activity.byType)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8)
-    .map(([type, n]) => ({ label: EVENT_LABELS[type] ?? type, value: n }));
+    .map(([type, n]) => ({ label: eventCountLabel(type), value: n }));
 
   return (
     <div className="card">
@@ -231,7 +205,7 @@ export function AiUsagePanel({ ai, caption }: { ai: AiUsageSummary; caption?: st
             <tbody>
               {ai.byFeature.map((f) => (
                 <tr key={f.feature}>
-                  <td>{FEATURE_LABELS[f.feature] ?? f.feature}</td>
+                  <td>{featureLabel(f.feature)}</td>
                   <td>{f.requests}</td>
                   <td>{f.totalTokens.toLocaleString()}</td>
                   <td>${f.estimatedCostUsd.toFixed(5)}</td>
