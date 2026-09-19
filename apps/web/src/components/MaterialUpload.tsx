@@ -151,8 +151,20 @@ export function MaterialUpload({ projectId, initial }: { projectId: string; init
                 </div>
               </div>
               <StatusPill status={m.status} />
-              {m.status === 'failed' && (
-                <button className="btn-icon" onClick={() => void onRetry(m.id)} title="Retry" aria-label={`Retry ${m.filename}`}>
+              {/* Offered on `ready` too, not just `failed`. Extraction and
+                  concept generation are two jobs: the text can index while
+                  concept extraction fails, leaving a green "ready" row and a
+                  project with no concepts, so no quiz and no mastery — with
+                  nothing on this screen to press. The API has always accepted a
+                  retry for anything not mid-processing; only this button was
+                  narrower than the endpoint behind it (D-088). */}
+              {m.status !== 'processing' && m.status !== 'queued' && (
+                <button
+                  className="btn-icon"
+                  onClick={() => void onRetry(m.id)}
+                  title={m.status === 'failed' ? 'Retry' : 'Reprocess this document'}
+                  aria-label={`${m.status === 'failed' ? 'Retry' : 'Reprocess'} ${m.filename}`}
+                >
                   <Icon name="refresh" size={15} />
                 </button>
               )}
