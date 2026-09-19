@@ -3236,3 +3236,80 @@ say why it is not a defect, or say why it cannot be fixed here. Silence is not
 one of them, and "the tool flagged it" is not the same as "it is wrong".
 
 ---
+
+## D-088 — A quota rebalance silently made concept extraction impossible
+**Date:** 2026-09-19 · **Area:** AI / Background processing
+
+**Symptom, reported from real use:** a project with a 5-page PDF showing
+`1 material · 1 ready · 5p · 5 chunks` and **0 concepts**. Every downstream
+surface dead behind a green material row — *"This Project has no concepts yet.
+Upload material and let it finish processing, then try again"* on the quiz, no
+mastery, no growth, no recommendations. The advice in that message is the one
+thing that cannot help: the material had finished processing.
+
+**The job's own output said it exactly:**
+
+```
+material.concepts  state=retry  retry_count=2
+Error: groq:fallback: request needs ~2156 tokens but the per-minute
+       ceiling is 2000. Shorten the prompt.
+  at RateLimiter.admit (packages/ai/dist/limiter.js:108)
+```
+
+**Cause: D-062 inverted an assumption this code was built on.** Concept
+extraction runs in the worker on the fallback tier, and was written against a
+worker fallback share of 0.75 — 6000 TPM — with a budget hard-coded at 1500
+tokens of sampled material plus a 900-token completion allowance, and a comment
+calling that "comfortably inside the worker's 6000 TPM fallback share".
+
+D-062 then fixed a real quiz-latency problem by giving the **API** the larger
+fallback share. The shares became API 0.75 / worker 0.25, the worker's fallback
+ceiling fell 6000 → 2000, and this request — unchanged, still estimating ~2156 —
+became one the limiter rejects **outright and permanently**. That rejection is
+correct behaviour: a request that cannot fit an empty window can never fit any
+window, so waiting would hang forever. The bug is asking for it at all.
+
+**Why nothing caught it.** Two layers of false assurance:
+
+- **The test asserted the wrong thing.** `sampleChunks` was tested to respect
+  its own 1500-token default. True, and useless — nothing checked that the
+  resulting *request* fit the ceiling it would be admitted through. The suite
+  stayed green through the entire regression.
+- **Every document tried since was too small to trigger it.** The rehearsal's
+  3-page fixture and the eval's 4-page fixture both sample under 2000 and
+  succeed. The first document big enough to need real sampling was the user's,
+  hours before the demo recording. **Small fixtures hid a size-dependent bug** —
+  the same shape as D-050, where a small document made a relevance gate look
+  like it worked.
+
+**Fix, in three parts:**
+
+1. **The budget is derived, never hard-coded.** `extractionBudget(ceiling)`
+   mirrors `estimateRequestTokens` — completion charged at 0.9 (0.6 assumed
+   usage × 1.5 reasoning for 'low', D-016), a reserve for the system prompt and
+   framing, 15% headroom for estimator drift — and `GroqProvider` now exposes
+   `tokensPerMinuteFor(tier)` so the caller can ask. A share change now resizes
+   the prompt instead of breaking it.
+2. **It degrades instead of dying.** A ceiling too small for a full sample
+   yields a smaller sample. The completion allowance never drops below 600,
+   where gpt-oss returns an empty string rather than a short answer (D-016).
+3. **The fallback shares are rebalanced to 0.6 API / 0.4 worker.** Both
+   processes do real fallback work — the API words questions while a learner
+   waits, the worker extracts concepts in one indivisible request — and 0.75/0.25
+   starved the one that cannot be split. Per tier they must still sum to ≤ 1.0:
+   Groq meters 8000 TPM per model, and over-subscribing only converts our own
+   queueing into the provider's 429s.
+
+**Tests assert against the real estimator**, not against our own arithmetic:
+six ceilings from 1000 to 8000, each checked that `estimateRequestTokens` of
+the request `extractConcepts` actually sends lands under it. Verified by
+restoring the hard-coded 1500/900 and watching three of them go red.
+
+**Lesson:** D-062 was a correct fix that changed a number two files away from
+the code that depended on it, and the dependency existed only in a comment. A
+budget expressed as a literal is a claim about a configuration it cannot see.
+Derive it from the constraint, or the next rebalance breaks it again — silently,
+because the failure lands in a background job whose only user-visible symptom is
+a number that stays zero.
+
+---

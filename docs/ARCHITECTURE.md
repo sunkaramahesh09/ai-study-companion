@@ -4,7 +4,7 @@
 architectural decisions.*
 
 The full decision record, with the alternative rejected in each case, is
-[`DECISIONS.md`](DECISIONS.md) — 87 numbered entries, written as the work
+[`DECISIONS.md`](DECISIONS.md) — 88 numbered entries, written as the work
 happened. This document is the map; that one is the reasoning.
 
 ---

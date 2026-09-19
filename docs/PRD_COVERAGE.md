@@ -35,7 +35,7 @@ Legend: **Done** · **Partial** (working, with a stated gap) · **Not built**
 | 21 | **Testing** | 609 tests across 46 files, plus 18 evaluation cases and a production rehearsal | `npx vitest run`; live tests need real keys — see the README warning |
 | 22 | **Deployment** | Vercel (web) · Railway (api + worker) · Supabase | Live URLs in the README; `npm run rehearse` drives the whole loop against production |
 | 23 | **Public repository** | `github.com/sunkaramahesh09/ai-study-companion` | Public from the first commit; `.env` gitignored, `.env.example` tracked, no secrets in history |
-| 24 | **Architecture documentation** | [`ARCHITECTURE.md`](ARCHITECTURE.md) + [`DECISIONS.md`](DECISIONS.md) (87 entries) | — |
+| 24 | **Architecture documentation** | [`ARCHITECTURE.md`](ARCHITECTURE.md) + [`DECISIONS.md`](DECISIONS.md) (88 entries) | — |
 
 **24 / 24 Must Haves implemented.**
 

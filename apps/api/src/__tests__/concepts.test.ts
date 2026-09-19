@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { ConceptExtractionSchema, dedupe, sampleChunks, type SourceChunk } from '../lib/concepts.ts';
+import { estimateRequestTokens } from '@asc/ai';
+import {
+  ConceptExtractionSchema,
+  dedupe,
+  extractionBudget,
+  sampleChunks,
+  type SourceChunk,
+} from '../lib/concepts.ts';
 
 const chunk = (i: number, tokens = 100): SourceChunk => ({
   chunkIndex: i,
@@ -14,12 +21,12 @@ describe('sampleChunks', () => {
     expect(sampleChunks(chunks, 2000)).toHaveLength(3);
   });
 
-  it('defaults to a budget that fits the worker fallback share', () => {
-    // ~1500 tokens of material + a 900-token completion allowance lands near
-    // 2400 estimated, inside the worker's 6000 TPM fallback pool (D-033).
+  it('respects whatever budget it is handed', () => {
     const chunks = Array.from({ length: 200 }, (_, i) => chunk(i, 300));
-    const used = sampleChunks(chunks).reduce((s, c) => s + c.tokenCount, 0);
-    expect(used).toBeLessThanOrEqual(1500);
+    for (const budget of [600, 1500, 4000]) {
+      const used = sampleChunks(chunks, budget).reduce((s, c) => s + c.tokenCount, 0);
+      expect(used).toBeLessThanOrEqual(budget);
+    }
   });
 
   it('stays inside the token budget for a large document', () => {
@@ -115,5 +122,60 @@ describe('dedupe', () => {
 
   it('drops an entry whose name is only punctuation', () => {
     expect(dedupe([{ name: '---', description: 'x' }])).toHaveLength(0);
+  });
+});
+
+/**
+ * These exist because the old version of this suite did not.
+ *
+ * It asserted that `sampleChunks` respected its own 1500-token default, which
+ * was true and useless: nothing checked that the resulting REQUEST fit the
+ * limiter it would be admitted through. When the quota shares were rebalanced
+ * the worker's fallback ceiling fell to 2000, the request estimated at 2156,
+ * and the limiter rejected it permanently — a project stuck at zero concepts
+ * behind a material row that said "ready". Green suite throughout (D-088).
+ *
+ * So these assert against the REAL estimator, not against our own arithmetic.
+ */
+describe('extractionBudget', () => {
+  // What extractConcepts actually sends, so the estimate here is the estimate
+  // the limiter will compute.
+  const estimateFor = (budget: { sampleTokens: number; completionTokens: number }) =>
+    estimateRequestTokens({
+      // The system prompt is ~1.1k characters; the sampled material is rendered
+      // into the user message at roughly 4 characters per token.
+      system: 'x'.repeat(1_100),
+      messages: [{ content: 'x'.repeat(budget.sampleTokens * 4) }],
+      maxTokens: budget.completionTokens,
+      reasoningEffort: 'low',
+    });
+
+  it('keeps the request under the ceiling it will be admitted through', () => {
+    // 2000 = the share that broke it. 3200 = the worker's share now.
+    for (const ceiling of [1_000, 1_500, 2_000, 3_200, 6_000, 8_000]) {
+      expect(estimateFor(extractionBudget(ceiling))).toBeLessThanOrEqual(ceiling);
+    }
+  });
+
+  it('degrades on a small ceiling instead of producing an impossible request', () => {
+    // The failure mode being prevented: a budget that cannot fit is not a slow
+    // request, it is one the limiter refuses forever.
+    const tight = extractionBudget(1_000);
+    expect(tight.sampleTokens).toBeGreaterThan(0);
+    expect(estimateFor(tight)).toBeLessThanOrEqual(1_000);
+  });
+
+  it('never drops the completion allowance below the empty-string floor', () => {
+    // Under ~600, gpt-oss spends the whole allowance on reasoning and returns
+    // "" with no error (D-016). A truncation is worse than a small sample.
+    for (const ceiling of [500, 1_000, 8_000]) {
+      expect(extractionBudget(ceiling).completionTokens).toBeGreaterThanOrEqual(600);
+    }
+  });
+
+  it('gives a bigger ceiling a bigger sample', () => {
+    expect(extractionBudget(6_000).sampleTokens).toBeGreaterThan(
+      extractionBudget(2_000).sampleTokens,
+    );
   });
 });

@@ -81,6 +81,49 @@ function renderForExtraction(chunks: SourceChunk[]): string {
 }
 
 /**
+ * Splits a per-minute token ceiling into the parts one extraction request needs.
+ *
+ * The limiter estimates a request as prompt + a scaled completion allowance and
+ * refuses anything above the ceiling rather than waiting, because a request
+ * that cannot fit an empty window can never fit any window. So the prompt has
+ * to be built to fit, and the only number that knows what "fit" means is the
+ * ceiling this request will be admitted through.
+ *
+ * Mirrors `estimateRequestTokens` rather than guessing at it: the completion
+ * allowance is charged at REASONING_COST (0.6 assumed usage x 1.5 for 'low'
+ * effort, per D-016), and SYSTEM_RESERVE covers the system prompt, the schema
+ * hint and per-message framing, none of which are free.
+ *
+ * The point is that it DEGRADES. A ceiling too small for a full sample yields a
+ * smaller sample, not a permanently rejected request.
+ */
+export function extractionBudget(tokensPerMinute: number): {
+  sampleTokens: number;
+  completionTokens: number;
+} {
+  /** `maxTokens * 0.6 * reasoningMultiplier('low')` — see packages/ai/src/tokens.ts. */
+  const REASONING_COST = 0.9;
+  /** System prompt + schema hint + per-message framing, measured at ~320. */
+  const SYSTEM_RESERVE = 400;
+  /** Below this, gpt-oss spends the whole allowance on reasoning and returns "" (D-016). */
+  const MIN_COMPLETION_TOKENS = 600;
+
+  // 15% against estimator drift: it counts characters, not real BPE tokens.
+  const usable = Math.floor(tokensPerMinute * 0.85);
+  const completionTokens = Math.max(
+    MIN_COMPLETION_TOKENS,
+    Math.min(900, Math.floor(usable / 3)),
+  );
+  // Floor of 1 keeps sampleChunks' contract — it returns at least one chunk for
+  // a non-empty document — rather than silently extracting from nothing.
+  const sampleTokens = Math.max(
+    1,
+    usable - Math.ceil(completionTokens * REASONING_COST) - SYSTEM_RESERVE,
+  );
+  return { sampleTokens, completionTokens };
+}
+
+/**
  * Extracts the concepts a document teaches.
  *
  * Runs on the FALLBACK model, deliberately. This executes in the worker, whose
@@ -90,11 +133,15 @@ function renderForExtraction(chunks: SourceChunk[]): string {
  * exactly the shape that survives a smaller model, unlike open-ended
  * explanation.
  *
- * Budget: ~1500 tokens of sampled material plus a 900-token completion
- * allowance lands near 2400 estimated tokens, comfortably inside the worker's
- * 6000 TPM fallback share. This is WORKER-ONLY by design — the API's fallback
- * share is 2000 TPM and would reject it, which is correct: interactive requests
- * should not be competing with document analysis.
+ * Budget: DERIVED from the limiter ceiling this request will be admitted
+ * through, never hard-coded.
+ *
+ * It used to be a literal 1500 + 900, written against a worker fallback share
+ * of 6000 TPM. D-062 later rebalanced the shares to fix quiz latency, the
+ * worker's fallback fell to 2000, and this request — which the comment still
+ * called "comfortable" — became one the limiter rejects outright, forever, for
+ * any document big enough to need sampling. A stale comment is not a budget.
+ * See D-088.
  */
 export async function extractConcepts(input: {
   chunks: SourceChunk[];
@@ -104,7 +151,8 @@ export async function extractConcepts(input: {
   userId: string;
   projectId: string;
 }): Promise<ExtractedConcepts> {
-  const sampled = sampleChunks(input.chunks);
+  const budget = extractionBudget(generationProvider().tokensPerMinuteFor('fallback'));
+  const sampled = sampleChunks(input.chunks, budget.sampleTokens);
   if (sampled.length === 0) return { concepts: [] };
 
   const system = [
@@ -136,7 +184,7 @@ export async function extractConcepts(input: {
           content: `Document: ${input.filename}\n\n${renderForExtraction(sampled)}`,
         },
       ],
-      maxTokens: 900,
+      maxTokens: budget.completionTokens,
       temperature: 0.1,
       userId: input.userId,
       projectId: input.projectId,

@@ -72,9 +72,24 @@ function quotaShare(): { groq: { primary: number; fallback: number }; gemini: nu
   // Measured in production: p50 1,017ms, p95 57,224ms, max 59,702ms, with
   // attempt_count 1 throughout — the wait was ours, not the provider's and not
   // a retry. See D-062.
+  // The FALLBACK split is not the same as the primary one, and the difference
+  // is load-bearing. Both processes do real fallback work: the API generates
+  // question wording (~1,150 tokens, interactive, a learner is waiting), and
+  // the worker extracts concepts from a document (~2,400 tokens in ONE
+  // request, which either fits or fails permanently — the limiter rejects a
+  // request larger than the whole ceiling rather than waiting forever).
+  //
+  // 0.75/0.25 on fallback starved the worker at 2,000 TPM and made concept
+  // extraction impossible for any document whose prompt exceeded it: no
+  // concepts, so no quiz, no mastery, no recommendations, with a green
+  // material row saying "ready" (D-088). 0.6/0.4 leaves the API ~4 questions a
+  // minute and gives the worker room for one extraction plus headroom.
+  //
+  // Per tier these must sum to 1.0 or less: Groq meters 8000 TPM per model and
+  // over-subscribing just converts our own queueing into the provider's 429s.
   return isWorker
-    ? { groq: { primary: 0.25, fallback: 0.25 }, gemini: 0.85 }
-    : { groq: { primary: 0.75, fallback: 0.75 }, gemini: 0.15 };
+    ? { groq: { primary: 0.25, fallback: 0.4 }, gemini: 0.85 }
+    : { groq: { primary: 0.75, fallback: 0.6 }, gemini: 0.15 };
 }
 
 let groq: GroqProvider | undefined;

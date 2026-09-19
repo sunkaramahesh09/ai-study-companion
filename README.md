@@ -306,7 +306,7 @@ the one place whose whole job is to be believed.
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System diagram, layer boundaries, data model, request flows, and the major decisions with what was rejected |
 | [`docs/AI_USAGE.md`](docs/AI_USAGE.md) | AI used to **build** the product vs AI used **by** the product, kept strictly apart |
 | [`docs/PROMPTS.md`](docs/PROMPTS.md) | The actual development prompts, recovered from the session transcripts rather than written from memory |
-| [`docs/DECISIONS.md`](docs/DECISIONS.md) | **87 numbered decisions**, each with the alternative rejected and why. Written as the work happened, not reconstructed. Code comments cite them by id (`// see D-005`) |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | **88 numbered decisions**, each with the alternative rejected and why. Written as the work happened, not reconstructed. Code comments cite them by id (`// see D-005`) |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Deploying the three services, and the configuration mistakes that fail silently |
 | [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) | The shot list the submission video was recorded from, mapped to the PRD §20.2 order |
 | [`docs/RUNBOOK.md`](docs/RUNBOOK.md) | Build state, task checklist, and a landmine list |

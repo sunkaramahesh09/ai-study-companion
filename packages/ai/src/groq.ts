@@ -82,6 +82,19 @@ export class GroqProvider implements GenerationProvider {
     return tier === 'primary' ? this.config.primaryModel : this.config.fallbackModel;
   }
 
+  /**
+   * This process's per-minute token ceiling on a tier, after the quota share.
+   *
+   * Exposed because a caller that BUILDS a prompt needs to size it against the
+   * ceiling it will be admitted through. Hard-coding a budget against a share
+   * is how concept extraction silently died when the shares were rebalanced:
+   * the limiter rejected every request outright, permanently, and the only
+   * symptom was a project stuck at zero concepts (D-088).
+   */
+  tokensPerMinuteFor(tier: ModelTier): number {
+    return this.limiters[tier].tokensPerMinuteCeiling();
+  }
+
   snapshot() {
     return {
       primary: this.limiters.primary.snapshot(),

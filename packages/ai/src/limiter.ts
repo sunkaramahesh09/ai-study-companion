@@ -70,6 +70,11 @@ export class RateLimiter {
     return Math.max(25, this.window[0]!.at + 60_000 - at + 5);
   }
 
+  /** The configured per-minute token ceiling. A request above it can never be admitted. */
+  tokensPerMinuteCeiling(): number {
+    return this.config.tokensPerMinute;
+  }
+
   snapshot(): { requests: number; tokens: number; requestsToday: number; tokensToday: number } {
     this.prune(this.now());
     const minute = this.usage(this.window);
