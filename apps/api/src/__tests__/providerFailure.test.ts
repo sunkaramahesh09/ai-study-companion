@@ -219,4 +219,90 @@ describeIntegration('provider failure reaches the user as a usable error', () =>
       expect(reply.grounded).toBe(true);
     }, 20_000);
   });
+  /**
+   * A quiz cut short by a provider outage still has to finish properly.
+   *
+   * The learner answered every question wrong and got no recommendation. The
+   * attempt row said `completed`, so nothing looked broken — but `/next` had
+   * closed it directly when question generation failed, skipping the
+   * `quiz_completed` event and the analysis job that produces the
+   * recommendation. This is that path, with generation stubbed to fail.
+   */
+  describe('a quiz ended early by an outage still completes properly', () => {
+    it('records quiz_completed and hands the analysis to the worker', async () => {
+      const mcq = (n: number) => ({
+        text: JSON.stringify({
+          prompt: `Stub question ${n}: where is energy released from glucose?`,
+          options: ['Mitochondria', 'Chloroplasts', 'Nucleus', 'Ribosomes'],
+          correctIndex: 0,
+          explanation: 'Cellular respiration releases energy inside the mitochondria.',
+        }),
+        model: 'openai/gpt-oss-20b',
+        usedFallback: true,
+        usage: { promptTokens: 80, completionTokens: 40, totalTokens: 120 },
+      });
+
+      // Concepts are seeded directly. Extraction runs through the same
+      // generation provider this suite stubs, so the material indexed in
+      // `beforeAll` produced none — and a quiz cannot start without a concept
+      // to ask about. Two of them, so `chooseNext` still has somewhere to go
+      // after the first question and the failure under test is generation,
+      // not an exhausted concept list.
+      const { error: cErr } = await serviceClient().from('concepts').insert([
+        { project_id: projectId, user_id: userId, name: 'Cellular respiration' },
+        { project_id: projectId, user_id: userId, name: 'Photosynthesis' },
+      ]);
+      if (cErr && !/duplicate key/i.test(cErr.message)) throw new Error(cErr.message);
+
+      // First question generates; everything after it fails, the way a quiz
+      // runs into an exhausted embedding quota part-way through.
+      generate.mockResolvedValueOnce(mcq(1));
+
+      const started = await app.inject({
+        method: 'POST', url: '/api/quizzes', headers: auth(),
+        payload: { projectId, targetLength: 5 },
+      });
+      expect(started.statusCode).toBe(201);
+      const attemptId = started.json().attempt.id as string;
+      const questionId = started.json().question.id as string;
+
+      // Answer it wrong, so there is something for the analysis to work on.
+      const answered = await app.inject({
+        method: 'POST', url: `/api/quizzes/${attemptId}/answer`, headers: auth(),
+        payload: { questionId, selectedIndex: 1 },
+      });
+      expect(answered.statusCode).toBe(200);
+      expect(answered.json().finished).toBe(false);
+
+      generate.mockRejectedValue(new Error('provider down mid-quiz'));
+
+      const next = await app.inject({
+        method: 'POST', url: `/api/quizzes/${attemptId}/next`, headers: auth(),
+      });
+      expect(next.statusCode).toBe(200);
+      const body = next.json();
+      expect(body.finished).toBe(true);
+      expect(body.endedEarly).toBe(true);
+
+      // The row is closed …
+      const { data: attempt } = await serviceClient()
+        .from('quiz_attempts').select('status, completed_at').eq('id', attemptId).single();
+      expect(attempt!.status).toBe('completed');
+      expect(attempt!.completed_at).toBeTruthy();
+
+      // … and — the part that was missing — the event that drives weakness
+      // detection and the recommendation was recorded.
+      const { data: events } = await serviceClient()
+        .from('learning_events')
+        .select('event_type, payload')
+        .eq('project_id', projectId)
+        .eq('event_type', 'quiz_completed');
+      const forThisAttempt = (events ?? []).filter(
+        (e) => (e.payload as { attemptId?: string })?.attemptId === attemptId,
+      );
+      expect(forThisAttempt).toHaveLength(1);
+      expect((forThisAttempt[0]!.payload as { answered: number }).answered).toBe(1);
+    }, 60_000);
+  });
+
 });

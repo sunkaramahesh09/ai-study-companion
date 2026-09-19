@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-19 12:05 · **Day:** Sat · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-19 12:45 · **Day:** Sat · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -355,6 +355,29 @@ deleting an entry and watching it go red. Admin keeps raw types on purpose
 (§16 — an operator filters on the value the API takes).
 
 **608 tests, 46 files.** Typecheck clean, web build green.
+
+### Thirteenth: a quiz cut short produced no recommendation
+
+**Session 2026-09-19 12:20.** Reported as *"answered everything wrong but iam
+not getting any recommandations"* (D-084). The attempt row said `completed`, so
+nothing looked wrong — but no `quiz_completed` event was ever written, and that
+event is what enqueues weakness detection and the recommendation.
+
+Question 4 could not be generated (Gemini daily embed quota exhausted until the
+12:28 IST reset), and `/next`'s catch block closed the attempt *directly*,
+skipping the event and the job. A second variant: `chooseNext` returning
+nothing left the attempt `in_progress` forever.
+
+All three endings now go through one `closeAttempt()` helper; both its steps
+were already idempotent. Regression test in `providerFailure.test.ts`, verified
+by reverting the fix and watching it fail on the empty event list.
+
+**Quota note:** the 1000/day Gemini embed limit was exhausted by repeated full
+`npm test` runs, not by the app (production logged 20 embed calls in 30h). It
+resets at midnight Pacific = ~12:30 IST. **Do not run the full suite casually
+today** — the live suites are what burn it, and the demo video needs it.
+Targeted runs used instead: quizFlow, providerFailure, analytics,
+recommendations, plus all 303 offline tests.
 
 ### >>> STILL OUTSTANDING BEFORE SUBMITTING <<<
 

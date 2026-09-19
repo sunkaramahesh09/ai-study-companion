@@ -3073,3 +3073,65 @@ the one the API takes. Machine names are correct there and wrong for a learner;
 that is the whole distinction.
 
 ---
+
+## D-084 — A quiz that ends early must end the same way a full quiz ends
+**Date:** 2026-09-19 · **Area:** Assessment / events
+
+**Reported:** *"i have taken a quiz now and answered everything wrong but iam
+not getting any recommandations."*
+
+Not a recommendation-logic problem. The analysis never ran.
+
+**What the database showed.** Attempt `3ffafe8e`, 12:14 IST: three questions
+answered, zero correct, `status = completed`, `completed_at` eight seconds after
+the last answer — and **no `quiz_completed` event**. Three `question_answered`
+and three `mastery_updated` rows, then nothing. Every earlier completed attempt
+has the event and a recommendation created ~15s later, so the worker, the
+trigger rule and the generation path were all healthy.
+
+**Why it stopped at three of five.** Question four could not be generated:
+generation retrieves material for the concept, retrieval embeds the concept
+name, and the Gemini free-tier daily embed quota (1000/day) was exhausted until
+the midnight-Pacific reset at 12:28 IST.
+
+**The bug.** `/next`'s catch block marked the attempt `completed` — right, the
+answers already given should not be thrown away — but closed the row *directly*,
+skipping `recordEvent('quiz_completed')` and `enqueueQuizCompleted`. That job is
+weakness detection and the recommendation decision (PRD §13). So an attempt cut
+short looked complete to the learner and to the database while silently
+producing nothing, with no way to tell from the UI that anything had been
+skipped.
+
+A second variant sat one branch above it: when `chooseNext` returns nothing
+because every concept has been asked, `/next` returned `finished: true` without
+closing the attempt at all — a row stuck `in_progress` forever, and again no
+recommendation. Not reachable in current data (no stuck rows exist), but
+reachable.
+
+**Fix.** All three endings — last question answered, concepts exhausted,
+generation failed — go through one `closeAttempt()` helper. Both of its steps
+were already idempotent (`idempotencyKey` on the event, `singletonKey:
+attemptId` on the job — checked, not assumed), which matters because `/next` is
+retryable by a client that missed the first response.
+
+**Why the fix is not "make generation not fail".** It will fail again: free-tier
+quota, provider outage, a concept with no material behind it. The invariant
+worth holding is that an attempt has exactly one way to end, not that it always
+reaches its target length.
+
+**Test.** In the stubbed-outage suite: start a quiz, answer wrong, make
+generation throw, then assert the row is closed *and* a `quiz_completed` event
+exists for that attempt with `answered: 1`. Verified by reverting the fix and
+watching it fail with `expected [] to have a length of 1` — the empty event
+list, which is exactly the production symptom.
+
+The suite's own project has no concepts, because extraction runs through the
+same generation provider the suite stubs, so the test seeds two directly. Two,
+not one, so `chooseNext` still has somewhere to go and the failure under test
+stays generation rather than an exhausted concept list.
+
+**Not fixed retroactively:** attempt `3ffafe8e` gets no recommendation. The
+event was never written, and back-filling a learning event to fake a history
+that did not happen would corrupt the record these analytics are built on.
+
+---

@@ -317,27 +317,12 @@ export const quizRoutes: FastifyPluginAsync = async (app) => {
     };
 
     if (finished) {
-      await recordEvent({
-        userId: req.user!.id,
+      await closeAttempt(req, {
+        attemptId: attempt.id,
         projectId: attempt.project_id,
-        type: 'quiz_completed',
-        payload: { attemptId: attempt.id, score: correct / answered, answered },
-        idempotencyKey: `quiz_completed:${attempt.id}`,
+        score: correct / answered,
+        answered,
       });
-
-      // Hand the analysis to the worker. The learner sees their result
-      // immediately; weakness detection and the recommendation complete whether
-      // or not they keep the page open (PRD §13).
-      try {
-        await enqueueQuizCompleted({
-          attemptId: attempt.id,
-          userId: req.user!.id,
-          projectId: attempt.project_id,
-        });
-      } catch (err) {
-        req.log.error({ err }, 'could not enqueue quiz.completed');
-      }
-
       return { ...result, finished: true, question: null, score: correct / answered };
     }
 
@@ -395,7 +380,24 @@ export const quizRoutes: FastifyPluginAsync = async (app) => {
 
     const asked = await askedConceptIds(req, attempt.id);
     const selection = await chooseNext(req.db!, attempt.project_id, asked);
-    if (!selection) return { finished: true, question: null, score };
+    if (!selection) {
+      // Every concept in the Project has been asked. The attempt is over even
+      // though it is short of its target, so it has to be closed like any other
+      // finished attempt — it used to be left `in_progress` forever, which is
+      // both a stuck row and a missing recommendation.
+      await req
+        .db!.from('quiz_attempts')
+        .update({ status: 'completed', completed_at: new Date().toISOString(), score })
+        .eq('id', attempt.id)
+        .eq('status', 'in_progress');
+      await closeAttempt(req, {
+        attemptId: attempt.id,
+        projectId: attempt.project_id,
+        score,
+        answered: attempt.questions_answered,
+      });
+      return { finished: true, question: null, score, endedEarly: true };
+    }
 
     try {
       const next = await issueQuestion(
@@ -409,11 +411,20 @@ export const quizRoutes: FastifyPluginAsync = async (app) => {
     } catch (err) {
       req.log.error({ err }, 'next question generation failed');
       // Answers already given are recorded, so end the attempt cleanly rather
-      // than losing the learner's progress.
+      // than losing the learner's progress — and end it the SAME way a full
+      // attempt ends. Closing the row here without the event and the analysis
+      // job is what made a short quiz silently produce no recommendation.
       await req
         .db!.from('quiz_attempts')
         .update({ status: 'completed', completed_at: new Date().toISOString(), score })
-        .eq('id', attempt.id);
+        .eq('id', attempt.id)
+        .eq('status', 'in_progress');
+      await closeAttempt(req, {
+        attemptId: attempt.id,
+        projectId: attempt.project_id,
+        score,
+        answered: attempt.questions_answered,
+      });
       return { finished: true, question: null, score, endedEarly: true };
     }
   });
@@ -435,6 +446,48 @@ export const quizRoutes: FastifyPluginAsync = async (app) => {
     return { ok: true };
   });
 };
+
+/**
+ * Ends an attempt the one way an attempt is allowed to end.
+ *
+ * An attempt finishes down three paths — the last question answered, every
+ * concept exhausted, or generation failing mid-quiz — and the last two used to
+ * close the row on their own. That looked complete to the learner and to the
+ * database while skipping the two things that actually matter afterwards: the
+ * `quiz_completed` event, and the job that does weakness detection and decides
+ * whether to recommend anything (PRD §13). A quiz cut short by a provider
+ * outage therefore produced no recommendation at all, with nothing in the UI to
+ * say why.
+ *
+ * Both are idempotent — the event by key, the job by `attemptId` — so calling
+ * this twice for one attempt is safe, which matters because `/next` can be
+ * retried by a client that did not see the first response.
+ */
+async function closeAttempt(
+  req: { user?: { id: string }; log: { error: (o: unknown, m: string) => void } },
+  attempt: { attemptId: string; projectId: string; score: number; answered: number },
+): Promise<void> {
+  await recordEvent({
+    userId: req.user!.id,
+    projectId: attempt.projectId,
+    type: 'quiz_completed',
+    payload: { attemptId: attempt.attemptId, score: attempt.score, answered: attempt.answered },
+    idempotencyKey: `quiz_completed:${attempt.attemptId}`,
+  });
+
+  // Hand the analysis to the worker. The learner sees their result
+  // immediately; weakness detection and the recommendation complete whether
+  // or not they keep the page open (PRD §13).
+  try {
+    await enqueueQuizCompleted({
+      attemptId: attempt.attemptId,
+      userId: req.user!.id,
+      projectId: attempt.projectId,
+    });
+  } catch (err) {
+    req.log.error({ err }, 'could not enqueue quiz.completed');
+  }
+}
 
 async function askedConceptIds(req: { db?: unknown }, attemptId: string): Promise<string[]> {
   const db = req.db as import('@supabase/supabase-js').SupabaseClient;
