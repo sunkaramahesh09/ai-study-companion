@@ -13,7 +13,8 @@ export type AiFeature =
   | 'open_answer_grading'
   | 'recommendation'
   | 'embedding'
-  | 'evaluation';
+  | 'evaluation'
+  | 'flashcard_generation';
 
 export type AiStatus = 'success' | 'error' | 'rate_limited' | 'invalid_output' | 'timeout';
 

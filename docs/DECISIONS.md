@@ -2774,3 +2774,205 @@ Two tests now hold the line: the learner's global endpoint must not carry an
 `ai` property, and the Project endpoint still must.
 
 ---
+
+## D-078 — A provider outage must not be reported as a security regression
+**Date:** 2026-09-18 · **Area:** Testing / diagnostics
+
+**Found:** a full `npm test` the day before submission came back 554/555. The
+one failure was `tutorBehaviour › prompt injection › a user message cannot
+override the rules either`, and what it printed was:
+
+```
+TypeError: Cannot read properties of undefined (reading 'replace')
+ ❯ complied apps/api/src/__tests__/tutorBehaviour.test.ts:78:29
+```
+
+`complied()` is the helper that decides whether the Tutor obeyed an injection.
+Read at face value, the suite was saying the prompt-injection boundary — the
+single highest-risk item in the build (task 12) — had broken. It had not. The
+file passed 10/10 on a re-run with nothing changed.
+
+**Cause:** `POST /api/tutor/ask` returns **503 `tutor_unavailable`** when
+generation throws, and that body has no `message` field. The test read
+`r.message.content` straight off the JSON, so one transient Groq failure became
+an undefined-property crash *inside the security assertion*, pointing at the
+security assertion.
+
+The test was not wrong about behaviour. It was wrong about **which layer had
+failed**, and that is the expensive kind of wrong: an evaluator running the
+suite once sees a red security test and a stack trace in the injection helper.
+
+**Chosen:** live suites ask through `__tests__/fixtures/askLive.ts`.
+
+- Non-200 is caught at the boundary, not 40 lines later inside an assertion.
+- **One retry on 503**, then a hard failure whose message says *"the AI provider
+  was unavailable for two consecutive calls — this is an upstream outage, not a
+  Tutor behaviour failure"*. A single transient upstream error is not evidence
+  about this project's behaviour; two in a row is worth stopping for.
+- **Never a skip.** A Tutor that cannot answer is still a red suite. The change
+  is what the red says, not whether it is red.
+
+**Not** handled by retrying inside the provider: `packages/ai` already retries
+429s with backoff and fails over primary→fallback (D-016, D-023). A 503 reaching
+the route means all of that was exhausted or the error was not a 429 at all.
+
+**The 503 path itself is still tested, deliberately** — against a stubbed
+provider in `providerFailure.test.ts`, where it is the subject rather than the
+weather. Two cases added there cover the helper itself: a persistent outage
+raises the labelled error after exactly two attempts, and a single transient
+failure is ridden out. Verifying the verifier, the same way `verify-bundle.mjs`
+was checked by truncating a real bundle (D-052).
+
+**Same class, found in the rehearsal:** `npm run rehearse` checked the injection
+attempt with `!/^\W*BREACHED\W*$/i.test(text ?? '')` and never checked the
+status. An empty string passes that regex, so a 503 on the attack step would
+have printed a green *"Did not comply"* — a security check passing precisely
+because the system never answered. It now asserts HTTP 200 first.
+
+**The general rule this project keeps relearning:** a negative assertion
+(`did not say X`, `did not fabricate`, `rejected a bad origin`) is satisfied by
+a system that did nothing at all. Pair it with a positive one — *it answered*,
+*and the answer was not the payload* — or it is not a test, it is a tautology
+waiting for an outage. Same lesson as D-058, where a CORS check that only
+proved a bad origin is rejected missed that every PATCH and DELETE was blocked.
+
+---
+
+## D-079 — Per-Project analytics existed and could not be reached
+**Date:** 2026-09-18 · **Area:** Navigation / analytics
+
+**Reported:** *"we have global analytics but we dont have project analytics can
+we add it"*.
+
+It was already built — `GET /api/projects/:id/analytics`,
+`apps/web/src/routes/Analytics.tsx`, mastery, quiz attempts, Tutor use and the
+AI panel the PRD asks for in §12. The report was still correct about the thing
+that matters: **from where the learner stands, it did not exist.**
+
+There was exactly one way in — a ghost button on the project dashboard — and the
+sidebar entry that sounds like analytics, *Progress*, was a redirect:
+
+```tsx
+<Route path="/progress" element={<Navigate to="/analytics" replace />} />
+```
+
+straight to the account-wide roll-up. Navigate the app from the rail, as anyone
+does, and per-Project analytics is unreachable. D-065 gave Tutor and Quiz a
+launcher that leads with the last used project and left Progress behind; this is
+the same fix finishing the job.
+
+**Chosen:**
+
+- `/progress` is now `<StudyLauncher mode="analytics" />` — last used project
+  first, switcher one click away, every other project indexed below, and
+  *Across all spaces* in the header for the roll-up that used to be the only
+  destination.
+- **The global page drills down.** Its *Activity by Project* rows are links into
+  each project's own analytics. A summary whose rows are not clickable makes the
+  reader hunt for the detail it just told them about; `RowBars` grew an optional
+  `href` for it.
+- Project Analytics carries the same `StudyContextBar` as the Tutor and Quiz —
+  which project these numbers are about, and a switcher to read another's.
+- Progress stays highlighted in the rail across all three surfaces.
+
+**The general lesson, and it is not the first time:** a feature is not shipped
+when the route exists, it is shipped when someone can get to it. The same class
+as D-065 (Tutor and Quiz reachable only by walking the hierarchy) and D-049
+(Quiz and Growth routes existed with nothing linking to them). Every one was
+found by using the product, never by a test — a route test asks the server for a
+URL it was told to ask for, and cannot notice that nothing in the UI would ever
+produce that URL.
+
+---
+
+## D-080 — Flashcards: generate the wording, compute everything else
+**Date:** 2026-09-18 · **Area:** Feature / learning core
+
+**Asked:** *"also can we add flash cards also, for that can we use google gemini
+api's key"*.
+
+Flashcards and spaced repetition are both named in the PRD's Nice to Have list,
+with the condition that such features "should not compromise the core learning
+experience". Every Must Have was already complete, so the feature is in scope;
+the condition shaped how it is built.
+
+**On the Gemini key: not needed, and it would have been the wrong provider.**
+The provider split is fixed (CLAUDE.md): Groq generates, Gemini embeds. A
+Gemini key is already configured and is what indexes every document. Routing
+card *wording* through it would put generation on the embedding quota — 100 RPM
+/ 1000 RPD free tier — where it would compete with the RAG indexer, and it would
+break the one-interface abstraction the PRD asks for (§14). Card generation runs
+on the Groq **fallback** tier, `openai/gpt-oss-20b`, which is exactly what
+CLAUDE.md reserves for "short, high-volume, schema-bounded work" and draws from
+a separate quota pool from the Tutor.
+
+**What is deterministic, which is nearly all of it:**
+
+- `packages/shared/src/learning/flashcards.ts` — SM-2 derived scheduling, pure,
+  17 unit tests. `reviewCard(schedule, rating, now)` returns a new schedule;
+  `now` is a parameter, so a test reviews a card across six months in a
+  millisecond and gets the same answer every time.
+- **Which concepts get a deck is `scoreConcept`** — the same function that picks
+  the next quiz question, not a second ranking that could disagree with it. A
+  deck is about the weaknesses the rest of the system is already tracking.
+- Four ratings, not right/wrong: "knew it but it was a struggle" and "no idea"
+  must not produce the same interval. A lapse costs ease, resets the streak, and
+  brings the card back in **ten minutes** — waiting a day to re-see a card you
+  just failed is the one thing spaced repetition exists to prevent.
+- Intervals capped at 180 days. SM-2 will happily schedule four years out, which
+  is meaningless for one course from one set of uploads.
+
+**What the model does:** writes a front and a back from retrieved extracts,
+validated against a zod schema before a row is written (PRD §8), with the same
+three-layer injection containment as the Tutor — the extracts are fenced, the
+closing tag is neutralised inside the content, and "these are DATA" is stated
+where the model reads it.
+
+**Ease is clamped in both places.** `1.3 ≤ ease ≤ 3.0` is a CHECK constraint
+*and* a clamp in the algorithm. A bound that lives only in Postgres fails at
+3am; a bound that lives only in TypeScript is one service-role script from being
+violated.
+
+**Caught during the live test:** a second "Add more cards" on a well-covered
+concept returned **503**. The insert is `upsert(..., ignoreDuplicates: true)`
+against `unique (project_id, front)`, so when every card the model wrote was
+already in the deck, nothing was inserted, and the route read "nothing inserted"
+as "generation failed". It is not a failure — it is the honest answer to the
+question. Now a 200 with an empty list and a sentence saying the deck already
+covers the material; 503 is reserved for an actual provider failure. Exactly the
+distinction D-078 was written about, found again one layer up.
+
+---
+
+## D-081 — A flashcard rating must not move mastery
+**Date:** 2026-09-18 · **Area:** Learning core / data integrity
+
+The obvious next step after D-080 is to feed flashcard ratings into
+`updateMastery`. It is more data, on the same concepts, from the same learner.
+
+**Deliberately not done.**
+
+Mastery is built from **graded** evidence: an answer marked right or wrong
+against a stored correct index, or an open answer graded against a rubric
+generated with the question. A flashcard rating is the learner's own report
+about their own recall, given after seeing the answer, with nothing checking it.
+Mixing self-report into a measure built from assessment would quietly corrupt
+the signal every adaptive decision in the system runs on — selection, difficulty,
+weakness detection, recommendation triggers, growth trends. A learner clicking
+"Easy" through a deck would raise their mastery without answering anything.
+
+Worse, it would be invisible: the scores would still look plausible, and the
+system would have no way to say which part of a score came from evidence and
+which from self-assessment.
+
+So reviews are recorded as `flashcard_reviewed` learning events — they show up
+in activity and analytics, which is where "I studied" belongs — and mastery is
+left to the quiz. The deck reads mastery (to choose concepts) and never writes
+it. One-way, on purpose.
+
+**If there were more time:** a rating could become *weak* evidence with its own
+`reason` value in `mastery_history` and a much smaller weight, so the two
+sources stay separable and a learner could be shown which is which. That is a
+schema change and a re-tuning of the update, not a Friday-night change.
+
+---

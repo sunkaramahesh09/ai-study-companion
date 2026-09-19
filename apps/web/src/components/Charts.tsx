@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 /**
  * Chart primitives for the analytics views.
  *
@@ -15,6 +17,8 @@ export type Bar = {
   value: number;
   /** Shown in the tooltip under the headline value. */
   detail?: string;
+  /** Makes the row's label a link — the drill-down from a summary to its source. */
+  href?: string;
 };
 
 /**
@@ -86,7 +90,13 @@ export function RowBars({
     <ul className="rowbars">
       {rows.map((r) => (
         <li key={r.label}>
-          <span className="rowbar-label clamp">{r.label}</span>
+          {r.href ? (
+            <Link to={r.href} className="rowbar-label clamp rowbar-link">
+              {r.label}
+            </Link>
+          ) : (
+            <span className="rowbar-label clamp">{r.label}</span>
+          )}
           <span className="rowbar-track">
             <span
               className="rowbar-fill"

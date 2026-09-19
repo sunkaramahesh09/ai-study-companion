@@ -34,12 +34,12 @@ export function GlobalAnalytics() {
 
   return (
     <section className="fade-in">
-      <Link to="/home" className="back">← Back to Home</Link>
+      <Link to="/progress" className="back">← Back to Progress</Link>
 
       <PageHeader
         icon={<Icon name="chart-bar" size={26} />}
         title="Global Analytics"
-        description="Everything across your Spaces and Projects."
+        description="Everything across your Spaces and Projects. Open any project below for its own view."
         action={<WindowPicker days={days} onChange={setDays} />}
       />
 
@@ -69,13 +69,22 @@ export function GlobalAnalytics() {
               <p className="muted">No project activity in this window.</p>
             ) : (
               <RowBars
-                rows={active.map((p) => ({ label: p.name, value: p.events }))}
+                // Each row links into that project's own analytics. This page
+                // is a sum; the per-Project view (PRD §12) is where the detail
+                // lives, and clicking the thing you are reading about is how a
+                // learner expects to get there.
+                rows={active.map((p) => ({
+                  label: p.name,
+                  value: p.events,
+                  href: `/projects/${p.id}/analytics`,
+                }))}
                 formatValue={(n) => `${n} event${n === 1 ? '' : 's'}`}
               />
             )}
             <p className="muted small" style={{ marginTop: 'var(--space-3)' }}>
               Every global figure above is the sum of these projects — the numbers stay traceable to
-              where they came from.
+              where they came from. Open a project's name for its own analytics: mastery, quiz
+              attempts and what the AI did for it.
             </p>
           </div>
 

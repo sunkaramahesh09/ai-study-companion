@@ -11,13 +11,14 @@ const SPACE_COLORS = [
   '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#06b6d4',
 ];
 
-// Tutor/Quiz are per-project. These land on a launcher that leads with the last
-// space and project used, so continuing is one click rather than a walk back
-// down the hierarchy (D-065).
+// Tutor/Quiz/Progress are per-project. These land on a launcher that leads with
+// the last space and project used, so continuing is one click rather than a
+// walk back down the hierarchy (D-065, D-079).
 const NAV_ITEMS: { path: string; icon: IconName; label: string }[] = [
   { path: '/home', icon: 'home', label: 'Home' },
   { path: '/tutor', icon: 'tutor', label: 'Ask Tutor' },
   { path: '/quiz', icon: 'quiz', label: 'Quizzes' },
+  { path: '/flashcards', icon: 'cards', label: 'Flashcards' },
   { path: '/progress', icon: 'progress', label: 'Progress' },
 ];
 
@@ -39,8 +40,13 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     if (path === '/home') return location.pathname === '/home' || location.pathname === '/';
     // `/projects/<id>/quiz` IS the Quizzes section — highlighting only the
     // launcher would leave the nav blank for the whole time a quiz is running.
-    if (path === '/quiz' || path === '/tutor') {
+    if (path === '/quiz' || path === '/tutor' || path === '/flashcards') {
       return location.pathname === path || location.pathname.endsWith(path);
+    }
+    // Progress covers all three places the same question is answered: the
+    // launcher, a project's analytics, and the account-wide roll-up.
+    if (path === '/progress') {
+      return location.pathname === '/progress' || location.pathname.endsWith('/analytics');
     }
     return location.pathname.startsWith(path);
   };

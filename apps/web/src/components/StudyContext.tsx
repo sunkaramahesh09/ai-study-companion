@@ -6,18 +6,36 @@ import { EmptyState, ErrorNote, Spinner } from './Ui.tsx';
 import { Icon, type IconName } from './Icon.tsx';
 
 /**
- * Tutor and Quiz belong to a project, but a learner arriving from the sidebar
- * has one in mind already — almost always the one they were just in. Making
- * them walk Spaces → Space → Project → Quiz every time is three clicks to
- * re-state something the app already knows.
+ * Tutor, Quiz and Analytics belong to a project, but a learner arriving from
+ * the sidebar has one in mind already — almost always the one they were just
+ * in. Making them walk Spaces → Space → Project → Quiz every time is three
+ * clicks to re-state something the app already knows.
  *
  * So both places lead with the last used space and project, and keep the
  * switcher one click away rather than making it the only path. See D-065.
  */
 
-type Mode = 'quiz' | 'tutor';
+type Mode = 'quiz' | 'tutor' | 'analytics' | 'flashcards';
 
-const MODE_LABEL: Record<Mode, string> = { quiz: 'Quiz', tutor: 'Tutor' };
+const MODE_LABEL: Record<Mode, string> = {
+  quiz: 'Quiz',
+  tutor: 'Tutor',
+  analytics: 'Analytics',
+  flashcards: 'Flashcards',
+};
+const MODE_ICON: Record<Mode, IconName> = {
+  quiz: 'quiz',
+  tutor: 'tutor',
+  analytics: 'chart-bar',
+  flashcards: 'cards',
+};
+/** The verb on the button that opens this feature for a project. */
+const MODE_ACTION: Record<Mode, string> = {
+  quiz: 'Start a quiz',
+  tutor: 'Ask the Tutor',
+  analytics: 'View analytics',
+  flashcards: 'Review flashcards',
+};
 
 /** Space and project selects, wired so a space change cannot leave a project from the previous one selected. */
 function ProjectSwitcher({
@@ -234,6 +252,12 @@ export function ContinueCardView({
     ...(defaultMode !== 'quiz'
       ? [{ to: `/projects/${project.id}/quiz`, icon: 'quiz' as IconName, label: 'Take a quiz' }]
       : []),
+    // Growth is the other half of "how am I doing": analytics counts what
+    // happened, growth says which way mastery is moving. Offered next to it
+    // rather than buried one level deeper on the project dashboard.
+    ...(defaultMode === 'analytics'
+      ? [{ to: `/projects/${project.id}/growth`, icon: 'trend-up' as IconName, label: 'View growth' }]
+      : []),
     ...(defaultMode
       ? [{ to: `/projects/${project.id}`, icon: 'folder' as IconName, label: 'Open project' }]
       : []),
@@ -262,8 +286,8 @@ export function ContinueCardView({
 
       <div className="cta-row continue-card-actions">
         <Link to={dest(project.id)} className="cta">
-          <Icon name={defaultMode === 'quiz' ? 'quiz' : defaultMode === 'tutor' ? 'tutor' : 'play'} size={15} />
-          {defaultMode === 'quiz' ? 'Start a quiz' : defaultMode === 'tutor' ? 'Ask the Tutor' : 'Continue project'}
+          <Icon name={defaultMode ? MODE_ICON[defaultMode] : 'play'} size={15} />
+          {defaultMode ? MODE_ACTION[defaultMode] : 'Continue project'}
         </Link>
         {secondary.map((a) => (
           <Link key={a.to} to={a.to} className="cta-ghost">
@@ -281,7 +305,7 @@ export function ContinueCardView({
           spaces={spaces}
           projects={projects}
           projectId={project.id}
-          submitLabel={defaultMode === 'quiz' ? 'Start quiz' : defaultMode === 'tutor' ? 'Open Tutor' : 'Open project'}
+          submitLabel={defaultMode ? `Open ${MODE_LABEL[defaultMode]}` : 'Open project'}
           onPick={(p) => {
             setOpen(false);
             navigate(dest(p.id));
@@ -345,7 +369,7 @@ export function ProjectGrid({ ctx, mode }: { ctx: StudyContextState; mode: Mode 
               <Link key={p.id} to={`/projects/${p.id}/${mode}`} className="card tile hover-lift">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                   <div className="project-index-icon">
-                    <Icon name={mode === 'quiz' ? 'quiz' : 'tutor'} size={16} />
+                    <Icon name={MODE_ICON[mode]} size={16} />
                   </div>
                   <div style={{ minWidth: 0 }}>
                     <strong>{p.name}</strong>
@@ -361,9 +385,7 @@ export function ProjectGrid({ ctx, mode }: { ctx: StudyContextState; mode: Mode 
                     <Icon name="calendar" size={14} /> Last active{' '}
                     {new Date(p.lastActiveAt).toLocaleDateString()}
                   </span>
-                  <span className="project-index-go">
-                    {mode === 'quiz' ? 'Start quiz' : 'Ask Tutor'} →
-                  </span>
+                  <span className="project-index-go">{MODE_ACTION[mode]} →</span>
                 </div>
               </Link>
             ))}

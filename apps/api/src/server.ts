@@ -8,6 +8,7 @@ import { meRoutes } from './routes/me.ts';
 import { projectRoutes } from './routes/projects.ts';
 import { adminRoutes } from './routes/admin.ts';
 import { analyticsRoutes } from './routes/analytics.ts';
+import { flashcardRoutes } from './routes/flashcards.ts';
 import { growthRoutes } from './routes/growth.ts';
 import { quizRoutes } from './routes/quiz.ts';
 import { spaceRoutes } from './routes/spaces.ts';
@@ -88,6 +89,7 @@ export async function buildServer() {
   await app.register(materialRoutes);
   await app.register(tutorRoutes);
   await app.register(quizRoutes);
+  await app.register(flashcardRoutes);
   await app.register(growthRoutes);
   await app.register(analyticsRoutes);
   await app.register(adminRoutes);

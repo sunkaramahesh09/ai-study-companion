@@ -28,14 +28,14 @@ Legend: **Done** · **Partial** (working, with a stated gap) · **Not built**
 | 14 | **Activity tracking** | `learning_events` + `lib/events.ts`, with idempotency keys | Asserted throughout `crud.test.ts`, `quizFlow.test.ts`, `analytics.test.ts` |
 | 15 | **Admin Dashboard** | `routes/admin.ts` (users, activity, AI, evals, health) · `Admin.tsx` · `scripts/create-admin.mjs` | `admin.test.ts`, `adminIsolation.test.ts` — the latter **fails 6 of 10 against the pre-fix code** (D-073), which is what makes it evidence |
 | 16 | **Persistent relevant learning context** | `learner_facts` table · `learning/facts.ts` `selectFacts()` — relevance judged against the question *and* the retrieved evidence | `facts.test.ts`, `learnerContext.test.ts` (asserts on `factsUsed`, not on model phrasing) |
-| 17 | **Project-level data isolation** | RLS on all 19 tables (35 policies) + explicit `user_id` filters at 31 call sites + ownership in job payloads | `isolation.test.ts`, `adminIsolation.test.ts`, eval `security.project-isolation-holds-under-retrieval` |
+| 17 | **Project-level data isolation** | RLS on all 20 tables (36 policies) + explicit `user_id` filters at 31 call sites + ownership in job payloads | `isolation.test.ts`, `adminIsolation.test.ts`, eval `security.project-isolation-holds-under-retrieval` |
 | 18 | **Structured AI interaction** | `packages/ai/src/json.ts` `generateJson()` — JSON mode + schema in prompt + **zod validation before the value is returned**, one repair, then hard failure | `json.test.ts`, eval `assessment.structured-output-survives-validation`. See the §8 note below |
 | 19 | **Basic AI observability and evaluation** | `ai_requests` (one row per call, written inside the provider) · `apps/api/src/eval/` — 18 cases, 5 suites, `eval_runs`/`eval_results` | `npm run eval`; admin AI and Evaluation tabs |
 | 20 | **Error handling** | Backoff + jitter, primary→fallback failover, `503` with the question preserved, deterministic fallbacks for recommendation and progress text | `providerFailure.test.ts`, `retry.test.ts`, `limiter.test.ts`, `tutorProgress.test.ts` |
-| 21 | **Testing** | 555 tests across 41 files, plus 18 evaluation cases and a production rehearsal | `npx vitest run`; live tests need real keys — see the README warning |
+| 21 | **Testing** | 601 tests across 45 files, plus 18 evaluation cases and a production rehearsal | `npx vitest run`; live tests need real keys — see the README warning |
 | 22 | **Deployment** | Vercel (web) · Railway (api + worker) · Supabase | Live URLs in the README; `npm run rehearse` drives the whole loop against production |
 | 23 | **Public repository** | `github.com/sunkaramahesh09/ai-study-companion` | Public from the first commit; `.env` gitignored, `.env.example` tracked, no secrets in history |
-| 24 | **Architecture documentation** | [`ARCHITECTURE.md`](ARCHITECTURE.md) + [`DECISIONS.md`](DECISIONS.md) (77 entries) | — |
+| 24 | **Architecture documentation** | [`ARCHITECTURE.md`](ARCHITECTURE.md) + [`DECISIONS.md`](DECISIONS.md) (82 entries) | — |
 
 **24 / 24 Must Haves implemented.**
 
@@ -57,6 +57,31 @@ Legend: **Done** · **Partial** (working, with a stated gap) · **Not built**
 | Improved workflow retry handling | **Done** | pg-boss retries, `singletonKey`, idempotent upserts, idempotency keys on events |
 
 **8 done, 1 partial, 1 not built.**
+
+---
+
+## Nice to Have (§19)
+
+The PRD invites creative additions on one condition — they *"should not
+compromise the core learning experience"*. Nothing here was started before every
+Must Have was finished and tested.
+
+| Feature | Status | Note |
+|---|---|---|
+| **Flashcards** | **Done** | `learning/flashcards.ts` · `lib/flashcards.ts` · `routes/flashcards.ts` · `Flashcards.tsx`. Cards are written from the project's own material and validated before persisting |
+| **Spaced repetition** | **Done** | SM-2 derived, pure, `now` injected. Four ratings, a ten-minute relearning step, ease clamped in the algorithm *and* in Postgres, intervals capped at 180 days |
+| Voice learning · learning plans · concept maps · simulations · schedules · multi-modal · notifications · collaboration | **Not built** | Out of scope for the time available |
+
+**How the condition was honoured:** which concepts a deck covers is
+`scoreConcept` — the *same* selector the adaptive quiz uses, not a second
+ranking that could disagree with it — and a flashcard rating deliberately does
+**not** move mastery (D-081), so self-report cannot contaminate the measure
+every adaptive decision depends on. The deck reads the learning core and never
+writes to it. See D-080.
+
+Tests: 17 scheduler unit tests, 17 route tests, 4 live-generation tests.
+**Not yet clicked through in a browser** — stated in the README's known
+limitations rather than left for a reviewer to discover.
 
 ---
 

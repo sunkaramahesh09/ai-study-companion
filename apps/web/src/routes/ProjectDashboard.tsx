@@ -80,6 +80,9 @@ export function ProjectDashboard() {
         <Link to={`/projects/${project.id}/quiz`} className="cta-ghost">
           <Icon name="check-circle" size={15} /> Take a Quiz
         </Link>
+        <Link to={`/projects/${project.id}/flashcards`} className="cta-ghost">
+          <Icon name="cards" size={15} /> Flashcards
+        </Link>
         <Link to={`/projects/${project.id}/growth`} className="cta-ghost">
           <Icon name="trend-up" size={15} /> View Growth
         </Link>

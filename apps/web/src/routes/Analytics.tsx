@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { getProjectAnalytics, type ProjectAnalytics } from '../lib/queries.ts';
 import { ErrorNote, Spinner, PageHeader } from '../components/Ui.tsx';
 import { Stat, pct } from '../components/Charts.tsx';
@@ -11,6 +11,7 @@ import {
   WindowPicker,
 } from '../components/AnalyticsPanels.tsx';
 import { Icon } from '../components/Icon.tsx';
+import { StudyContextBar } from '../components/StudyContext.tsx';
 
 export function Analytics() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -35,7 +36,10 @@ export function Analytics() {
 
   return (
     <section className="fade-in">
-      <Link to={`/projects/${projectId}`} className="back">← Back to Project</Link>
+      {/* Same breadcrumb the Tutor and Quiz carry: which project these numbers
+          describe, and a switcher to read another one's without walking back
+          out to Spaces (D-079). */}
+      {projectId && <StudyContextBar projectId={projectId} mode="analytics" />}
 
       <PageHeader
         icon={<Icon name="chart-bar" size={26} />}

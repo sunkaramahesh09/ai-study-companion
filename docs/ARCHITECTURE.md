@@ -119,6 +119,7 @@ profiles ──┬── spaces ──── projects ──┬── materials 
            │                          ├── quiz_attempts ──── quiz_questions
            │                          ├── question_bank        (reusable generations only)
            │                          ├── learner_facts        (durable context)
+           │                          ├── flashcards           (cards + review state)
            │                          ├── recommendations
            │                          └── learning_events      (the activity spine)
            └── ai_requests             (observability)
@@ -188,6 +189,19 @@ answer → MCQ: integer compare (instant) | open: 20b grader → validated
 complete → enqueue quiz.completed
            worker → detectRepeatedMistakes → write learner_facts
                   → evaluateTriggers → generate ONE recommendation sentence
+```
+
+### Flashcards
+
+```
+generate → buildCandidates (the quiz's own candidates)
+         → selectDeckConcepts = scoreConcept, top N — the SAME ranking the quiz uses
+         → retrieve ~3 chunks per concept → generate 3 cards (20b)
+         → validate against zod → upsert on (project_id, front), duplicates ignored
+review   → rating in, schedule out: reviewCard(schedule, rating, now), pure
+         → written with the service role; a client-supplied dueAt/ease is ignored
+         → learning_events only. Mastery is NOT touched (D-081): self-rated
+           recall is not graded evidence
 ```
 
 ---

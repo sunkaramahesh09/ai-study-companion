@@ -254,6 +254,67 @@ export const getQuizAttempt = (attemptId: string) =>
 export const abandonQuiz = (attemptId: string) =>
   api<{ ok: boolean }>(`/api/quizzes/${attemptId}/abandon`, { method: 'POST' });
 
+// --- flashcards ------------------------------------------------------------
+
+export type ReviewRating = 'again' | 'hard' | 'good' | 'easy';
+
+export type Flashcard = {
+  id: string;
+  conceptId: string | null;
+  conceptName: string | null;
+  front: string;
+  back: string;
+  hint: string | null;
+  dueAt: string;
+  intervalDays: number;
+  ease: number;
+  reps: number;
+  lapses: number;
+  lastRating: ReviewRating | null;
+  lastReviewedAt: string | null;
+  createdAt: string;
+};
+
+export type FlashcardDeck = {
+  project: { id: string; name: string };
+  cards: Flashcard[];
+  /** The review queue, most overdue first. Derived on read, never stored. */
+  due: Flashcard[];
+  nextDueAt: string | null;
+  totals: { cards: number; due: number; learned: number };
+};
+
+export const getFlashcards = (projectId: string) =>
+  api<FlashcardDeck>(`/api/projects/${projectId}/flashcards`);
+
+/**
+ * Asks for more cards. Slow by design — one model call per concept, run
+ * sequentially behind the TPM limiter — which is why `timeoutFor` gives this
+ * path the long timeout.
+ */
+export type GenerateDeckResult = {
+  cards: Flashcard[];
+  failures: { concept: string; reason: string }[];
+  /** Present when the model wrote nothing the deck did not already have. */
+  message?: string;
+};
+
+export const generateFlashcards = (projectId: string, count = 6, conceptId?: string) =>
+  api<GenerateDeckResult>(
+    `/api/projects/${projectId}/flashcards/generate`,
+    { method: 'POST', body: JSON.stringify({ count, ...(conceptId ? { conceptId } : {}) }) },
+  );
+
+/** The rating is all the client sends — the schedule is computed server side. */
+export const reviewFlashcard = (cardId: string, rating: ReviewRating) =>
+  api<{ card: Flashcard }>(`/api/flashcards/${cardId}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ rating }),
+  });
+
+export const deleteFlashcard = (cardId: string) =>
+  api<void>(`/api/flashcards/${cardId}`, { method: 'DELETE' });
+
 // --- growth ----------------------------------------------------------------
 
 export type GrowthTrend = 'new' | 'improving' | 'stable' | 'needs_attention';

@@ -12,7 +12,7 @@ quizzes, and watch concept mastery move as evidence accumulates.
 | **Providers** | Groq (generation) · Gemini (embeddings) |
 
 ```
-555 automated tests · 18 AI evaluation cases · a full production loop rehearsal
+601 automated tests · 18 AI evaluation cases · a full production loop rehearsal
 ```
 
 ---
@@ -77,7 +77,7 @@ cp .env.example .env             # then fill it in — every variable is documen
 ```
 
 Apply the migrations in `supabase/migrations/` in numerical order (Supabase SQL
-editor, or `supabase db push`). They create 19 tables, 35 RLS policies, the
+editor, or `supabase db push`). They create 20 tables, 36 RLS policies, the
 pgvector index and the storage bucket.
 
 ```bash
@@ -99,7 +99,7 @@ npm run dev:web                  # http://localhost:5173
 
 | Command | What it does |
 |---|---|
-| `npm test` | 555 tests. **Set the env vars** — integration tests skip silently without them |
+| `npm test` | 601 tests. **Set the env vars** — integration tests skip silently without them |
 | `npm run typecheck` | All four workspaces |
 | `npm run build` | Builds everything; the web build **fails** if `VITE_*` is missing (see below) |
 | `npm run eval` | 18 AI evaluation cases against real models (~4 min, spends quota) |
@@ -119,8 +119,8 @@ result then means much less than it looks like.
  Vercel                    Railway                          Supabase
 ┌────────────┐            ┌─────────────┐ ┌─────────────┐  ┌──────────────────┐
 │ @asc/web   │            │ @asc/api    │ │ worker      │  │ Postgres 17      │
-│ React 19   │──HTTPS────▶│ Fastify     │ │ pg-boss     │  │ • 19 tables      │
-│ SPA        │   (JWT)    │             │ │             │  │ • 35 RLS policies│
+│ React 19   │──HTTPS────▶│ Fastify     │ │ pg-boss     │  │ • 20 tables      │
+│ SPA        │   (JWT)    │             │ │             │  │ • 36 RLS policies│
 └────────────┘            └──────┬──────┘ └──────┬──────┘  │ • pgvector HNSW  │
        │                         │               │         │ • Auth           │
        └── supabase-js (auth) ───┼───────────────┼────────▶│ • Storage        │
@@ -378,6 +378,15 @@ that does not.
 - **Open-ended answers still take a few seconds to grade**, because grading one
   genuinely requires a model call. Multiple-choice grading is instant. What was
   fixed (D-059) is that neither now waits on generating the *next* question.
+- **Flashcards are new and have not been clicked through in a browser.** The
+  API is covered by 17 route tests plus 4 live-generation tests, and the
+  scheduler by 17 unit tests, but the page itself has only been typechecked and
+  built. It is the newest surface in the app and the least exercised by hand.
+- **A flashcard rating does not move mastery, on purpose** (D-081). Self-rated
+  recall is not graded evidence, and mixing the two would corrupt the signal
+  every adaptive decision depends on. It means a learner who only uses
+  flashcards sees their activity rise and their mastery stay still — correct,
+  but worth knowing.
 - **Live-model tests occasionally flake** on content assertions. Deterministic
   assertions — what the server *chose* to send — are preferred where possible;
   see `learnerContext.test.ts`, which asserts on `factsUsed` rather than on

@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { serviceClient } from '../lib/supabase.ts';
+import { askTutorLive } from './fixtures/askLive.ts';
 import { makePdf } from './fixtures/makePdf.ts';
 import { processMaterial } from '../jobs/materialProcess.ts';
 import { stopQueue } from '../lib/queue.ts';
@@ -178,5 +179,44 @@ describeIntegration('provider failure reaches the user as a usable error', () =>
       .from('learning_events')
       .select('event_type').eq('project_id', projectId).eq('event_type', 'tutor_unsupported');
     expect((events ?? []).length).toBeGreaterThanOrEqual(1);
+  });
+
+  /**
+   * The live behaviour suites read `.message.content` off every answer. When
+   * the provider is down there is no `message`, and the failure surfaced as
+   * `Cannot read properties of undefined` inside an injection-compliance
+   * helper — a real outage reported as a security regression (D-078).
+   *
+   * `askTutorLive` is what they call instead. This stubs the same outage it
+   * was written for, so the guarantee is checked rather than asserted in a
+   * comment.
+   */
+  describe('askTutorLive, the helper the live suites ask through', () => {
+    it('names the outage instead of dying on an undefined message', async () => {
+      generate.mockRejectedValue(new Error('provider down'));
+
+      await expect(
+        askTutorLive(app, auth(), { projectId, question: 'What does cellular respiration do?' }),
+      ).rejects.toThrow(/upstream outage, not a Tutor behaviour failure/);
+      // Two calls, not one: it retried before giving up.
+      expect(generate).toHaveBeenCalledTimes(2);
+    }, 20_000);
+
+    it('rides out a single transient failure', async () => {
+      generate.mockRejectedValueOnce(new Error('transient outage'));
+      generate.mockResolvedValue({
+        text: 'Cellular respiration releases energy from glucose inside the mitochondria [S1].',
+        model: 'openai/gpt-oss-120b',
+        usedFallback: false,
+        usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 },
+      });
+
+      const reply = await askTutorLive(app, auth(), {
+        projectId,
+        question: 'What does cellular respiration do?',
+      });
+      expect(reply.message.content).toMatch(/mitochondria/);
+      expect(reply.grounded).toBe(true);
+    }, 20_000);
   });
 });

@@ -713,6 +713,18 @@ section > .card { margin-top: var(--space-4); }
   gap: var(--space-3);
 }
 .rowbar-label { font-size: var(--text-sm); color: var(--text-secondary); }
+/* A row that drills into its own detail view. Underlined on hover rather than
+   always, so a list of links still reads as a chart and not as a menu. */
+a.rowbar-link {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+a.rowbar-link:hover,
+a.rowbar-link:focus-visible {
+  color: var(--primary-600);
+  text-decoration: underline;
+}
 .rowbar-track {
   background: var(--navy-100);
   border-radius: var(--radius-full);
@@ -1040,3 +1052,84 @@ section > .card { margin-top: var(--space-4); }
   background: var(--lavender-100);
   color: var(--primary-600);
 }
+
+/* ─── Flashcards ──────────────────────────────────────────────────────────
+   One card at a time, deliberately tall and quiet: the whole point is that
+   nothing but the prompt is on screen while the learner tries to recall. */
+.flashcard {
+  margin-top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 260px;
+}
+.flashcard-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.flashcard-front {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: 1.45;
+  margin: var(--space-2) 0 0;
+}
+.flashcard-hint {
+  margin: 0;
+  font-style: italic;
+}
+/* The answer arrives with a left rule rather than a box, so revealing it reads
+   as the same card continuing rather than a second card appearing. */
+.flashcard-back {
+  margin: 0;
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--primary-400);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.rating-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-2);
+}
+.rating {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  padding: var(--space-3);
+  border: 1px solid var(--border-normal);
+  border-left-width: 4px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: border-color var(--duration-fast), transform var(--duration-fast);
+}
+.rating:hover:not(:disabled) { transform: translateY(-1px); }
+.rating:disabled { opacity: 0.6; cursor: default; }
+/* Colour is a second cue here, never the only one: each button carries its own
+   word, so the four stay distinguishable without relying on hue (D-051). */
+.rate-again { border-left-color: var(--error); }
+.rate-hard  { border-left-color: var(--warning-500); }
+.rate-good  { border-left-color: var(--primary-400); }
+.rate-easy  { border-left-color: var(--ok); }
+
+.deck-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.deck-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.deck-list li:last-child { border-bottom: none; }

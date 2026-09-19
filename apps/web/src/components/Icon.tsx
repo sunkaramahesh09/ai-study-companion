@@ -21,7 +21,7 @@ export type IconName =
   // content
   | 'file' | 'folder' | 'book' | 'note' | 'clipboard' | 'upload' | 'trash'
   // learning
-  | 'bulb' | 'brain' | 'target' | 'trophy' | 'flame' | 'star' | 'sparkle'
+  | 'bulb' | 'brain' | 'target' | 'trophy' | 'flame' | 'star' | 'sparkle' | 'cards'
   // data
   | 'chart-bar' | 'chart-line' | 'trend-up' | 'trend-down' | 'activity'
   // misc
@@ -202,6 +202,16 @@ const PATHS: Record<IconName, ReactElement> = {
     <>
       <path d="M12 3.4 13.6 9 19 10.6 13.6 12.2 12 17.8 10.4 12.2 5 10.6 10.4 9z" />
       <path d="M18.2 16.4 18.8 18.4 20.8 19 18.8 19.6 18.2 21.6 17.6 19.6 15.6 19 17.6 18.4z" />
+    </>
+  ),
+
+  // A stack of cards, seen slightly from the side — the front card square on,
+  // two more offset behind it. Flashcards.
+  cards: (
+    <>
+      <rect x="3.2" y="7.6" width="13.2" height="12.8" rx="2" />
+      <path d="M7 5.2h9.8a2 2 0 0 1 2 2v9.4" />
+      <path d="M10.4 3h7.2a2 2 0 0 1 2 2v8.4" />
     </>
   ),
 

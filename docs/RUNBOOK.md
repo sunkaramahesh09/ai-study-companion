@@ -4,7 +4,7 @@
 build state. Read it at the start of every session; update it at the end of
 every task. Keep it terse and factual — status, not narrative.
 
-**Last updated:** 2026-09-18 19:15 · **Day:** Fri · **Deadline:** Sat 2026-09-19 night
+**Last updated:** 2026-09-18 22:05 · **Day:** Fri · **Deadline:** Sat 2026-09-19 night
 
 ---
 
@@ -235,6 +235,81 @@ reason stated rather than claimed as done.
 57 decisions; the real numbers are 555, 18 and 77. An evaluator checking a claim
 and finding it wrong discounts every other claim in the file.
 
+### Ninth: a red security test that was actually a provider blip
+
+**Session 2026-09-18 21:00.** A full `npm test` came back **554/555**. The
+failure was `tutorBehaviour › prompt injection › a user message cannot override
+the rules either`, printing `TypeError: Cannot read properties of undefined
+(reading 'replace')` inside `complied()` — the helper that decides whether the
+Tutor obeyed an injection. Re-run unchanged: 10/10 green.
+
+The Tutor route returns **503 `tutor_unavailable`** when generation throws, and
+that body has no `message`. One transient Groq failure therefore crashed inside
+the security assertion and read as *task 12 has broken* (D-078).
+
+- `apps/api/src/__tests__/fixtures/askLive.ts` — live suites ask through it.
+  Status checked at the boundary, one retry on 503, then a hard failure that
+  says *upstream outage, not a Tutor behaviour failure*. Never a skip.
+- `tutorBehaviour.test.ts` and `learnerContext.test.ts` rewired to it.
+- Two cases in `providerFailure.test.ts` test the helper against a stubbed
+  outage: two attempts then the labelled error, and a transient failure ridden
+  out. Verifying the verifier, as with `verify-bundle.mjs` (D-052).
+- **`npm run rehearse` had the same class of hole:** the injection step checked
+  only `!/^\W*BREACHED\W*$/` against `content ?? ''`. An empty string passes,
+  so a 503 there would have printed a green "Did not comply" — a security check
+  passing because nothing answered. It now asserts HTTP 200 first.
+
+Full clean run after the change: **557 passing, 41 files.** Typecheck clean.
+README and `PRD_COVERAGE.md` counts updated from 555.
+
+### Tenth: Progress led away from the project, so Project analytics was invisible
+
+**Session 2026-09-18 21:30.** Reported as *"we have global analytics but we dont
+have project analytics"*. It was built — route, page, AI panel, the lot. It had
+one entrance (a button on the project dashboard) and the sidebar's **Progress**
+redirected straight to the account-wide roll-up, so navigating from the rail it
+did not exist (D-079).
+
+- `/progress` is now `<StudyLauncher mode="analytics" />`, leading with the last
+  used project. *Across all spaces* in the header keeps the roll-up one click away.
+- Global Analytics' **Activity by Project** rows now link into each project's
+  own analytics (`RowBars` grew an optional `href`).
+- Project Analytics carries the `StudyContextBar` the Tutor and Quiz have.
+- Progress stays lit in the rail on all three surfaces.
+
+### Flashcards (PRD Nice to Have) — shipped
+
+**Session 2026-09-18 21:30–22:05.** Asked for, with an offer of a Gemini key.
+**The key was not needed and would have been the wrong provider** — Gemini is
+this project's embedding provider; generation is Groq, and card wording runs on
+the **fallback** tier that CLAUDE.md reserves for short schema-bounded work
+(D-080).
+
+- **Migration `0010_flashcards`, applied to production.** `flashcards` table,
+  SELECT-only RLS, `unique (project_id, front)` for idempotent generation;
+  `learning_events` and `ai_requests` CHECK constraints widened for
+  `flashcards_generated` / `flashcard_reviewed` / `flashcard_generation`.
+- `packages/shared/src/learning/flashcards.ts` — SM-2 derived scheduling, pure,
+  `now` injected. Which concepts get a deck is `scoreConcept`, the **same**
+  selector the quiz uses.
+- `apps/api/src/lib/flashcards.ts` + `routes/flashcards.ts` — generate, read,
+  review, delete. Ratings go in, schedules are computed server side; a body
+  carrying `dueAt`/`ease` is ignored (tested).
+- `apps/web/src/routes/Flashcards.tsx`, `/flashcards` launcher, sidebar entry,
+  project dashboard action, `cards` icon, styles.
+- **A rating deliberately does not touch mastery** (D-081) — self-report must
+  not contaminate a measure built from graded answers.
+- **Found while testing live:** a second generation on a well-covered concept
+  returned 503 because every card was a duplicate and "nothing inserted" was
+  read as "generation failed". Now a 200 saying the deck already covers it.
+
+**Tests: 601 passing, 45 files** (17 scheduler, 18 route, 4 live generation, 5
+relative-time). Typecheck clean, web build green with `verify-bundle`.
+
+**NOT browser-verified.** The UI has not had a click-through: that needs signing
+in, and signing in on someone's behalf is not something to automate. A seeded
+account is waiting — see the note at the end of this section.
+
 ### >>> STILL OUTSTANDING BEFORE SUBMITTING <<<
 
 1. **The demo video (§20.2).** Not optional, not in the repo, and cannot be
@@ -244,6 +319,14 @@ and finding it wrong discounts every other claim in the file.
    feedback → mastery/growth → analytics → recommendation → Admin Dashboard.
 2. **Enable leaked-password protection** in Supabase Auth (one toggle;
    Authentication → Policies). The security advisor flags it.
+3. **Click through the two new surfaces** — Progress → a project's analytics,
+   and Flashcards (generate → show answer → rate → watch the interval). Local
+   `api` + `worker` + `web` were left running against a seeded account whose
+   credentials are in **`.env.uicheck`** (gitignored — this repo is public, so a
+   working sign-in never goes in a tracked file). Material indexed, 9 concepts,
+   mastery seeded. Delete the account when done.
+4. **Redeploy.** Vercel builds `main`; the API and worker need a Railway deploy
+   for the flashcard routes. Migration 0010 is already applied to production.
 
 **Tasks 10, 11 and 12 complete.** Grounded Tutor, unsupported-question
 handling, and the prompt-injection boundary — the three highest-risk items on
@@ -511,7 +594,7 @@ Status: ` ` todo · `~` in progress · `x` done · `-` cut
 - [x] **25. Production deploy + full loop rehearsal** on the live URL with a fresh account. *Done:* `npm run rehearse`, every check green against production; caught the citation-marker inconsistency (D-057).
 
 ### Sun AM — buffer only, no new features
-- [ ] **26. Docs** — architecture doc + diagram, README + setup, AI usage doc (build-time vs product-time), evaluation approach, known limitations, future improvements. Assembled from `DECISIONS.md`.
+- [x] **26. Docs** — *Done:* `docs/ARCHITECTURE.md` (+ diagram), `README.md`, `docs/AI_USAGE.md`, `docs/PROMPTS.md`, `docs/PRD_COVERAGE.md`. Evaluation approach and known limitations are in the README; `DECISIONS.md` is at **D-078**.
 - [ ] **27. Demo video** — PRD §20.2 shot list, recorded against production.
 - [ ] **28. Final deploy verification + submit.**
 

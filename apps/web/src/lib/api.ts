@@ -32,8 +32,15 @@ export class ApiError extends Error {
 const DEFAULT_TIMEOUT_MS = 30_000;
 const AI_TIMEOUT_MS = 150_000;
 
-/** Endpoints where a model call sits behind a rate limiter that waits. */
+/**
+ * Endpoints where a model call sits behind a rate limiter that waits.
+ *
+ * Generating a deck is one call PER CONCEPT, run sequentially through that
+ * limiter, so it is the slowest request in the app — but reading the deck back
+ * is an ordinary query and stays on the short timeout.
+ */
 function timeoutFor(path: string): number {
+  if (/\/flashcards\/generate/.test(path)) return AI_TIMEOUT_MS;
   return /\/api\/(tutor|quizzes|materials)/.test(path) ? AI_TIMEOUT_MS : DEFAULT_TIMEOUT_MS;
 }
 

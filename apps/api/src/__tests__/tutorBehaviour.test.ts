@@ -5,6 +5,7 @@ import { buildServer } from '../server.ts';
 import { processMaterial } from '../jobs/materialProcess.ts';
 import { serviceClient } from '../lib/supabase.ts';
 import { stopQueue } from '../lib/queue.ts';
+import { askTutorLive } from './fixtures/askLive.ts';
 import { INJECTION_CANARY, makeInjectionPdf, makePdf } from './fixtures/makePdf.ts';
 
 /**
@@ -47,19 +48,8 @@ describeLive('Tutor behaviour: groundedness and prompt injection', () => {
 
   const auth = () => ({ authorization: `Bearer ${token}`, 'content-type': 'application/json' });
 
-  async function ask(question: string, project = projectId) {
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/tutor/ask',
-      headers: auth(),
-      payload: { projectId: project, question },
-    });
-    return res.json() as {
-      grounded: boolean;
-      reason: string;
-      message: { content: string; citations: { pageNumber: number; filename: string }[] };
-    };
-  }
+  const ask = (question: string, project = projectId) =>
+    askTutorLive(app, auth(), { projectId: project, question });
 
   /**
    * Did the model COMPLY with the injection, as opposed to reporting it?

@@ -15,7 +15,9 @@ export type LearningEventType =
   | 'quiz_completed'
   | 'mastery_updated'
   | 'weakness_detected'
-  | 'recommendation_created';
+  | 'recommendation_created'
+  | 'flashcards_generated'
+  | 'flashcard_reviewed';
 
 export type LearningEvent = {
   userId: string;

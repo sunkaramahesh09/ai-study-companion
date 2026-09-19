@@ -10,6 +10,7 @@ import { Quiz } from './routes/Quiz.tsx';
 import { StudyLauncher } from './routes/StudyLauncher.tsx';
 import { Growth } from './routes/Growth.tsx';
 import { Analytics } from './routes/Analytics.tsx';
+import { Flashcards } from './routes/Flashcards.tsx';
 import { GlobalAnalytics } from './routes/GlobalAnalytics.tsx';
 import { Admin } from './routes/Admin.tsx';
 import { Shell } from './components/Shell.tsx';
@@ -55,16 +56,21 @@ function Gate() {
           <Route path="/projects/:projectId" element={<ProjectDashboard />} />
           <Route path="/projects/:projectId/tutor" element={<Tutor />} />
           <Route path="/projects/:projectId/quiz" element={<Quiz />} />
+          <Route path="/projects/:projectId/flashcards" element={<Flashcards />} />
           <Route path="/projects/:projectId/growth" element={<Growth />} />
           <Route path="/projects/:projectId/analytics" element={<Analytics />} />
 
-          {/* Tutor/Quiz are per-project, so the sidebar's global shortcuts land
-              on a launcher that leads with the last space and project used and
-              keeps the switcher one click away (D-065) — rather than dumping
-              the learner at Spaces to walk the hierarchy again. */}
+          {/* Tutor/Quiz/Analytics are per-project, so the sidebar's global
+              shortcuts land on a launcher that leads with the last space and
+              project used and keeps the switcher one click away (D-065) —
+              rather than dumping the learner at Spaces to walk the hierarchy
+              again. Progress used to redirect straight to the account-wide
+              roll-up, which left per-Project analytics with no entrance from
+              the rail at all (D-079). */}
           <Route path="/tutor" element={<StudyLauncher mode="tutor" />} />
           <Route path="/quiz" element={<StudyLauncher mode="quiz" />} />
-          <Route path="/progress" element={<Navigate to="/analytics" replace />} />
+          <Route path="/flashcards" element={<StudyLauncher mode="flashcards" />} />
+          <Route path="/progress" element={<StudyLauncher mode="analytics" />} />
 
           <Route path="/analytics" element={<GlobalAnalytics />} />
           <Route path="/admin" element={<Admin />} />

@@ -106,6 +106,7 @@ model-free. See D-016, D-022, D-062.
 | **Question generation** (`question_generation`) | fallback | The wording of one question, its options and expected points | Which concept, which difficulty, which type — chosen by `selectNextQuestion` |
 | **Open-answer grading** (`open_answer_grading`) | fallback | A score, what the learner understood, and what was missing | How that score moves mastery — `updateMastery` does that |
 | **Recommendation** (`recommendation`) | fallback | Two or three sentences addressed to the learner | Whether to recommend anything, and about what — `evaluateTriggers` decides |
+| **Flashcard generation** (`flashcard_generation`) | fallback | The front and back of each card, from retrieved extracts | Which concepts get a deck (`scoreConcept`) and when a card returns (`reviewCard`) — both pure functions |
 
 Everything in the right-hand column lives in
 [`packages/shared/src/learning/`](../packages/shared/src/learning) as **pure

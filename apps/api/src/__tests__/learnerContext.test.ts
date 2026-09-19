@@ -5,6 +5,7 @@ import { buildServer } from '../server.ts';
 import { processMaterial } from '../jobs/materialProcess.ts';
 import { serviceClient } from '../lib/supabase.ts';
 import { stopQueue } from '../lib/queue.ts';
+import { askTutorLive } from './fixtures/askLive.ts';
 import { makePdf } from './fixtures/makePdf.ts';
 
 /**
@@ -42,18 +43,7 @@ describeLive('persistent learning context', () => {
 
   const auth = () => ({ authorization: `Bearer ${token}`, 'content-type': 'application/json' });
 
-  async function ask(question: string) {
-    const res = await app.inject({
-      method: 'POST', url: '/api/tutor/ask', headers: auth(),
-      payload: { projectId, question },
-    });
-    return res.json() as {
-      grounded: boolean;
-      reason: string;
-      diagnostics: { factsUsed: string[] };
-      message: { content: string };
-    };
-  }
+  const ask = (question: string) => askTutorLive(app, auth(), { projectId, question });
 
   beforeAll(async () => {
     app = await buildServer();
