@@ -46,8 +46,8 @@ happened. This document is the map; that one is the reasoning.
         ▼
  ┌──────────────────────────────────────────────────────┐
  │ Supabase (single Postgres 17 instance)               │
- │  • 19 application tables, RLS on every one           │
- │  • 35 policies                                       │
+ │  • 20 application tables, RLS on every one           │
+ │  • 36 policies                                       │
  │  • pgvector 0.8.2, HNSW index, 768-dim embeddings    │
  │  • pg-boss queues in their own schema                │
  │  • Auth (JWT issuer)                                 │
@@ -106,7 +106,7 @@ end to end.
 
 ## 3. Data model
 
-19 tables. The spine is `auth.users → profiles → spaces → projects`, and
+20 tables. The spine is `auth.users → profiles → spaces → projects`, and
 **every** child table carries both `project_id` and `user_id` — denormalised on
 purpose, so an ownership filter is always one predicate away and a background
 job never has to join three tables to prove who a row belongs to.
@@ -210,7 +210,7 @@ review   → rating in, schedule out: reviewCard(schedule, rating, now), pure
 
 Three deliberately overlapping layers:
 
-1. **RLS on all 19 tables**, 35 policies. Child inserts assert ownership of the
+1. **RLS on all 20 tables**, 36 policies. Child inserts assert ownership of the
    *parent* too, so a row carrying your own `user_id` but someone else's
    `project_id` is rejected.
 2. **Explicit `user_id` filters on every learner-facing query** — 31 call sites.
