@@ -3188,3 +3188,51 @@ here, two copies of what "present" means. The verifier of the verifier is the
 thing to keep single.
 
 ---
+
+## D-087 — The three security-advisor findings, and why only one is ours
+**Date:** 2026-09-19 · **Area:** Security
+
+Supabase's security advisor reports three WARN-level findings against the
+production project. None is a defect in this build, but leaving that unsaid
+would be indistinguishable from not having looked.
+
+**1. Leaked password protection disabled — real, and not fixable on this plan.**
+Supabase Auth can check a new password against the HaveIBeenPwned corpus and
+reject it. It is worth having: credential stuffing is the dominant attack
+against an email/password app, and this one is deployed publicly. It is also
+**Pro plan and above**, and this project runs on Free, so there is no toggle to
+turn on. What Free does offer — minimum length and required character classes —
+is configured. Documented in the README's Known Limitations rather than left as
+an unexplained advisor warning.
+
+**2. `function_search_path_mutable` × 10 — not our functions.** All ten are
+pg-boss's own (`pgboss.create_queue`, `job_table_run`, and the same set in the
+`pgboss_dev` schema used for local work). Patching a vendored schema's functions
+in place means the next `boss.start()` migration either reverts the change or
+fails against it. This project's own functions were hardened in migration
+`0005_function_hardening.sql`, which is why none of them appear here.
+
+**3. `SECURITY DEFINER` functions callable by `authenticated` × 3 — deliberate.**
+`is_admin()`, `owns_project(uuid)` and `owns_space(uuid)` are the RLS helpers.
+They **must** be `SECURITY DEFINER`: `is_admin()` reads `public.profiles`, and
+if it ran as the invoker the policy on `profiles` would call it to decide
+whether the caller may read `profiles`. `SECURITY INVOKER` here is not a
+tightening, it is infinite recursion.
+
+Exposure via `/rest/v1/rpc/` was considered and accepted. Each takes no secret
+and answers only about **the caller**: `is_admin()` returns whether *you* are an
+admin, `owns_project(id)` whether *you* own that project. Calling them tells a
+caller nothing they cannot learn by requesting the row itself, and a wrong id
+returns false rather than "exists but not yours" — the same answer the API's 404
+gives, which is the isolation behaviour `isolation.test.ts` asserts.
+
+**Rejected — revoking EXECUTE from `authenticated` to clear the warning.** The
+policies are evaluated as the calling role, so revoking execute breaks every
+policy that calls them, which is most of the 36. Clearing an advisor line by
+disabling row-level security is the opposite of the finding's intent.
+
+**Lesson:** an advisor finding has three possible honest endings — fix it, or
+say why it is not a defect, or say why it cannot be fixed here. Silence is not
+one of them, and "the tool flagged it" is not the same as "it is wrong".
+
+---

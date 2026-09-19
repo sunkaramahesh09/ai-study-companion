@@ -435,11 +435,16 @@ reach `Quiz Complete!` or no recommendation is enqueued.
 1. **Record the demo video (§20.2).** The only remaining deliverable. Script is
    in [`docs/DEMO_SCRIPT.md`](DEMO_SCRIPT.md). Needs the user; cannot be
    produced from here.
-2. **Enable leaked-password protection** in Supabase Auth (one toggle;
-   Authentication → Policies). Still flagged by the security advisor. It is the
-   only advisor finding that is ours — the other two are pg-boss's own functions
-   and the three RLS helpers (`is_admin`, `owns_project`, `owns_space`), which
-   are `SECURITY DEFINER` on purpose and answer only about the caller.
+2. ~~**Enable leaked-password protection.**~~ **Cannot be done on this plan** —
+   it is Supabase **Pro and above**, and this project is on Free. The dashboard
+   page is Authentication → Sign In / Providers → Email (*not* Database →
+   Policies, which is RLS). Set minimum length and required character classes
+   there instead; those are free. Written up in the README's Known Limitations
+   and in **D-087**, which also records why the advisor's other two findings —
+   pg-boss's own `search_path` functions and the three `SECURITY DEFINER` RLS
+   helpers — are not defects. Verified against the live database: `is_admin()`
+   is called by the `profiles_select` policy itself, so `SECURITY INVOKER` there
+   would be infinite recursion, not a tightening.
 3. **Push this session's commit and let Vercel/Railway rebuild.** Nothing in it
    changes runtime behaviour (docs + the rehearsal script), so a redeploy is
    housekeeping rather than a gate on the video.

@@ -306,7 +306,7 @@ the one place whose whole job is to be believed.
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System diagram, layer boundaries, data model, request flows, and the major decisions with what was rejected |
 | [`docs/AI_USAGE.md`](docs/AI_USAGE.md) | AI used to **build** the product vs AI used **by** the product, kept strictly apart |
 | [`docs/PROMPTS.md`](docs/PROMPTS.md) | The actual development prompts, recovered from the session transcripts rather than written from memory |
-| [`docs/DECISIONS.md`](docs/DECISIONS.md) | **86 numbered decisions**, each with the alternative rejected and why. Written as the work happened, not reconstructed. Code comments cite them by id (`// see D-005`) |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | **87 numbered decisions**, each with the alternative rejected and why. Written as the work happened, not reconstructed. Code comments cite them by id (`// see D-005`) |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Deploying the three services, and the configuration mistakes that fail silently |
 | [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) | The shot list the submission video was recorded from, mapped to the PRD §20.2 order |
 | [`docs/RUNBOOK.md`](docs/RUNBOOK.md) | Build state, task checklist, and a landmine list |
@@ -342,6 +342,15 @@ that does not.
   as "improving". A proper fix compares a recent segment against what preceded
   it, which needs more history than a four-day build produces to tune honestly
   (D-049).
+- **Leaked-password protection is off, because the plan does not offer it.**
+  Supabase Auth can reject passwords known to HaveIBeenPwned, and its security
+  advisor flags the project for having it disabled. The feature is **Pro plan and
+  above**; this project runs on Free, so the toggle is not available to enable.
+  What *is* available on Free — minimum length and required character classes —
+  is configured. The advisor's other two findings are deliberate: the mutable
+  `search_path` functions are pg-boss's own, and `is_admin()`, `owns_project()`
+  and `owns_space()` are `SECURITY DEFINER` by design, each answering only about
+  the caller, which is what makes them safe to expose to `authenticated` (D-087).
 - **18 evaluation cases is a floor, not a comprehensive suite.** Notably absent:
   multi-turn Tutor coherence, grading consistency across repeated runs of the
   same answer, and retrieval quality on a document large enough for chunk
