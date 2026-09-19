@@ -29,11 +29,70 @@ context" continuity that PRD §19 names as the primary success criterion.
 
 ---
 
+## The editing pass: title cards
+
+Cut a **black full-screen card with the section name in front of each section**.
+Three seconds, then the footage for that section, then the next card.
+
+```
+[BLACK CARD: "1 · Authentication"]          3 sec
+  ...signing in...                           recorded
+[BLACK CARD: "2 · Create a Space"]          3 sec
+  ...creating the space...                   recorded
+[BLACK CARD: "3 · Create a Project"]        3 sec
+  ...and so on
+```
+
+**Why it is not optional here.** There is no voice-over, so these cards are the
+only narration the video has. Anything reviewing it by sampling frames — rather
+than watching it end to end — sees a sequence of screenshots, and the cards are
+what tell it which screenshot is which. They also use the PRD's own vocabulary,
+so a reviewer working from the §20.2 list can match them off directly.
+
+### The cards, verbatim
+
+Line 1 large, line 2 smaller and optional. White on black.
+
+| # | Line 1 | Line 2 |
+|---|---|---|
+| 0 | **AI.Prof — AI Study Companion** | The complete learning loop, on the deployed app |
+| 1 | **1 · Authentication** | |
+| 2 | **2 · Create a Space** | |
+| 3 | **3 · Create a Project** | |
+| 4 | **4 · Upload PDF Material** | |
+| 5 | **5 · Background Document Processing** | Extraction, chunking and embedding run in a separate worker service |
+| 6 | **6 · AI Tutor** | |
+| 7 | **7 · Grounded Answer with Citation** | |
+| 8 | **8 · Unsupported-Question Handling** | A question the material does not answer |
+| 9 | **9 · Adaptive Quiz** | Concept and difficulty chosen by deterministic logic, not an LLM |
+| 10 | **10 · Open-Ended Assessment** | Graded against a stored rubric |
+| 11 | **11 · Concept Mastery and Growth** | |
+| 12 | **12 · Project and Global Analytics** | |
+| 13 | **13 · Recommendation** | Triggered by rules over the learner's record |
+| 14 | **14 · Admin Dashboard** | |
+| 15 | **AI.Prof** | github.com/sunkaramahesh09/ai-study-companion |
+
+Keep every card **descriptive of what the next shot actually shows**. A card
+claiming something the footage does not demonstrate is the one way this
+backfires.
+
+### Two other things in the edit
+
+- **Browser zoom to 110–125% before recording.** Page numbers, grader feedback
+  and mastery percentages are ~13px UI text; video compression and any
+  downscaling eat them. Export at 1080p or better.
+- **Where you cut a wait, caption the cut** — a small `⏱ ~30 seconds later` on
+  the footage. **Do not speed-ramp it.** A 10× timelapse of document processing
+  reduces the one shot that proves background processing is real to a smear.
+
+---
+
 ## The shot list
 
 Each section is: **title card → what you click → what to let the viewer see.**
-Hold each title card for ~2 seconds. Hold each *result* on screen for 3–4
-seconds before moving on — an evaluator reads it, they do not just glimpse it.
+Hold each title card for **3–4 seconds** (see the editing pass below for why).
+Hold each *result* on screen for 4–6 seconds before moving on — an evaluator
+reads it, they do not just glimpse it.
 
 ---
 
